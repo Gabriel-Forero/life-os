@@ -1,0 +1,22 @@
+[
+  {"name":"Press de banca","primaryMuscle":"Pecho","secondaryMuscles":["Triceps","Hombros"],"equipment":"Barra","instructions":"Acostado en banco plano, bajar barra al pecho y empujar."},
+  {"name":"Press inclinado","primaryMuscle":"Pecho","secondaryMuscles":["Hombros","Triceps"],"equipment":"Barra","instructions":"En banco inclinado 30-45 grados, bajar barra al pecho superior."},
+  {"name":"Aperturas con mancuernas","primaryMuscle":"Pecho","secondaryMuscles":[],"equipment":"Mancuernas","instructions":"Acostado en banco, abrir brazos con codos ligeramente flexionados."},
+  {"name":"Fondos","primaryMuscle":"Pecho","secondaryMuscles":["Triceps","Hombros"],"equipment":"Peso_corporal","instructions":"En barras paralelas, bajar el cuerpo flexionando codos."},
+  {"name":"Dominadas","primaryMuscle":"Espalda","secondaryMuscles":["Biceps"],"equipment":"Peso_corporal","instructions":"Colgado de barra, subir hasta que la barbilla pase la barra."},
+  {"name":"Remo con barra","primaryMuscle":"Espalda","secondaryMuscles":["Biceps"],"equipment":"Barra","instructions":"Inclinado 45 grados, jalar barra hacia el abdomen."},
+  {"name":"Jalon al pecho","primaryMuscle":"Espalda","secondaryMuscles":["Biceps"],"equipment":"Cable","instructions":"Sentado, jalar barra hacia el pecho con agarre amplio."},
+  {"name":"Peso muerto","primaryMuscle":"Espalda","secondaryMuscles":["Gluteos","Isquiotibiales"],"equipment":"Barra","instructions":"Levantar barra del suelo manteniendo espalda recta."},
+  {"name":"Press militar","primaryMuscle":"Hombros","secondaryMuscles":["Triceps"],"equipment":"Barra","instructions":"De pie, empujar barra desde hombros hasta arriba de la cabeza."},
+  {"name":"Elevaciones laterales","primaryMuscle":"Hombros","secondaryMuscles":[],"equipment":"Mancuernas","instructions":"De pie, elevar mancuernas a los lados hasta la altura de hombros."},
+  {"name":"Curl de biceps","primaryMuscle":"Biceps","secondaryMuscles":[],"equipment":"Mancuernas","instructions":"De pie, flexionar codos levantando mancuernas."},
+  {"name":"Curl con barra","primaryMuscle":"Biceps","secondaryMuscles":[],"equipment":"Barra","instructions":"De pie, flexionar codos levantando barra."},
+  {"name":"Extension de triceps","primaryMuscle":"Triceps","secondaryMuscles":[],"equipment":"Cable","instructions":"De pie frente a polea, extender codos empujando hacia abajo."},
+  {"name":"Fondos en banco","primaryMuscle":"Triceps","secondaryMuscles":["Pecho"],"equipment":"Peso_corporal","instructions":"Manos en banco detras, bajar cuerpo flexionando codos."},
+  {"name":"Sentadilla","primaryMuscle":"Cuadriceps","secondaryMuscles":["Gluteos","Isquiotibiales"],"equipment":"Barra","instructions":"Barra en espalda, bajar flexionando rodillas hasta muslos paralelos al suelo."},
+  {"name":"Prensa de piernas","primaryMuscle":"Cuadriceps","secondaryMuscles":["Gluteos"],"equipment":"Maquina","instructions":"Sentado en maquina, empujar plataforma con los pies."},
+  {"name":"Curl femoral","primaryMuscle":"Isquiotibiales","secondaryMuscles":[],"equipment":"Maquina","instructions":"Acostado boca abajo, flexionar rodillas llevando talones a gluteos."},
+  {"name":"Hip thrust","primaryMuscle":"Gluteos","secondaryMuscles":["Isquiotibiales"],"equipment":"Barra","instructions":"Espalda apoyada en banco, empujar cadera hacia arriba con barra."},
+  {"name":"Elevacion de pantorrillas","primaryMuscle":"Pantorrillas","secondaryMuscles":[],"equipment":"Maquina","instructions":"De pie en maquina, elevar talones."},
+  {"name":"Plancha","primaryMuscle":"Core","secondaryMuscles":[],"equipment":"Peso_corporal","instructions":"Posicion de tabla, mantener cuerpo recto apoyado en antebrazos y puntas de pies."}
+]

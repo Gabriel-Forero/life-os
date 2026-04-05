@@ -1,0 +1,78 @@
+{
+  "@@locale": "en",
+  "appTitle": "LifeOS",
+  "@appTitle": { "description": "App title" },
+
+  "onboardingWelcomeTitle": "Welcome to LifeOS",
+  "onboardingWelcomeSubtitle": "Your personal life management system",
+  "onboardingStart": "Get Started",
+  "onboardingSkipSetup": "Skip setup",
+  "onboardingContinue": "Continue",
+  "onboardingBack": "Back",
+  "onboardingSkipForNow": "Skip for now",
+
+  "languageSelectionTitle": "Select your language",
+  "languageSpanish": "Spanish",
+  "languageEnglish": "English",
+
+  "profileTitle": "Your profile",
+  "profileNameLabel": "Name",
+  "profileNameHint": "What's your name?",
+  "profileCurrencyLabel": "Currency",
+
+  "modulesTitle": "Active modules",
+  "modulesSubtitle": "Select at least one",
+  "moduleFinance": "Finance",
+  "moduleGym": "Gym",
+  "moduleNutrition": "Nutrition",
+  "moduleHabits": "Habits",
+  "moduleSleep": "Sleep",
+  "moduleMental": "Mental",
+  "moduleGoals": "Goals",
+
+  "goalTitle": "Your primary goal",
+  "goalSaveMoney": "Save Money",
+  "goalGetFit": "Get Fit",
+  "goalBeDisciplined": "Be Disciplined",
+  "goalBalance": "Life Balance",
+
+  "firstDataTitle": "Your first entry",
+  "firstDataCreateBudget": "Create your first budget",
+  "firstDataCreateHabit": "Create your first habit",
+
+  "settingsTitle": "Settings",
+  "settingsTheme": "Theme",
+  "settingsThemeDark": "Dark",
+  "settingsThemeLight": "Light",
+  "settingsThemeSystem": "System",
+  "settingsBiometric": "Biometric lock",
+  "settingsLanguage": "Language",
+  "settingsCurrency": "Currency",
+  "settingsBackup": "Backup",
+  "settingsExportBackup": "Export backup",
+  "settingsImportBackup": "Import backup",
+  "settingsNotifications": "Notifications",
+
+  "errorGeneric": "Something went wrong",
+  "errorSavingData": "Error saving data",
+  "errorLoadingData": "Error loading data",
+  "errorBackupExport": "Backup export failed",
+  "errorBackupImport": "Backup import failed",
+  "errorBackupInvalid": "Invalid backup file",
+  "errorPermissionRequired": "Permission required",
+  "errorAuthFailed": "Authentication failed",
+
+  "commonRetry": "Retry",
+  "commonCancel": "Cancel",
+  "commonSave": "Save",
+  "commonDelete": "Delete",
+  "commonLoading": "Loading...",
+  "commonSuccess": "Done!",
+
+  "validationRequired": "This field is required",
+  "validationMaxLength": "Maximum {max} characters",
+  "@validationMaxLength": {
+    "placeholders": { "max": { "type": "int" } }
+  },
+  "validationMinModules": "Select at least one module"
+}

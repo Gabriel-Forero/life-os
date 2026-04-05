@@ -1,0 +1,78 @@
+{
+  "@@locale": "es",
+  "appTitle": "LifeOS",
+  "@appTitle": { "description": "App title" },
+
+  "onboardingWelcomeTitle": "Bienvenido a LifeOS",
+  "onboardingWelcomeSubtitle": "Tu sistema personal de gestion de vida",
+  "onboardingStart": "Comenzar",
+  "onboardingSkipSetup": "Omitir configuracion",
+  "onboardingContinue": "Continuar",
+  "onboardingBack": "Atras",
+  "onboardingSkipForNow": "Omitir por ahora",
+
+  "languageSelectionTitle": "Selecciona tu idioma",
+  "languageSpanish": "Espanol",
+  "languageEnglish": "Ingles",
+
+  "profileTitle": "Tu perfil",
+  "profileNameLabel": "Nombre",
+  "profileNameHint": "Como te llamas?",
+  "profileCurrencyLabel": "Moneda",
+
+  "modulesTitle": "Modulos activos",
+  "modulesSubtitle": "Selecciona al menos uno",
+  "moduleFinance": "Finanzas",
+  "moduleGym": "Gym",
+  "moduleNutrition": "Nutricion",
+  "moduleHabits": "Habitos",
+  "moduleSleep": "Sueno",
+  "moduleMental": "Mental",
+  "moduleGoals": "Metas",
+
+  "goalTitle": "Tu meta principal",
+  "goalSaveMoney": "Ahorrar",
+  "goalGetFit": "Ponerme en forma",
+  "goalBeDisciplined": "Ser mas disciplinado",
+  "goalBalance": "Equilibrio general",
+
+  "firstDataTitle": "Tu primer dato",
+  "firstDataCreateBudget": "Crear tu primer presupuesto",
+  "firstDataCreateHabit": "Crear tu primer habito",
+
+  "settingsTitle": "Configuracion",
+  "settingsTheme": "Tema",
+  "settingsThemeDark": "Oscuro",
+  "settingsThemeLight": "Claro",
+  "settingsThemeSystem": "Sistema",
+  "settingsBiometric": "Bloqueo biometrico",
+  "settingsLanguage": "Idioma",
+  "settingsCurrency": "Moneda",
+  "settingsBackup": "Respaldo",
+  "settingsExportBackup": "Exportar respaldo",
+  "settingsImportBackup": "Importar respaldo",
+  "settingsNotifications": "Notificaciones",
+
+  "errorGeneric": "Algo salio mal",
+  "errorSavingData": "Error al guardar datos",
+  "errorLoadingData": "Error al cargar datos",
+  "errorBackupExport": "Error al exportar respaldo",
+  "errorBackupImport": "Error al importar respaldo",
+  "errorBackupInvalid": "Archivo de respaldo invalido",
+  "errorPermissionRequired": "Permiso requerido",
+  "errorAuthFailed": "Autenticacion fallida",
+
+  "commonRetry": "Reintentar",
+  "commonCancel": "Cancelar",
+  "commonSave": "Guardar",
+  "commonDelete": "Eliminar",
+  "commonLoading": "Cargando...",
+  "commonSuccess": "Listo!",
+
+  "validationRequired": "Este campo es obligatorio",
+  "validationMaxLength": "Maximo {max} caracteres",
+  "@validationMaxLength": {
+    "placeholders": { "max": { "type": "int" } }
+  },
+  "validationMinModules": "Selecciona al menos un modulo"
+}

@@ -1,0 +1,635 @@
+import 'package:flutter/material.dart';
+import 'package:life_os/core/constants/app_colors.dart';
+import 'package:life_os/features/dashboard/providers/dashboard_notifier.dart';
+import 'package:life_os/features/dashboard/providers/day_score_notifier.dart';
+
+// ---------------------------------------------------------------------------
+// Main Dashboard Screen
+// ---------------------------------------------------------------------------
+
+/// Pantalla principal del dashboard de LifeOS.
+///
+/// Muestra: saludo, anillo DayScore, tarjetas de modulos habilitados
+/// ordenados por prioridad, y acciones rapidas.
+///
+/// A11Y-DASH-01: todos los elementos interactivos tienen Semantics
+/// con etiquetas en espanol.
+class DashboardScreen extends StatefulWidget {
+  const DashboardScreen({
+    super.key,
+    required this.dashboardNotifier,
+    required this.dayScoreNotifier,
+  });
+
+  final DashboardNotifier dashboardNotifier;
+  final DayScoreNotifier dayScoreNotifier;
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  late DashboardState _dashState;
+
+  @override
+  void initState() {
+    super.initState();
+    _dashState = widget.dashboardNotifier.state;
+    _init();
+  }
+
+  Future<void> _init() async {
+    await widget.dashboardNotifier.initialize();
+    await widget.dayScoreNotifier.initialize();
+    if (mounted) {
+      setState(() {
+        _dashState = widget.dashboardNotifier.state;
+      });
+    }
+  }
+
+  Future<void> _refresh() async {
+    await widget.dayScoreNotifier.calculateDayScore(DateTime.now());
+    await widget.dashboardNotifier.refresh();
+    if (mounted) {
+      setState(() {
+        _dashState = widget.dashboardNotifier.state;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final greeting =
+        widget.dashboardNotifier.greeting();
+    final score = _dashState.dayScore;
+
+    return Scaffold(
+      key: const ValueKey('dashboard-screen'),
+      body: RefreshIndicator(
+        color: AppColors.dayScore,
+        onRefresh: _refresh,
+        child: CustomScrollView(
+          slivers: [
+            // --- App Bar con saludo ---
+            SliverAppBar(
+              key: const ValueKey('dashboard-app-bar'),
+              floating: true,
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              expandedHeight: 80,
+              flexibleSpace: FlexibleSpaceBar(
+                titlePadding:
+                    const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                title: Semantics(
+                  header: true,
+                  label: '$greeting — Panel principal',
+                  child: Text(
+                    greeting,
+                    key: const ValueKey('dashboard-greeting-text'),
+                    style: Theme.of(context)
+                        .textTheme
+                        .headlineSmall
+                        ?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+              actions: [
+                Semantics(
+                  label: 'Actualizar datos del panel',
+                  button: true,
+                  child: IconButton(
+                    key: const ValueKey('dashboard-refresh-button'),
+                    icon: const Icon(Icons.refresh_rounded),
+                    tooltip: 'Actualizar',
+                    onPressed: _refresh,
+                  ),
+                ),
+              ],
+            ),
+
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  const SizedBox(height: 8),
+
+                  // --- Tarjeta DayScore ---
+                  Semantics(
+                    label: score != null
+                        ? 'Puntuacion del dia: $score de 100'
+                        : 'Calculando puntuacion del dia',
+                    child: _DayScoreCard(
+                      key: const ValueKey('dashboard-day-score-card'),
+                      score: score,
+                      isLoading: _dashState.isLoading,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // --- Seccion: Modulos ---
+                  Semantics(
+                    header: true,
+                    child: Text(
+                      'Mis modulos',
+                      key: const ValueKey('dashboard-modules-header'),
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // --- Grid de tarjetas de modulo ---
+                  if (_dashState.isLoading)
+                    const Center(child: CircularProgressIndicator())
+                  else if (_dashState.cards.isEmpty)
+                    Semantics(
+                      label: 'No hay modulos habilitados',
+                      child: const _EmptyModulesCard(),
+                    )
+                  else
+                    _ModuleCardGrid(
+                      key: const ValueKey('dashboard-module-grid'),
+                      cards: _dashState.cards,
+                    ),
+
+                  const SizedBox(height: 20),
+
+                  // --- Acciones rapidas ---
+                  Semantics(
+                    header: true,
+                    child: Text(
+                      'Acciones rapidas',
+                      key: const ValueKey('dashboard-quick-actions-header'),
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const _QuickActions(
+                    key: ValueKey('dashboard-quick-actions'),
+                  ),
+
+                  if (_dashState.errorMessage != null) ...[
+                    const SizedBox(height: 16),
+                    Semantics(
+                      label: 'Error: ${_dashState.errorMessage}',
+                      child: _ErrorBanner(
+                        key: const ValueKey('dashboard-error-banner'),
+                        message: _dashState.errorMessage!,
+                      ),
+                    ),
+                  ],
+                ]),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Widget: Tarjeta DayScore con anillo
+// ---------------------------------------------------------------------------
+
+class _DayScoreCard extends StatelessWidget {
+  const _DayScoreCard({
+    super.key,
+    required this.score,
+    required this.isLoading,
+  });
+
+  final int? score;
+  final bool isLoading;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: AppColors.dayScore.withAlpha(80),
+          width: 1.5,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Row(
+          children: [
+            // Anillo de puntuacion
+            _ScoreRing(
+              key: const ValueKey('day-score-ring'),
+              score: score,
+              isLoading: isLoading,
+            ),
+            const SizedBox(width: 20),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'DayScore',
+                    key: const ValueKey('day-score-title'),
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Tu puntuacion de bienestar de hoy',
+                    key: const ValueKey('day-score-subtitle'),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurface
+                              .withAlpha(160),
+                        ),
+                  ),
+                  const SizedBox(height: 8),
+                  Semantics(
+                    label: 'Ver desglose de puntuacion',
+                    button: true,
+                    child: OutlinedButton(
+                      key: const ValueKey('day-score-detail-button'),
+                      onPressed: () {
+                        // TODO: navegar a DayScoreScreen cuando se conecte router
+                      },
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.dayScore,
+                        side: const BorderSide(color: AppColors.dayScore),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: const Text(
+                        'Ver desglose',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Widget: Anillo de puntuacion circular
+// ---------------------------------------------------------------------------
+
+class _ScoreRing extends StatelessWidget {
+  const _ScoreRing({
+    super.key,
+    required this.score,
+    required this.isLoading,
+  });
+
+  final int? score;
+  final bool isLoading;
+
+  @override
+  Widget build(BuildContext context) {
+    final displayScore = score ?? 0;
+    final fraction = displayScore / 100.0;
+
+    return SizedBox(
+      width: 88,
+      height: 88,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          CircularProgressIndicator(
+            key: const ValueKey('score-ring-progress'),
+            value: isLoading ? null : fraction,
+            strokeWidth: 8,
+            backgroundColor: AppColors.dayScore.withAlpha(30),
+            valueColor:
+                const AlwaysStoppedAnimation<Color>(AppColors.dayScore),
+          ),
+          Center(
+            child: isLoading
+                ? const SizedBox.shrink()
+                : Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        '$displayScore',
+                        key: const ValueKey('score-ring-value'),
+                        style: Theme.of(context)
+                            .textTheme
+                            .headlineSmall
+                            ?.copyWith(
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.dayScore,
+                            ),
+                      ),
+                      Text(
+                        '/100',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: AppColors.dayScore.withAlpha(180),
+                            ),
+                      ),
+                    ],
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Widget: Grid de tarjetas de modulo
+// ---------------------------------------------------------------------------
+
+class _ModuleCardGrid extends StatelessWidget {
+  const _ModuleCardGrid({super.key, required this.cards});
+
+  final List<ModuleCardData> cards;
+
+  @override
+  Widget build(BuildContext context) {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 1.4,
+      ),
+      itemCount: cards.length,
+      itemBuilder: (context, index) {
+        final card = cards[index];
+        return Semantics(
+          label: '${card.title}: ${card.subtitle}. Toca para ver detalles.',
+          button: true,
+          child: _ModuleCard(
+            key: ValueKey('module-card-${card.moduleKey}'),
+            data: card,
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ModuleCard extends StatelessWidget {
+  const _ModuleCard({super.key, required this.data});
+
+  final ModuleCardData data;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: data.color.withAlpha(60),
+          width: 1,
+        ),
+      ),
+      child: InkWell(
+        onTap: () {
+          // TODO: navegar al modulo correspondiente
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    data.icon,
+                    color: data.color,
+                    size: 20,
+                    semanticLabel: data.title,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      data.title,
+                      style: Theme.of(context)
+                          .textTheme
+                          .labelLarge
+                          ?.copyWith(fontWeight: FontWeight.w700),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              const Spacer(),
+              Text(
+                data.subtitle,
+                key: ValueKey('module-card-subtitle-${data.moduleKey}'),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withAlpha(140),
+                    ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Widget: Sin modulos habilitados
+// ---------------------------------------------------------------------------
+
+class _EmptyModulesCard extends StatelessWidget {
+  const _EmptyModulesCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 0,
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          children: [
+            const Icon(Icons.widgets_outlined, size: 40),
+            const SizedBox(height: 12),
+            Text(
+              'No hay modulos habilitados',
+              style: Theme.of(context).textTheme.bodyMedium,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Activa modulos en Ajustes para verlos aqui.',
+              style: Theme.of(context).textTheme.bodySmall,
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Widget: Acciones rapidas
+// ---------------------------------------------------------------------------
+
+class _QuickActions extends StatelessWidget {
+  const _QuickActions({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final actions = [
+      _QuickActionItem(
+        key: const ValueKey('quick-action-history'),
+        icon: Icons.history_rounded,
+        label: 'Historial',
+        color: AppColors.dayScore,
+        onTap: () {
+          // TODO: navegar a ScoreHistoryScreen
+        },
+      ),
+      _QuickActionItem(
+        key: const ValueKey('quick-action-settings'),
+        icon: Icons.tune_rounded,
+        label: 'Pesos',
+        color: AppColors.goals,
+        onTap: () {
+          // TODO: navegar a configuracion de pesos
+        },
+      ),
+      _QuickActionItem(
+        key: const ValueKey('quick-action-snapshot'),
+        icon: Icons.camera_alt_outlined,
+        label: 'Snapshot',
+        color: AppColors.habits,
+        onTap: () {
+          // TODO: ver snapshots
+        },
+      ),
+    ];
+
+    return Row(
+      children: actions
+          .map(
+            (a) => Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: a,
+              ),
+            ),
+          )
+          .toList(),
+    );
+  }
+}
+
+class _QuickActionItem extends StatelessWidget {
+  const _QuickActionItem({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: label,
+      button: true,
+      child: Card(
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: color.withAlpha(50)),
+        ),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, color: color, size: 24),
+                const SizedBox(height: 6),
+                Text(
+                  label,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Widget: Banner de error
+// ---------------------------------------------------------------------------
+
+class _ErrorBanner extends StatelessWidget {
+  const _ErrorBanner({super.key, required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.error.withAlpha(20),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.error.withAlpha(60)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.error_outline, color: AppColors.error, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: AppColors.error),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

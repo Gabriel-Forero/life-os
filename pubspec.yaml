@@ -1,0 +1,77 @@
+name: life_os
+description: "LifeOS - Your personal life management system"
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.9.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # State Management
+  flutter_riverpod: ^2.6.1
+
+  # Database
+  drift: ^2.22.1
+  sqlite3_flutter_libs: ^0.5.28
+
+  # Routing
+  go_router: ^14.8.1
+
+  # Local Notifications
+  flutter_local_notifications: ^18.0.1
+  timezone: ^0.10.0
+
+  # Biometric Auth
+  local_auth: ^2.3.0
+
+  # Secure Storage
+  flutter_secure_storage: ^9.2.4
+
+  # Typography
+  google_fonts: ^6.2.1
+
+  # Internationalization
+  intl: ^0.20.0
+
+  # Device Info (for BackupManifest)
+  device_info_plus: ^11.2.0
+
+  # File Picker (for backup import/export)
+  file_picker: ^8.1.7
+
+  # Archive (ZIP for backup)
+  archive: ^4.0.0
+
+  # Path Provider
+  path_provider: ^2.1.5
+
+  # Charts
+  fl_chart: ^0.70.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+  # Drift Code Generation
+  drift_dev: ^2.22.1
+  build_runner: ^2.4.14
+
+  # Mocking
+  mocktail: ^1.0.4
+
+flutter:
+  uses-material-design: true
+  generate: true
+
+  assets:
+    - assets/fonts/
+    - assets/icons/
+    - assets/exercises.json
