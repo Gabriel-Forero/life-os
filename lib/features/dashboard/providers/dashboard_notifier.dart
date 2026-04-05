@@ -91,7 +91,7 @@ const _moduleIcons = <String, IconData>{
 /// Reads from [DayScoreNotifier] for today's score and from [DashboardDao]
 /// for module configs. Module metric subtitles are mocked until each module
 /// exposes a score API.
-class DashboardNotifier {
+class DashboardNotifier extends ChangeNotifier {
   DashboardNotifier({
     required this.dao,
     required this.dayScoreNotifier,
@@ -113,6 +113,7 @@ class DashboardNotifier {
 
   Future<void> initialize() async {
     _state = _state.copyWith(isLoading: true);
+    notifyListeners();
     try {
       await dao.seedDefaultConfigsIfEmpty();
       await maybeGenerateYesterdaySnapshot();
@@ -122,6 +123,7 @@ class DashboardNotifier {
         isLoading: false,
         errorMessage: 'Error al inicializar dashboard: $e',
       );
+      notifyListeners();
     }
   }
 
@@ -154,11 +156,13 @@ class DashboardNotifier {
         cards: enabledCards,
         isLoading: false,
       );
+      notifyListeners();
     } catch (e) {
       _state = _state.copyWith(
         isLoading: false,
         errorMessage: 'Error al actualizar dashboard: $e',
       );
+      notifyListeners();
     }
   }
 

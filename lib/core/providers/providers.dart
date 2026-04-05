@@ -252,7 +252,7 @@ Future<double> _calculateHabitsScore(Ref ref) async {
   }
 }
 
-final dayScoreNotifierProvider = Provider<DayScoreNotifier>((ref) {
+final dayScoreNotifierProvider = ChangeNotifierProvider<DayScoreNotifier>((ref) {
   return DayScoreNotifier(
     dao: ref.watch(dashboardDaoProvider),
     eventBus: ref.watch(eventBusProvider),
@@ -268,7 +268,7 @@ final dayScoreNotifierProvider = Provider<DayScoreNotifier>((ref) {
   );
 });
 
-final dashboardNotifierProvider = Provider<DashboardNotifier>((ref) {
+final dashboardNotifierProvider = ChangeNotifierProvider<DashboardNotifier>((ref) {
   return DashboardNotifier(
     dao: ref.watch(dashboardDaoProvider),
     dayScoreNotifier: ref.watch(dayScoreNotifierProvider),

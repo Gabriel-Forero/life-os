@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/domain/app_event.dart';
 import 'package:life_os/core/domain/app_failure.dart';
@@ -71,7 +72,7 @@ class DayScoreState {
 /// - [BudgetThresholdEvent]
 /// - [HabitCheckedInEvent]
 /// - [GoalProgressUpdatedEvent]
-class DayScoreNotifier {
+class DayScoreNotifier extends ChangeNotifier {
   DayScoreNotifier({
     required this.dao,
     required this.eventBus,
@@ -99,6 +100,7 @@ class DayScoreNotifier {
 
   Future<void> initialize() async {
     _state = _state.copyWith(isLoading: true);
+    notifyListeners();
     try {
       await dao.seedDefaultConfigsIfEmpty();
       final configs = await dao.getScoreConfigs();
@@ -108,12 +110,14 @@ class DayScoreNotifier {
         history: history,
         isLoading: false,
       );
+      notifyListeners();
       await calculateDayScore(DateTime.now());
     } catch (e) {
       _state = _state.copyWith(
         isLoading: false,
         errorMessage: 'Error al inicializar puntuacion: $e',
       );
+      notifyListeners();
     }
   }
 
@@ -132,6 +136,7 @@ class DayScoreNotifier {
 
       if (enabledConfigs.isEmpty) {
         _state = _state.copyWith(todayScore: 0, components: []);
+    notifyListeners();
         return const Success(0);
       }
 
@@ -178,12 +183,14 @@ class DayScoreNotifier {
         configs: configs,
         history: history,
       );
+      notifyListeners();
 
       return Success(totalScore);
     } catch (e) {
       _state = _state.copyWith(
         errorMessage: 'Error al calcular DayScore: $e',
       );
+      notifyListeners();
       return Failure(DatabaseFailure(
         userMessage: 'Error al calcular la puntuacion del dia',
         debugMessage: 'calculateDayScore failed: $e',
@@ -213,6 +220,7 @@ class DayScoreNotifier {
       await dao.updateWeightByKey(moduleKey, weight);
       final configs = await dao.getScoreConfigs();
       _state = _state.copyWith(configs: configs);
+    notifyListeners();
       await calculateDayScore(DateTime.now());
       return const Success(null);
     } catch (e) {
@@ -230,6 +238,7 @@ class DayScoreNotifier {
       await dao.updateScoreConfig(configId, weight: weight, isEnabled: isEnabled);
       final configs = await dao.getScoreConfigs();
       _state = _state.copyWith(configs: configs);
+    notifyListeners();
       await calculateDayScore(DateTime.now());
       return const Success(null);
     } catch (e) {
