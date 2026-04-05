@@ -7,6 +7,12 @@ import 'package:life_os/core/providers/providers.dart';
 import 'package:life_os/features/intelligence/domain/ai_context_builder.dart';
 import 'package:life_os/features/intelligence/providers/ai_notifier.dart';
 
+// Provider to build real module summary once per session
+final _realModuleSummaryProvider =
+    FutureProvider.autoDispose<ModuleSummary>((ref) async {
+  return buildRealModuleSummary(ref);
+});
+
 // ---------------------------------------------------------------------------
 // Chat Screen
 // ---------------------------------------------------------------------------
@@ -90,11 +96,23 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _textController.clear();
     setState(() => _errorMessage = null);
 
+    // Prefer caller-supplied context; fall back to live real-data context.
+    ModuleSummary? context = widget.moduleSummary;
+    if (context == null) {
+      final summaryAsync = ref.read(_realModuleSummaryProvider);
+      context = summaryAsync.valueOrNull;
+      // If not yet loaded, kick off loading and proceed without context
+      if (context == null) {
+        // Build real context asynchronously (fire and forget for this message)
+        ref.refresh(_realModuleSummaryProvider.future).ignore();
+      }
+    }
+
     final notifier = ref.read(aiNotifierProvider);
     final stream = notifier.sendMessage(
       widget.conversationId,
       text,
-      context: widget.moduleSummary,
+      context: context,
     );
 
     _streamSub?.cancel();

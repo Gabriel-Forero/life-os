@@ -59,6 +59,15 @@ const _techniques = [
     exhale: 5,
     hold2: 0,
   ),
+  _Technique(
+    key: 'diaphragmatic',
+    name: 'Respiracion Diafragmatica',
+    description: 'Inhala 4s por nariz, Exhala 6s por boca',
+    inhale: 4,
+    hold1: 0,
+    exhale: 6,
+    hold2: 0,
+  ),
 ];
 
 enum _Phase { inhale, hold1, exhale, hold2, idle }
@@ -85,6 +94,7 @@ class _BreathingScreenState extends ConsumerState<BreathingScreen>
   Timer? _timer;
   late AnimationController _circleAnim;
   late Animation<double> _circleScale;
+  int _weeklySessionCount = 0;
 
   _Technique get _technique => _techniques[_selectedIndex];
 
@@ -98,6 +108,18 @@ class _BreathingScreenState extends ConsumerState<BreathingScreen>
     _circleScale = Tween<double>(begin: 0.6, end: 1.0).animate(
       CurvedAnimation(parent: _circleAnim, curve: Curves.easeInOut),
     );
+    _loadWeeklyCount();
+  }
+
+  Future<void> _loadWeeklyCount() async {
+    final dao = ref.read(mentalDaoProvider);
+    final now = DateTime.now();
+    final weekStart = now.subtract(Duration(days: now.weekday - 1));
+    final from = DateTime(weekStart.year, weekStart.month, weekStart.day);
+    final sessions = await dao.getBreathingSessions(from, now);
+    if (mounted) {
+      setState(() => _weeklySessionCount = sessions.length);
+    }
   }
 
   @override
@@ -136,6 +158,15 @@ class _BreathingScreenState extends ConsumerState<BreathingScreen>
 
   void _runPhase(_Phase phase) {
     setState(() => _phase = phase);
+    // Haptic feedback at each phase transition
+    final haptic = ref.read(hapticServiceProvider);
+    if (phase == _Phase.inhale) {
+      haptic.medium();
+    } else if (phase == _Phase.exhale) {
+      haptic.light();
+    } else if (phase == _Phase.hold1 || phase == _Phase.hold2) {
+      haptic.selection();
+    }
     final duration = _phaseDuration(phase);
     if (duration == 0) {
       _nextPhase(phase);
@@ -227,6 +258,7 @@ class _BreathingScreenState extends ConsumerState<BreathingScreen>
         backgroundColor: AppColors.mental,
       ),
     );
+    await _loadWeeklyCount();
   }
 
   @override
@@ -247,6 +279,28 @@ class _BreathingScreenState extends ConsumerState<BreathingScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // Weekly streak banner
+            Card(
+              key: const ValueKey('weekly-streak-card'),
+              color: mentalColor.withAlpha(20),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                child: Row(
+                  children: [
+                    Icon(Icons.local_fire_department, color: mentalColor),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Has hecho $_weeklySessionCount sesiones esta semana',
+                      style: TextStyle(color: mentalColor, fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
             // Technique picker
             Semantics(
               label: 'Selecciona tecnica de respiracion',

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,6 +6,8 @@ import 'package:go_router/go_router.dart';
 import 'package:life_os/core/constants/app_colors.dart';
 import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
+import 'package:life_os/core/router/app_router.dart';
+import 'package:life_os/features/nutrition/domain/nutrition_input.dart';
 
 // ---------------------------------------------------------------------------
 // Helpers de tipo de comida
@@ -54,8 +57,7 @@ class _Macro {
 /// Pantalla de nutricion diaria con anillos de macros, lista de comidas por
 /// tipo y rastreador de agua.
 ///
-/// Accesibilidad: A11Y-NUT-01 — todos los controles e indicadores tienen
-/// etiquetas semanticas.
+/// Accesibilidad: A11Y-NUT-01
 class DailyNutritionScreen extends ConsumerStatefulWidget {
   const DailyNutritionScreen({super.key});
 
@@ -65,9 +67,32 @@ class DailyNutritionScreen extends ConsumerStatefulWidget {
 }
 
 class _DailyNutritionScreenState
-    extends ConsumerState<DailyNutritionScreen> {
+    extends ConsumerState<DailyNutritionScreen> with TickerProviderStateMixin {
   final Set<String> _expandedMeals = {'breakfast', 'lunch'};
   static const double _mlPerGlass = 250;
+  bool _waterGoalCelebrated = false;
+  late AnimationController _celebrationController;
+  late Animation<double> _celebrationScale;
+
+  @override
+  void initState() {
+    super.initState();
+    _celebrationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _celebrationScale = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.4), weight: 30),
+      TweenSequenceItem(tween: Tween(begin: 1.4, end: 0.9), weight: 30),
+      TweenSequenceItem(tween: Tween(begin: 0.9, end: 1.0), weight: 40),
+    ]).animate(_celebrationController);
+  }
+
+  @override
+  void dispose() {
+    _celebrationController.dispose();
+    super.dispose();
+  }
 
   void _toggleMeal(String type) {
     setState(() {
@@ -79,18 +104,52 @@ class _DailyNutritionScreenState
     });
   }
 
-  Future<void> _addWater() async {
+  Future<void> _addWater(int goalGlasses, int currentGlasses) async {
     await ref
         .read(nutritionNotifierProvider)
         .logWater(_mlPerGlass.toInt());
+    // Celebrate when goal is reached
+    if (!_waterGoalCelebrated && currentGlasses + 1 >= goalGlasses) {
+      setState(() => _waterGoalCelebrated = true);
+      _celebrationController.forward(from: 0);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Meta de agua alcanzada! Excelente hidratacion!'),
+            backgroundColor: Color(0xFF3B82F6),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _removeWater(List<WaterLog> todayLogs) async {
     if (todayLogs.isEmpty) return;
-    // Remove the most recent log
     await ref
         .read(nutritionNotifierProvider)
         .removeWaterLog(todayLogs.first.id);
+    setState(() => _waterGoalCelebrated = false);
+  }
+
+  void _showTemplatesSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => _TemplatesBottomSheet(
+        onTemplateApplied: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Plantilla aplicada!'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        },
+      ),
+    );
   }
 
   @override
@@ -110,24 +169,37 @@ class _DailyNutritionScreenState
           child: const Text('Nutricion'),
         ),
         actions: [
+          // Camera / Photo Analysis
           Semantics(
-            label: 'Ver historial de nutricion',
+            label: 'Analizar comida con foto',
             button: true,
             child: IconButton(
-              key: const ValueKey('nutrition-history-button'),
-              icon: const Icon(Icons.history_outlined),
-              onPressed: () {},
-              tooltip: 'Historial',
+              key: const ValueKey('nutrition-photo-analysis-button'),
+              icon: const Icon(Icons.camera_alt_outlined),
+              onPressed: () => GoRouter.of(context).push(AppRoutes.photoAnalysis),
+              tooltip: 'Analizar foto',
             ),
           ),
+          // Templates
+          Semantics(
+            label: 'Ver plantillas de comidas',
+            button: true,
+            child: IconButton(
+              key: const ValueKey('nutrition-templates-button'),
+              icon: const Icon(Icons.dashboard_customize_outlined),
+              onPressed: () => _showTemplatesSheet(context),
+              tooltip: 'Plantillas',
+            ),
+          ),
+          // Goals / Settings
           Semantics(
             label: 'Configurar metas nutricionales',
             button: true,
             child: IconButton(
               key: const ValueKey('nutrition-goals-nav-button'),
-              icon: const Icon(Icons.tune_outlined),
+              icon: const Icon(Icons.track_changes_outlined),
               onPressed: () =>
-                  GoRouter.of(context).push('/nutrition/goals'),
+                  GoRouter.of(context).push(AppRoutes.nutritionGoals),
               tooltip: 'Metas',
             ),
           ),
@@ -144,10 +216,10 @@ class _DailyNutritionScreenState
               Transform.scale(scale: value, child: child),
           child: FloatingActionButton(
             key: const ValueKey('nutrition-add-meal-fab'),
-            onPressed: () => GoRouter.of(context).push('/nutrition/log'),
+            onPressed: () => GoRouter.of(context).push(AppRoutes.nutritionSearch),
             backgroundColor: AppColors.nutrition,
             foregroundColor: Colors.white,
-            tooltip: 'Agregar comida',
+            tooltip: 'Agregar comida rapido',
             child: const Icon(Icons.add),
           ),
         ),
@@ -176,108 +248,37 @@ class _DailyNutritionScreenState
                       ? (goal.waterMl / _mlPerGlass).round()
                       : 8;
 
-                  // Build macro data from meal logs + goal
-                  // For now, totals from meal logs require joining with food items
-                  // Use goal values as targets, current = 0 (no denormalized totals)
-                  final macros = [
-                    _Macro(
-                      label: 'Calorias',
-                      current: 0,
-                      goal: goal?.caloriesKcal.toDouble() ?? 2000,
-                      unit: 'kcal',
-                      color: AppColors.nutrition,
-                    ),
-                    _Macro(
-                      label: 'Proteina',
-                      current: 0,
-                      goal: goal?.proteinG ?? 150,
-                      unit: 'g',
-                      color: const Color(0xFF3B82F6),
-                    ),
-                    _Macro(
-                      label: 'Carbos',
-                      current: 0,
-                      goal: goal?.carbsG ?? 250,
-                      unit: 'g',
-                      color: const Color(0xFF10B981),
-                    ),
-                    _Macro(
-                      label: 'Grasa',
-                      current: 0,
-                      goal: goal?.fatG ?? 65,
-                      unit: 'g',
-                      color: const Color(0xFFEC4899),
-                    ),
-                  ];
+                  // Check water goal and reset celebration flag if below goal
+                  if (waterGlasses < waterGoalGlasses && _waterGoalCelebrated) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) setState(() => _waterGoalCelebrated = false);
+                    });
+                  }
 
-                  return RefreshIndicator(
-                    color: AppColors.nutrition,
-                    onRefresh: () async {},
-                    child: ListView(
-                      padding:
-                          const EdgeInsets.fromLTRB(16, 0, 16, 100),
-                      children: [
-                        // --- Anillos de macros ---
-                        Semantics(
-                          label: 'Resumen de macros diarios',
-                          child: _MacroRingsSection(
-                            key: const ValueKey(
-                                'nutrition-macro-rings'),
-                            macros: macros,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-
-                        // --- Lista de comidas agrupadas por tipo ---
-                        Semantics(
-                          header: true,
-                          child: Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: Text(
-                              'Comidas de hoy',
-                              style:
-                                  theme.textTheme.titleSmall?.copyWith(
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 0.3,
-                              ),
-                            ),
-                          ),
-                        ),
-                        ..._mealTypes.map(
-                          (type) {
-                            final logsForType = mealLogs
-                                .where((m) => m.mealType == type)
-                                .toList();
-                            return _MealSection(
-                              key: ValueKey(
-                                  'nutrition-meal-section-$type'),
-                              mealType: type,
-                              logs: logsForType,
-                              isExpanded:
-                                  _expandedMeals.contains(type),
-                              onToggle: () => _toggleMeal(type),
-                            );
-                          },
-                        ),
-                        const SizedBox(height: 20),
-
-                        // --- Rastreador de agua ---
-                        Semantics(
-                          label:
-                              'Rastreador de agua: $waterGlasses de $waterGoalGlasses vasos consumidos',
-                          child: _WaterTrackerCard(
-                            key: const ValueKey(
-                                'nutrition-water-tracker'),
-                            glasses: waterGlasses,
-                            goalGlasses: waterGoalGlasses,
-                            mlPerGlass: _mlPerGlass,
-                            onIncrement: _addWater,
-                            onDecrement: () =>
-                                _removeWater(waterLogs),
-                          ),
-                        ),
-                      ],
-                    ),
+                  // -------------------------------------------------------
+                  // Build macro totals from meal logs via joining food items
+                  // We read the totals via a separate FutureBuilder below,
+                  // but for simplicity we show 0 if no data yet.
+                  // -------------------------------------------------------
+                  return _MacroStreamBody(
+                    key: ValueKey('macro-body-${mealLogs.length}'),
+                    dao: dao,
+                    today: today,
+                    goal: goal,
+                    mealLogs: mealLogs,
+                    waterLogs: waterLogs,
+                    waterGlasses: waterGlasses,
+                    waterGoalGlasses: waterGoalGlasses,
+                    expandedMeals: _expandedMeals,
+                    onToggleMeal: _toggleMeal,
+                    onAddWater: () => _addWater(waterGoalGlasses, waterGlasses),
+                    onRemoveWater: () => _removeWater(waterLogs),
+                    celebrationController: _celebrationController,
+                    celebrationScale: _celebrationScale,
+                    waterGoalCelebrated: _waterGoalCelebrated,
+                    theme: theme,
+                    onAddFoodToMeal: (mealType) =>
+                        GoRouter.of(context).push(AppRoutes.nutritionSearch),
                   );
                 },
               );
@@ -290,8 +291,219 @@ class _DailyNutritionScreenState
 }
 
 // ---------------------------------------------------------------------------
+// Widget that loads per-meal-log food items for macro totals
+// ---------------------------------------------------------------------------
+
+class _MacroStreamBody extends ConsumerStatefulWidget {
+  const _MacroStreamBody({
+    super.key,
+    required this.dao,
+    required this.today,
+    required this.goal,
+    required this.mealLogs,
+    required this.waterLogs,
+    required this.waterGlasses,
+    required this.waterGoalGlasses,
+    required this.expandedMeals,
+    required this.onToggleMeal,
+    required this.onAddWater,
+    required this.onRemoveWater,
+    required this.celebrationController,
+    required this.celebrationScale,
+    required this.waterGoalCelebrated,
+    required this.theme,
+    required this.onAddFoodToMeal,
+  });
+
+  final dynamic dao;
+  final DateTime today;
+  final NutritionGoal? goal;
+  final List<MealLog> mealLogs;
+  final List<WaterLog> waterLogs;
+  final int waterGlasses;
+  final int waterGoalGlasses;
+  final Set<String> expandedMeals;
+  final ValueChanged<String> onToggleMeal;
+  final VoidCallback onAddWater;
+  final VoidCallback onRemoveWater;
+  final AnimationController celebrationController;
+  final Animation<double> celebrationScale;
+  final bool waterGoalCelebrated;
+  final ThemeData theme;
+  final ValueChanged<String> onAddFoodToMeal;
+
+  @override
+  ConsumerState<_MacroStreamBody> createState() => _MacroStreamBodyState();
+}
+
+class _MacroStreamBodyState extends ConsumerState<_MacroStreamBody> {
+  double _totalCalories = 0;
+  double _totalProtein = 0;
+  double _totalCarbs = 0;
+  double _totalFat = 0;
+
+  @override
+  void didUpdateWidget(_MacroStreamBody oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.mealLogs != widget.mealLogs) {
+      _recalculateMacros();
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _recalculateMacros();
+  }
+
+  Future<void> _recalculateMacros() async {
+    if (widget.mealLogs.isEmpty) {
+      if (mounted) {
+        setState(() {
+          _totalCalories = 0;
+          _totalProtein = 0;
+          _totalCarbs = 0;
+          _totalFat = 0;
+        });
+      }
+      return;
+    }
+
+    double cal = 0, prot = 0, carbs = 0, fat = 0;
+    final dao = ref.read(nutritionDaoProvider);
+
+    for (final meal in widget.mealLogs) {
+      final items = await dao.watchMealLogItems(meal.id).first;
+      for (final item in items) {
+        // Look up the food item
+        final foods = await dao.searchFoodItems('');
+        final food = foods.where((f) => f.id == item.foodItemId).firstOrNull;
+        if (food != null) {
+          final factor = item.quantityG / 100;
+          cal += food.caloriesPer100g * factor;
+          prot += food.proteinPer100g * factor;
+          carbs += food.carbsPer100g * factor;
+          fat += food.fatPer100g * factor;
+        }
+      }
+    }
+
+    if (mounted) {
+      setState(() {
+        _totalCalories = cal;
+        _totalProtein = prot;
+        _totalCarbs = carbs;
+        _totalFat = fat;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final goal = widget.goal;
+    final macros = [
+      _Macro(
+        label: 'Calorias',
+        current: _totalCalories,
+        goal: goal?.caloriesKcal.toDouble() ?? 2000,
+        unit: 'kcal',
+        color: AppColors.nutrition,
+      ),
+      _Macro(
+        label: 'Proteina',
+        current: _totalProtein,
+        goal: goal?.proteinG ?? 150,
+        unit: 'g',
+        color: const Color(0xFF3B82F6),
+      ),
+      _Macro(
+        label: 'Carbos',
+        current: _totalCarbs,
+        goal: goal?.carbsG ?? 250,
+        unit: 'g',
+        color: const Color(0xFF10B981),
+      ),
+      _Macro(
+        label: 'Grasa',
+        current: _totalFat,
+        goal: goal?.fatG ?? 65,
+        unit: 'g',
+        color: const Color(0xFFEC4899),
+      ),
+    ];
+
+    return RefreshIndicator(
+      color: AppColors.nutrition,
+      onRefresh: () async => _recalculateMacros(),
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+        children: [
+          // --- Anillos de macros ---
+          Semantics(
+            label: 'Resumen de macros diarios',
+            child: _MacroRingsSection(
+              key: const ValueKey('nutrition-macro-rings'),
+              macros: macros,
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // --- Lista de comidas agrupadas por tipo ---
+          Semantics(
+            header: true,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                'Comidas de hoy',
+                style: widget.theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ),
+          ),
+          ..._mealTypes.map(
+            (type) {
+              final logsForType = widget.mealLogs
+                  .where((m) => m.mealType == type)
+                  .toList();
+              return _MealSection(
+                key: ValueKey('nutrition-meal-section-$type'),
+                mealType: type,
+                logs: logsForType,
+                isExpanded: widget.expandedMeals.contains(type),
+                onToggle: () => widget.onToggleMeal(type),
+                onAddFood: () => widget.onAddFoodToMeal(type),
+              );
+            },
+          ),
+          const SizedBox(height: 20),
+
+          // --- Rastreador de agua ---
+          Semantics(
+            label:
+                'Rastreador de agua: ${widget.waterGlasses} de ${widget.waterGoalGlasses} vasos consumidos',
+            child: ScaleTransition(
+              scale: widget.celebrationScale,
+              child: _WaterTrackerCard(
+                key: const ValueKey('nutrition-water-tracker'),
+                glasses: widget.waterGlasses,
+                goalGlasses: widget.waterGoalGlasses,
+                mlPerGlass: _DailyNutritionScreenState._mlPerGlass,
+                goalReached: widget.waterGoalCelebrated,
+                onIncrement: widget.onAddWater,
+                onDecrement: widget.onRemoveWater,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Widget: anillos de macros
-// TODO: Extract to separate widget file
 // ---------------------------------------------------------------------------
 
 class _MacroRingsSection extends StatelessWidget {
@@ -461,12 +673,14 @@ class _MealSection extends ConsumerWidget {
     required this.logs,
     required this.isExpanded,
     required this.onToggle,
+    required this.onAddFood,
   });
 
   final String mealType;
   final List<MealLog> logs;
   final bool isExpanded;
   final VoidCallback onToggle;
+  final VoidCallback onAddFood;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -479,7 +693,6 @@ class _MealSection extends ConsumerWidget {
       margin: const EdgeInsets.only(bottom: 8),
       child: Column(
         children: [
-          // Encabezado de comida
           Semantics(
             label: '$label: $count comidas. '
                 '${isExpanded ? 'Toca para colapsar' : 'Toca para expandir'}',
@@ -524,8 +737,7 @@ class _MealSection extends ConsumerWidget {
                         key: ValueKey('nutrition-add-to-meal-$mealType'),
                         icon: const Icon(Icons.add_circle_outline, size: 20),
                         color: AppColors.nutrition,
-                        onPressed: () =>
-                            GoRouter.of(context).push('/nutrition/log'),
+                        onPressed: onAddFood,
                         tooltip: 'Agregar a $label',
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(
@@ -545,7 +757,6 @@ class _MealSection extends ConsumerWidget {
             ),
           ),
 
-          // Items de la comida
           AnimatedCrossFade(
             firstChild: const SizedBox.shrink(),
             secondChild: Column(
@@ -636,8 +847,198 @@ class _MealLogTile extends ConsumerWidget {
 }
 
 // ---------------------------------------------------------------------------
+// Widget: templates bottom sheet (Feature 2)
+// ---------------------------------------------------------------------------
+
+class _TemplatesBottomSheet extends ConsumerWidget {
+  const _TemplatesBottomSheet({required this.onTemplateApplied});
+
+  final VoidCallback onTemplateApplied;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final dao = ref.watch(nutritionDaoProvider);
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.5,
+      minChildSize: 0.3,
+      maxChildSize: 0.85,
+      expand: false,
+      builder: (ctx, scrollController) {
+        return Column(
+          children: [
+            // Handle
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: theme.dividerColor,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  Semantics(
+                    header: true,
+                    child: Text(
+                      'Plantillas de comidas',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(),
+            Expanded(
+              child: StreamBuilder<List<MealTemplate>>(
+                stream: dao.watchMealTemplates(),
+                builder: (context, snapshot) {
+                  final templates = snapshot.data ?? [];
+                  if (templates.isEmpty) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(32),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.dashboard_customize_outlined,
+                              size: 56,
+                              color: theme.disabledColor,
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              'No tienes plantillas aun',
+                              style: theme.textTheme.bodyMedium,
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Despues de registrar una comida, podras guardarla como plantilla para usarla rapidamente.',
+                              style: theme.textTheme.bodySmall,
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+                  return ListView.separated(
+                    controller: scrollController,
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                    itemCount: templates.length,
+                    separatorBuilder: (_, __) =>
+                        const Divider(height: 1),
+                    itemBuilder: (ctx, i) {
+                      final template = templates[i];
+                      return ListTile(
+                        key: ValueKey('template-tile-${template.id}'),
+                        leading: CircleAvatar(
+                          backgroundColor:
+                              AppColors.nutrition.withAlpha(25),
+                          child: Icon(
+                            _mealTypeIcon(template.mealType),
+                            color: AppColors.nutrition,
+                            size: 20,
+                          ),
+                        ),
+                        title: Text(
+                          template.name,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        subtitle: Text(
+                          _mealTypeLabel(template.mealType),
+                          style: theme.textTheme.bodySmall,
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.play_arrow_outlined),
+                              color: AppColors.nutrition,
+                              tooltip: 'Aplicar plantilla',
+                              onPressed: () async {
+                                await _applyTemplate(
+                                    context, ref, template);
+                                if (context.mounted) {
+                                  Navigator.of(context).pop();
+                                  onTemplateApplied();
+                                }
+                              },
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline),
+                              color: Colors.grey,
+                              tooltip: 'Eliminar plantilla',
+                              onPressed: () async {
+                                await ref
+                                    .read(nutritionDaoProvider)
+                                    .deleteMealTemplate(template.id);
+                              },
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _applyTemplate(
+    BuildContext context,
+    WidgetRef ref,
+    MealTemplate template,
+  ) async {
+    try {
+      final rawItems = jsonDecode(template.itemsJson) as List<dynamic>;
+      final items = rawItems
+          .map((e) {
+            final map = e as Map<String, dynamic>;
+            return MealItemInput(
+              foodItemId: (map['foodItemId'] as num).toInt(),
+              quantityG: (map['quantityG'] as num).toDouble(),
+            );
+          })
+          .toList();
+
+      if (items.isEmpty) return;
+
+      await ref.read(nutritionNotifierProvider).logMeal(
+            MealLogInput(
+              mealType: template.mealType,
+              items: items,
+              note: 'Desde plantilla: ${template.name}',
+            ),
+          );
+    } catch (_) {
+      // Silently ignore parse errors for empty/corrupt templates
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Widget: rastreador de agua
-// TODO: Extract to separate widget file
 // ---------------------------------------------------------------------------
 
 class _WaterTrackerCard extends StatelessWidget {
@@ -646,6 +1047,7 @@ class _WaterTrackerCard extends StatelessWidget {
     required this.glasses,
     required this.goalGlasses,
     required this.mlPerGlass,
+    required this.goalReached,
     required this.onIncrement,
     required this.onDecrement,
   });
@@ -653,13 +1055,16 @@ class _WaterTrackerCard extends StatelessWidget {
   final int glasses;
   final int goalGlasses;
   final double mlPerGlass;
+  final bool goalReached;
   final VoidCallback? onIncrement;
   final VoidCallback? onDecrement;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final progress = (glasses / goalGlasses).clamp(0.0, 1.0);
+    final progress = goalGlasses > 0
+        ? (glasses / goalGlasses).clamp(0.0, 1.0)
+        : 0.0;
     final totalMl = glasses * mlPerGlass;
     final goalMl = goalGlasses * mlPerGlass;
 
@@ -672,17 +1077,34 @@ class _WaterTrackerCard extends StatelessWidget {
             // Encabezado
             Row(
               children: [
-                const Icon(Icons.water_drop_outlined, color: Color(0xFF3B82F6)),
+                Icon(
+                  Icons.water_drop_outlined,
+                  color: goalReached
+                      ? const Color(0xFF3B82F6)
+                      : const Color(0xFF3B82F6),
+                ),
                 const SizedBox(width: 8),
                 Semantics(
                   header: true,
                   child: Text(
-                    'Agua',
+                    goalReached ? 'Agua - Meta alcanzada!' : 'Agua',
                     style: theme.textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w600,
+                      color: goalReached
+                          ? const Color(0xFF3B82F6)
+                          : null,
                     ),
                   ),
                 ),
+                if (goalReached)
+                  const Padding(
+                    padding: EdgeInsets.only(left: 6),
+                    child: Icon(
+                      Icons.emoji_events_outlined,
+                      color: Color(0xFFFBBF24),
+                      size: 18,
+                    ),
+                  ),
                 const Spacer(),
                 Text(
                   '${totalMl.toStringAsFixed(0)} / ${goalMl.toStringAsFixed(0)} ml',
@@ -726,7 +1148,9 @@ class _WaterTrackerCard extends StatelessWidget {
                 key: const ValueKey('nutrition-water-progress-bar'),
                 value: progress,
                 backgroundColor: theme.dividerColor,
-                color: const Color(0xFF3B82F6),
+                color: goalReached
+                    ? const Color(0xFF22C55E)
+                    : const Color(0xFF3B82F6),
                 minHeight: 8,
               ),
             ),

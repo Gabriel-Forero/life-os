@@ -119,6 +119,25 @@ class GoalDetailScreen extends ConsumerWidget {
 
                       // Progress section
                       _GoalProgressSection(goal: goal),
+                      const SizedBox(height: 12),
+
+                      // AI deadline prediction card
+                      _DeadlinePredictionCard(goal: goal),
+                      const SizedBox(height: 24),
+
+                      // Milestones timeline section
+                      Text(
+                        'Hoja de ruta',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      _MilestonesTimeline(
+                        goalId: goalId,
+                        goalProgress: goal.progress,
+                        goalColor: Color(goal.color),
+                      ),
                       const SizedBox(height: 24),
 
                       // Sub-goals section
@@ -279,6 +298,756 @@ class _GoalProgressSection extends StatelessWidget {
       '${date.day.toString().padLeft(2, '0')}/'
       '${date.month.toString().padLeft(2, '0')}/'
       '${date.year}';
+}
+
+// ---------------------------------------------------------------------------
+// Deadline Prediction Card (Feature 2)
+// ---------------------------------------------------------------------------
+
+class _DeadlinePredictionCard extends StatelessWidget {
+  const _DeadlinePredictionCard({required this.goal});
+
+  final LifeGoal goal;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final prediction = _computePrediction();
+
+    return Semantics(
+      label: 'Prediccion de deadline: ${prediction.message}',
+      child: Container(
+        key: const ValueKey('deadline_prediction_card'),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: prediction.color.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: prediction.color.withOpacity(0.3)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(prediction.icon, color: prediction.color, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Prediccion inteligente',
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: prediction.color,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    prediction.message,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.textTheme.bodyMedium?.color,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  _DeadlinePrediction _computePrediction() {
+    final now = DateTime.now();
+    final daysSinceCreation =
+        now.difference(goal.createdAt).inDays.clamp(1, 36500);
+    final progress = goal.progress;
+
+    // No progress at all
+    if (progress == 0) {
+      return const _DeadlinePrediction(
+        color: AppColors.error,
+        icon: Icons.warning_amber_rounded,
+        message:
+            'Sin progreso registrado. Comienza hoy para alcanzar tu meta.',
+      );
+    }
+
+    final progressPerDay = progress / daysSinceCreation;
+    final remaining = 100 - progress;
+    final estimatedDaysToComplete =
+        (progressPerDay > 0) ? (remaining / progressPerDay).ceil() : null;
+
+    // No target date — just show estimated completion
+    if (goal.targetDate == null) {
+      if (estimatedDaysToComplete == null) {
+        return const _DeadlinePrediction(
+          color: AppColors.error,
+          icon: Icons.warning_amber_rounded,
+          message: 'Sin progreso registrado. Comienza hoy para alcanzar tu meta.',
+        );
+      }
+      final estimatedDate =
+          now.add(Duration(days: estimatedDaysToComplete));
+      return _DeadlinePrediction(
+        color: AppColors.goals,
+        icon: Icons.lightbulb_outline,
+        message:
+            'Al ritmo actual, completaras esta meta el ${_fmt(estimatedDate)}.',
+      );
+    }
+
+    final deadline = goal.targetDate!;
+    final daysToDeadline = deadline.difference(now).inDays;
+
+    if (estimatedDaysToComplete == null) {
+      return _DeadlinePrediction(
+        color: AppColors.error,
+        icon: Icons.warning_amber_rounded,
+        message: 'Sin progreso registrado. Comienza hoy para alcanzar tu meta.',
+      );
+    }
+
+    final estimatedDate = now.add(Duration(days: estimatedDaysToComplete));
+    final delta = estimatedDaysToComplete - daysToDeadline;
+
+    if (delta <= 0) {
+      // On track
+      return _DeadlinePrediction(
+        color: AppColors.success,
+        icon: Icons.check_circle_outline,
+        message:
+            'Al ritmo actual, completaras esta meta el ${_fmt(estimatedDate)} \u2713',
+      );
+    } else {
+      // Behind
+      return _DeadlinePrediction(
+        color: AppColors.warning,
+        icon: Icons.schedule,
+        message:
+            'Necesitas aumentar tu ritmo. Al paso actual, completaras el '
+            '${_fmt(estimatedDate)}, $delta dias despues de tu deadline.',
+      );
+    }
+  }
+
+  String _fmt(DateTime date) =>
+      '${date.day.toString().padLeft(2, '0')}/'
+      '${date.month.toString().padLeft(2, '0')}/'
+      '${date.year}';
+}
+
+class _DeadlinePrediction {
+  const _DeadlinePrediction({
+    required this.color,
+    required this.icon,
+    required this.message,
+  });
+
+  final Color color;
+  final IconData icon;
+  final String message;
+}
+
+// ---------------------------------------------------------------------------
+// Milestones Timeline (Feature 1)
+// ---------------------------------------------------------------------------
+
+class _MilestonesTimeline extends ConsumerWidget {
+  const _MilestonesTimeline({
+    required this.goalId,
+    required this.goalProgress,
+    required this.goalColor,
+  });
+
+  final int goalId;
+  final int goalProgress;
+  final Color goalColor;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final goalsDao = ref.watch(goalsDaoProvider);
+
+    return StreamBuilder<List<GoalMilestone>>(
+      stream: goalsDao.watchMilestones(goalId),
+      builder: (context, snapshot) {
+        final milestones = snapshot.data ?? [];
+        return _MilestonesTimelineContent(
+          milestones: milestones,
+          goalId: goalId,
+          goalProgress: goalProgress,
+          goalColor: goalColor,
+        );
+      },
+    );
+  }
+}
+
+class _MilestonesTimelineContent extends ConsumerWidget {
+  const _MilestonesTimelineContent({
+    required this.milestones,
+    required this.goalId,
+    required this.goalProgress,
+    required this.goalColor,
+  });
+
+  final List<GoalMilestone> milestones;
+  final int goalId;
+  final int goalProgress;
+  final Color goalColor;
+
+  static const _nodeSize = 32.0;
+  static const _lineHeight = 3.0;
+  static const _nodeSpacing = 100.0;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+
+    if (milestones.isEmpty) {
+      return _buildEmptyState(context, ref, theme);
+    }
+
+    // Total width: padding + nodes + lines between them + add button
+    final totalNodes = milestones.length;
+    final totalWidth =
+        16 + totalNodes * _nodeSpacing + _nodeSize + 80;
+
+    return SizedBox(
+      height: 100,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: SizedBox(
+          width: totalWidth,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              // Horizontal connector line
+              Positioned(
+                left: 16 + _nodeSize / 2,
+                top: 24,
+                width: totalNodes * _nodeSpacing + 40,
+                height: _lineHeight,
+                child: _buildConnectorLine(),
+              ),
+              // Progress marker on the line
+              _buildProgressMarker(totalNodes),
+              // Milestone nodes
+              ...List.generate(milestones.length, (i) {
+                final ms = milestones[i];
+                final left = 16.0 + i * _nodeSpacing;
+                return Positioned(
+                  left: left,
+                  top: 0,
+                  child: _MilestoneNode(
+                    milestone: ms,
+                    goalProgress: goalProgress,
+                    nodeSize: _nodeSize,
+                    onTap: () => _showMilestoneDialog(context, ref, ms),
+                  ),
+                );
+              }),
+              // "Agregar milestone" button at the end
+              Positioned(
+                left: 16.0 + totalNodes * _nodeSpacing,
+                top: 8,
+                child: _AddMilestoneButton(
+                  goalId: goalId,
+                  milestoneCount: milestones.length,
+                  nodeSize: _nodeSize,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildConnectorLine() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return CustomPaint(
+          size: Size(constraints.maxWidth, _lineHeight),
+          painter: _TimelineLinePainter(goalColor: goalColor),
+        );
+      },
+    );
+  }
+
+  Widget _buildProgressMarker(int totalNodes) {
+    if (totalNodes == 0) return const SizedBox.shrink();
+    // Position the marker based on current progress across the full line
+    final lineWidth = totalNodes * _nodeSpacing + 40.0;
+    final markerX = 16 + _nodeSize / 2 + (goalProgress / 100.0) * lineWidth;
+
+    return Positioned(
+      left: markerX - 6,
+      top: 18,
+      child: Semantics(
+        label: 'Progreso actual: $goalProgress%',
+        child: Container(
+          key: const ValueKey('milestone_progress_marker'),
+          width: 12,
+          height: 12,
+          decoration: BoxDecoration(
+            color: goalColor,
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white, width: 2),
+            boxShadow: [
+              BoxShadow(
+                color: goalColor.withOpacity(0.5),
+                blurRadius: 4,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(
+      BuildContext context, WidgetRef ref, ThemeData theme) {
+    return Container(
+      key: const ValueKey('milestones_empty'),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.dividerColor.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: theme.dividerColor.withOpacity(0.2)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.flag_outlined,
+            color: theme.textTheme.bodySmall?.color,
+            size: 20,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Sin hitos definidos.',
+              style: theme.textTheme.bodySmall,
+            ),
+          ),
+          _AddMilestoneButton(
+            goalId: goalId,
+            milestoneCount: 0,
+            nodeSize: _nodeSize,
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showMilestoneDialog(
+    BuildContext context,
+    WidgetRef ref,
+    GoalMilestone milestone,
+  ) {
+    showDialog<void>(
+      context: context,
+      builder: (_) => _MilestoneActionDialog(
+        milestone: milestone,
+        ref: ref,
+      ),
+    );
+  }
+}
+
+class _TimelineLinePainter extends CustomPainter {
+  _TimelineLinePainter({required this.goalColor});
+  final Color goalColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = goalColor.withOpacity(0.25)
+      ..strokeWidth = size.height
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(
+      Offset(0, size.height / 2),
+      Offset(size.width, size.height / 2),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_TimelineLinePainter old) =>
+      old.goalColor != goalColor;
+}
+
+// ---------------------------------------------------------------------------
+// Milestone Node
+// ---------------------------------------------------------------------------
+
+class _MilestoneNode extends StatelessWidget {
+  const _MilestoneNode({
+    required this.milestone,
+    required this.goalProgress,
+    required this.nodeSize,
+    required this.onTap,
+  });
+
+  final GoalMilestone milestone;
+  final int goalProgress;
+  final double nodeSize;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isCompleted = milestone.isCompleted;
+    final isCurrent =
+        !isCompleted && goalProgress >= milestone.targetProgress - 10;
+
+    final Color nodeColor;
+    final Color borderColor;
+    final Widget nodeIcon;
+
+    if (isCompleted) {
+      nodeColor = AppColors.success;
+      borderColor = AppColors.success;
+      nodeIcon = const Icon(Icons.check, color: Colors.white, size: 16);
+    } else if (isCurrent) {
+      nodeColor = AppColors.warning;
+      borderColor = AppColors.warning;
+      nodeIcon = Icon(
+        Icons.circle,
+        color: Colors.white.withOpacity(0.9),
+        size: 10,
+      );
+    } else {
+      nodeColor = Colors.transparent;
+      borderColor = Colors.grey.withOpacity(0.5);
+      nodeIcon = Icon(
+        Icons.circle_outlined,
+        color: Colors.grey.withOpacity(0.5),
+        size: 10,
+      );
+    }
+
+    return Semantics(
+      label:
+          'Hito: ${milestone.name}, ${isCompleted ? "completado" : "pendiente"}',
+      button: true,
+      child: GestureDetector(
+        onTap: onTap,
+        child: SizedBox(
+          width: nodeSize,
+          child: Column(
+            children: [
+              // Target date above node
+              SizedBox(
+                height: 16,
+                child: milestone.targetDate != null
+                    ? Text(
+                        _fmtShort(milestone.targetDate!),
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          fontSize: 9,
+                          color: theme.textTheme.bodySmall?.color,
+                        ),
+                        textAlign: TextAlign.center,
+                        overflow: TextOverflow.ellipsis,
+                      )
+                    : const SizedBox.shrink(),
+              ),
+              // Circle node
+              Container(
+                width: nodeSize,
+                height: nodeSize,
+                decoration: BoxDecoration(
+                  color: isCompleted || isCurrent
+                      ? nodeColor
+                      : theme.scaffoldBackgroundColor,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: borderColor, width: 2),
+                ),
+                child: Center(child: nodeIcon),
+              ),
+              const SizedBox(height: 4),
+              // Milestone name below node
+              SizedBox(
+                width: nodeSize + 20,
+                child: Text(
+                  milestone.name,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    fontSize: 9,
+                    fontWeight: isCompleted || isCurrent
+                        ? FontWeight.w600
+                        : FontWeight.normal,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _fmtShort(DateTime date) =>
+      '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}';
+}
+
+// ---------------------------------------------------------------------------
+// Add Milestone Button
+// ---------------------------------------------------------------------------
+
+class _AddMilestoneButton extends ConsumerWidget {
+  const _AddMilestoneButton({
+    required this.goalId,
+    required this.milestoneCount,
+    required this.nodeSize,
+  });
+
+  final int goalId;
+  final int milestoneCount;
+  final double nodeSize;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Semantics(
+      label: 'Agregar milestone',
+      button: true,
+      child: GestureDetector(
+        key: const ValueKey('add_milestone_button'),
+        onTap: () => _showAddMilestoneDialog(context, ref),
+        child: Container(
+          width: nodeSize,
+          height: nodeSize,
+          decoration: BoxDecoration(
+            color: AppColors.goals.withOpacity(0.1),
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: AppColors.goals.withOpacity(0.5),
+              width: 2,
+            ),
+          ),
+          child: const Icon(Icons.add, color: AppColors.goals, size: 18),
+        ),
+      ),
+    );
+  }
+
+  void _showAddMilestoneDialog(BuildContext context, WidgetRef ref) {
+    showDialog<void>(
+      context: context,
+      builder: (_) => _AddMilestoneDialog(
+        goalId: goalId,
+        sortOrder: milestoneCount,
+        ref: ref,
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Milestone Action Dialog (tap existing milestone)
+// ---------------------------------------------------------------------------
+
+class _MilestoneActionDialog extends StatelessWidget {
+  const _MilestoneActionDialog({
+    required this.milestone,
+    required this.ref,
+  });
+
+  final GoalMilestone milestone;
+  final WidgetRef ref;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return AlertDialog(
+      key: const ValueKey('milestone_action_dialog'),
+      title: Text(milestone.name),
+      content: Text(
+        milestone.isCompleted
+            ? 'Este hito ya esta completado.'
+            : 'Que deseas hacer con este hito?',
+        style: theme.textTheme.bodyMedium,
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cerrar'),
+        ),
+        if (!milestone.isCompleted)
+          ElevatedButton.icon(
+            key: const ValueKey('complete_milestone_button'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.success,
+              foregroundColor: Colors.white,
+            ),
+            icon: const Icon(Icons.check, size: 16),
+            label: const Text('Marcar completado'),
+            onPressed: () async {
+              final goalsNotifier = ref.read(goalsNotifierProvider);
+              await goalsNotifier.completeMilestone(milestone.id);
+              if (context.mounted) Navigator.pop(context);
+            },
+          ),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Add Milestone Dialog
+// ---------------------------------------------------------------------------
+
+class _AddMilestoneDialog extends StatefulWidget {
+  const _AddMilestoneDialog({
+    required this.goalId,
+    required this.sortOrder,
+    required this.ref,
+  });
+
+  final int goalId;
+  final int sortOrder;
+  final WidgetRef ref;
+
+  @override
+  State<_AddMilestoneDialog> createState() => _AddMilestoneDialogState();
+}
+
+class _AddMilestoneDialogState extends State<_AddMilestoneDialog> {
+  final _nameController = TextEditingController();
+  int _targetProgress = 50;
+  DateTime? _targetDate;
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now().add(const Duration(days: 30)),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 3650)),
+    );
+    if (picked != null) {
+      setState(() => _targetDate = picked);
+    }
+  }
+
+  Future<void> _save() async {
+    final name = _nameController.text.trim();
+    if (name.isEmpty) return;
+
+    setState(() => _saving = true);
+    final goalsNotifier = widget.ref.read(goalsNotifierProvider);
+    await goalsNotifier.addMilestone(
+      MilestoneInput(
+        goalId: widget.goalId,
+        name: name,
+        targetProgress: _targetProgress,
+        targetDate: _targetDate,
+        sortOrder: widget.sortOrder,
+      ),
+    );
+    if (mounted) Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return AlertDialog(
+      key: const ValueKey('add_milestone_dialog'),
+      title: const Text('Agregar milestone'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              key: const ValueKey('milestone_name_field'),
+              controller: _nameController,
+              decoration: const InputDecoration(
+                labelText: 'Nombre del hito',
+                hintText: 'Ej: Primera revision',
+              ),
+              textCapitalization: TextCapitalization.sentences,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Progreso objetivo: $_targetProgress%',
+              style: theme.textTheme.bodySmall,
+            ),
+            Slider(
+              key: const ValueKey('milestone_progress_slider'),
+              value: _targetProgress.toDouble(),
+              min: 0,
+              max: 100,
+              divisions: 20,
+              label: '$_targetProgress%',
+              activeColor: AppColors.goals,
+              onChanged: (v) =>
+                  setState(() => _targetProgress = v.round()),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(
+                  Icons.calendar_today,
+                  size: 16,
+                  color: theme.textTheme.bodySmall?.color,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _targetDate != null
+                        ? '${_targetDate!.day.toString().padLeft(2, '0')}/'
+                            '${_targetDate!.month.toString().padLeft(2, '0')}/'
+                            '${_targetDate!.year}'
+                        : 'Sin fecha limite',
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ),
+                TextButton(
+                  key: const ValueKey('milestone_pick_date_button'),
+                  onPressed: _pickDate,
+                  child: const Text('Elegir fecha'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _saving ? null : () => Navigator.pop(context),
+          child: const Text('Cancelar'),
+        ),
+        ElevatedButton(
+          key: const ValueKey('save_milestone_button'),
+          onPressed: _saving ? null : _save,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.goals,
+            foregroundColor: Colors.white,
+          ),
+          child: _saving
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : const Text('Guardar'),
+        ),
+      ],
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------

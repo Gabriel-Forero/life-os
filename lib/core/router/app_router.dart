@@ -27,6 +27,8 @@ import 'package:life_os/features/intelligence/presentation/ai_config_screen.dart
 import 'package:life_os/features/intelligence/presentation/chat_screen.dart';
 import 'package:life_os/features/intelligence/presentation/conversation_list_screen.dart';
 import 'package:life_os/features/mental/presentation/breathing_screen.dart';
+import 'package:life_os/features/mental/presentation/gratitude_screen.dart';
+import 'package:life_os/features/mental/presentation/insights_screen.dart';
 import 'package:life_os/features/mental/presentation/mental_history_screen.dart';
 import 'package:life_os/features/mental/presentation/mood_log_screen.dart';
 import 'package:life_os/features/nutrition/presentation/daily_nutrition_screen.dart';
@@ -34,9 +36,11 @@ import 'package:life_os/features/nutrition/presentation/food_search_screen.dart'
 import 'package:life_os/features/nutrition/presentation/meal_log_screen.dart';
 import 'package:life_os/features/nutrition/presentation/nutrition_goals_screen.dart';
 import 'package:life_os/features/nutrition/presentation/barcode_scanner_screen.dart';
+import 'package:life_os/features/nutrition/presentation/photo_analysis_screen.dart';
 import 'package:life_os/features/onboarding/presentation/onboarding_shell.dart';
 import 'package:life_os/features/settings/presentation/backup_screen.dart';
 import 'package:life_os/features/settings/presentation/settings_screen.dart';
+import 'package:life_os/features/sleep/presentation/circadian_screen.dart';
 import 'package:life_os/features/sleep/presentation/energy_tracker_screen.dart';
 import 'package:life_os/features/sleep/presentation/sleep_history_screen.dart';
 import 'package:life_os/features/sleep/presentation/sleep_log_screen.dart';
@@ -68,6 +72,7 @@ abstract final class AppRoutes {
   static const String nutritionMealLog = '/nutrition/meal-log';
   static const String nutritionGoals = '/nutrition/goals';
   static const String barcodeScanner = '/nutrition/scan';
+  static const String photoAnalysis = '/nutrition/photo';
 
   // Settings
   static const String backup = '/settings/backup';
@@ -85,11 +90,14 @@ abstract final class AppRoutes {
   static const String sleep = '/sleep';
   static const String sleepHistory = '/sleep/history';
   static const String energy = '/sleep/energy';
+  static const String circadian = '/sleep/circadian';
 
   // Mental
   static const String mood = '/mental/mood';
   static const String breathing = '/mental/breathing';
   static const String mentalHistory = '/mental/history';
+  static const String gratitude = '/mental/gratitude';
+  static const String mentalInsights = '/mental/insights';
 
   // Goals
   static const String goals = '/goals';
@@ -232,6 +240,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             slideUpTransition(const BarcodeScannerScreen(), state),
       ),
       GoRoute(
+        path: AppRoutes.photoAnalysis,
+        pageBuilder: (context, state) =>
+            slideUpTransition(const PhotoAnalysisScreen(), state),
+      ),
+      GoRoute(
         path: AppRoutes.backup,
         pageBuilder: (context, state) =>
             fadeScaleTransition(const BackupScreen(), state),
@@ -272,6 +285,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             fadeScaleTransition(const EnergyTrackerScreen(), state),
       ),
       GoRoute(
+        path: AppRoutes.circadian,
+        pageBuilder: (context, state) =>
+            fadeScaleTransition(const CircadianScreen(), state),
+      ),
+      GoRoute(
         path: AppRoutes.mood,
         pageBuilder: (context, state) =>
             slideUpTransition(const MoodLogScreen(), state),
@@ -285,6 +303,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.mentalHistory,
         pageBuilder: (context, state) =>
             fadeScaleTransition(const MentalHistoryScreen(), state),
+      ),
+      GoRoute(
+        path: AppRoutes.gratitude,
+        pageBuilder: (context, state) =>
+            slideUpTransition(const GratitudeScreen(), state),
+      ),
+      GoRoute(
+        path: AppRoutes.mentalInsights,
+        pageBuilder: (context, state) =>
+            fadeScaleTransition(const InsightsScreen(), state),
       ),
       GoRoute(
         path: AppRoutes.goalsAdd,
@@ -418,6 +446,16 @@ class _AppShell extends StatelessWidget {
             leading: Icon(Icons.self_improvement_outlined, color: AppColors.mental),
             title: const Text('Respiracion'),
             onTap: () { Navigator.pop(context); GoRouter.of(context).push(AppRoutes.breathing); },
+          ),
+          ListTile(
+            leading: Icon(Icons.favorite_outline, color: AppColors.mental),
+            title: const Text('Gratitud'),
+            onTap: () { Navigator.pop(context); GoRouter.of(context).push(AppRoutes.gratitude); },
+          ),
+          ListTile(
+            leading: Icon(Icons.auto_awesome, color: AppColors.mental),
+            title: const Text('Patrones de IA'),
+            onTap: () { Navigator.pop(context); GoRouter.of(context).push(AppRoutes.mentalInsights); },
           ),
           ListTile(
             leading: Icon(Icons.flag_outlined, color: AppColors.goals),

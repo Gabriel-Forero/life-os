@@ -52,6 +52,14 @@ const breathingTechniques = <String, BreathingTechnique>{
     exhaleSeconds: 5,
     hold2Seconds: 0,
   ),
+  'diaphragmatic': BreathingTechnique(
+    key: 'diaphragmatic',
+    displayName: 'Respiracion Diafragmatica',
+    inhaleSeconds: 4,
+    hold1Seconds: 0,
+    exhaleSeconds: 6,
+    hold2Seconds: 0,
+  ),
 };
 
 // ---------------------------------------------------------------------------

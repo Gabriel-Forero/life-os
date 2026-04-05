@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:life_os/core/constants/app_colors.dart';
 import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
+import 'package:life_os/core/router/app_router.dart';
 
 const _dayLabels = ['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa', 'Do'];
 
@@ -51,6 +53,37 @@ class _SleepHistoryScreenState extends ConsumerState<SleepHistoryScreen>
         backgroundColor: Colors.transparent,
         elevation: 0,
         foregroundColor: sleepColor,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.bolt_outlined),
+            tooltip: 'Energia',
+            onPressed: () => context.push(AppRoutes.energy),
+          ),
+          IconButton(
+            icon: const Icon(Icons.query_stats),
+            tooltip: 'Ritmo Circadiano',
+            onPressed: () => context.push(AppRoutes.circadian),
+          ),
+          IconButton(
+            icon: const Icon(Icons.favorite_outline),
+            tooltip: 'Importar datos de salud',
+            onPressed: () => showDialog<void>(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                title: const Text('Importar datos de salud'),
+                content: const Text(
+                  'La integracion con plataformas de salud estara disponible proximamente.',
+                ),
+                actions: [
+                  FilledButton(
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    child: const Text('Entendido'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: sleepColor,

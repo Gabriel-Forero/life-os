@@ -56,6 +56,9 @@ dependencies:
   # Barcode scanning
   mobile_scanner: ^6.0.0
 
+  # Image picker (for AI photo analysis)
+  image_picker: ^1.1.0
+
   # Charts
   fl_chart: ^0.70.0
 

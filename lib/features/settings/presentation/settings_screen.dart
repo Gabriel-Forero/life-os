@@ -391,6 +391,42 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
 
               // ------------------------------------------------------------------
+              // Health Integration
+              // ------------------------------------------------------------------
+              _SectionHeader(title: 'Salud'),
+              _SettingsCard(
+                children: [
+                  ListTile(
+                    key: const ValueKey('health_import_tile'),
+                    leading: const Icon(Icons.favorite_outline,
+                        color: AppColors.sleep),
+                    title: const Text('Importar datos de salud'),
+                    subtitle: const Text(
+                        'HealthKit / Health Connect (disponible proximamente)'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () {
+                      showDialog<void>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('Importar datos de salud'),
+                          content: const Text(
+                            'La integracion con plataformas de salud '
+                            '(HealthKit / Health Connect) estara disponible proximamente.',
+                          ),
+                          actions: [
+                            FilledButton(
+                              onPressed: () => Navigator.of(ctx).pop(),
+                              child: const Text('Entendido'),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+
+              // ------------------------------------------------------------------
               // Backup
               // ------------------------------------------------------------------
               _SectionHeader(title: 'Respaldo'),

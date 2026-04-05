@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:life_os/core/constants/app_colors.dart';
 import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
 import 'package:life_os/features/nutrition/domain/nutrition_input.dart';
+import 'package:life_os/features/nutrition/presentation/food_search_screen.dart';
 
 // ---------------------------------------------------------------------------
 // Helpers de tipo de comida
@@ -113,8 +113,10 @@ class _MealLogScreenState extends ConsumerState<MealLogScreen> {
   }
 
   Future<void> _openFoodSearch() async {
-    final result = await GoRouter.of(context).push<FoodItem>(
-      '/nutrition/search',
+    final result = await Navigator.of(context).push<FoodItem>(
+      MaterialPageRoute(
+        builder: (_) => const FoodSearchScreen(returnFood: true),
+      ),
     );
     if (result != null && mounted) {
       setState(() {

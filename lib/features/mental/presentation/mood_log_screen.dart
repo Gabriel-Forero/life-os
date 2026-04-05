@@ -9,16 +9,16 @@ import 'package:life_os/features/mental/domain/mental_input.dart';
 // ---------------------------------------------------------------------------
 
 const _predefinedTags = [
-  'trabajo',
-  'familia',
-  'ejercicio',
-  'sueno',
-  'nutricion',
-  'social',
-  'estres',
-  'gratitud',
-  'ansiedad',
-  'calma',
+  'Estresado',
+  'Motivado',
+  'Ansioso',
+  'Enfocado',
+  'Cansado',
+  'Tranquilo',
+  'Feliz',
+  'Triste',
+  'Enojado',
+  'Agradecido',
 ];
 
 // ---------------------------------------------------------------------------
@@ -111,10 +111,11 @@ class _MoodLogScreenState extends ConsumerState<MoodLogScreen> {
       setState(() => _isSaving = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Estado de animo registrado: $_moodScore puntos'),
+          content: const Text('Estado registrado!'),
           backgroundColor: _moodColor,
         ),
       );
+      Navigator.of(context).maybePop();
     }
   }
 
@@ -348,7 +349,7 @@ class _MoodLogScreenState extends ConsumerState<MoodLogScreen> {
                         maxLength: 280,
                         maxLines: 4,
                         decoration: const InputDecoration(
-                          hintText: 'Como te sientes hoy...',
+                          hintText: '¿Como fue tu dia?',
                           border: OutlineInputBorder(),
                         ),
                       ),

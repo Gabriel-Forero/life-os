@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:life_os/core/constants/app_colors.dart';
 import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
+import 'package:life_os/core/router/app_router.dart';
 
 const _dayLabels = ['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa', 'Do'];
 
@@ -59,6 +61,18 @@ class _MentalHistoryScreenState extends ConsumerState<MentalHistoryScreen>
         backgroundColor: Colors.transparent,
         elevation: 0,
         foregroundColor: mentalColor,
+        actions: [
+          Semantics(
+            button: true,
+            label: 'Ver patrones de IA',
+            child: IconButton(
+              key: const ValueKey('ai-insights-button'),
+              icon: const Icon(Icons.auto_awesome),
+              tooltip: 'Patrones de IA',
+              onPressed: () => context.push(AppRoutes.mentalInsights),
+            ),
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: mentalColor,
@@ -124,6 +138,73 @@ class _CalendarView extends StatelessWidget {
     return AppColors.error;
   }
 
+  void _showDayDetail(BuildContext context, MoodLog entry) {
+    final score = _moodScore(entry);
+    final tags = _parseTags(entry.tags);
+    final color = _scoreColor(score);
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(
+          '${entry.date.day}/${entry.date.month}/${entry.date.year}',
+          style: TextStyle(color: color),
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    backgroundColor: color.withAlpha(40),
+                    child: Text(
+                      '$score',
+                      style: TextStyle(color: color, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Valencia: ${entry.valence}/5'),
+                      Text('Energia: ${entry.energy}/5'),
+                    ],
+                  ),
+                ],
+              ),
+              if (tags.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: tags
+                      .map((t) => Chip(
+                            label: Text(t, style: const TextStyle(fontSize: 11)),
+                            backgroundColor: mentalColor.withAlpha(30),
+                          ))
+                      .toList(),
+                ),
+              ],
+              if (entry.journalNote != null && entry.journalNote!.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                const Text('Nota:', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                Text(entry.journalNote!),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cerrar'),
+          ),
+        ],
+      ),
+    );
+  }
+
   String _monthName(int month) => const [
         '',
         'Enero',
@@ -155,46 +236,72 @@ class _CalendarView extends StatelessWidget {
             color: mentalColor.withAlpha(20),
             child: Padding(
               padding: const EdgeInsets.all(16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              child: Column(
                 children: [
-                  Semantics(
-                    label: 'Dias registrados: ${data.length}',
-                    child: _MiniStat(
-                      key: const ValueKey('days-logged-stat'),
-                      value: '${data.length}',
-                      label: 'Dias\nregistrados',
-                      color: mentalColor,
-                    ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      Semantics(
+                        label: 'Dias registrados: ${data.length}',
+                        child: _MiniStat(
+                          key: const ValueKey('days-logged-stat'),
+                          value: '${data.length}',
+                          label: 'Dias\nregistrados',
+                          color: mentalColor,
+                        ),
+                      ),
+                      Semantics(
+                        label: 'Promedio de animo',
+                        child: _MiniStat(
+                          key: const ValueKey('avg-mood-stat'),
+                          value: data.isEmpty
+                              ? '--'
+                              : (data.map(_moodScore).reduce((a, b) => a + b) /
+                                      data.length)
+                                  .round()
+                                  .toString(),
+                          label: 'Promedio\nde animo',
+                          color: mentalColor,
+                        ),
+                      ),
+                      Semantics(
+                        label: 'Mejor dia',
+                        child: _MiniStat(
+                          key: const ValueKey('best-day-stat'),
+                          value: data.isEmpty
+                              ? '--'
+                              : data
+                                  .map(_moodScore)
+                                  .reduce((a, b) => a > b ? a : b)
+                                  .toString(),
+                          label: 'Mejor\ndia',
+                          color: AppColors.success,
+                        ),
+                      ),
+                    ],
                   ),
-                  Semantics(
-                    label: 'Promedio de animo',
-                    child: _MiniStat(
-                      key: const ValueKey('avg-mood-stat'),
-                      value: data.isEmpty
-                          ? '--'
-                          : (data.map(_moodScore).reduce((a, b) => a + b) /
-                                  data.length)
-                              .round()
-                              .toString(),
-                      label: 'Promedio\nde animo',
-                      color: mentalColor,
-                    ),
-                  ),
-                  Semantics(
-                    label: 'Mejor dia',
-                    child: _MiniStat(
-                      key: const ValueKey('best-day-stat'),
-                      value: data.isEmpty
-                          ? '--'
-                          : data
-                              .map(_moodScore)
-                              .reduce((a, b) => a > b ? a : b)
-                              .toString(),
-                      label: 'Mejor\ndia',
-                      color: AppColors.success,
-                    ),
-                  ),
+                  if (data.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Builder(builder: (ctx) {
+                      final goodDays = data.where((e) => _moodScore(e) >= 50).length;
+                      final goodPct = (goodDays / data.length * 100).round();
+                      final avg = (data.map(_moodScore).reduce((a, b) => a + b) /
+                              data.length)
+                          .round();
+                      return Semantics(
+                        label: 'Este mes $goodPct por ciento dias buenos, humor promedio $avg de 100',
+                        child: Text(
+                          'Este mes: $goodPct% dias buenos, humor promedio $avg/100',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: mentalColor,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      );
+                    }),
+                  ],
                 ],
               ),
             ),
@@ -248,27 +355,33 @@ class _CalendarView extends StatelessWidget {
                   final color = score != null ? _scoreColor(score) : null;
 
                   return Semantics(
+                    button: entry != null,
                     label: score != null
                         ? 'Dia $day: $score puntos'
                         : 'Dia $day sin registro',
-                    child: Container(
-                      key: ValueKey('calendar-day-$day'),
-                      decoration: BoxDecoration(
-                        color: color?.withAlpha(40),
-                        border: Border.all(
-                          color: color ?? Colors.grey.withAlpha(40),
+                    child: GestureDetector(
+                      onTap: entry != null
+                          ? () => _showDayDetail(context, entry)
+                          : null,
+                      child: Container(
+                        key: ValueKey('calendar-day-$day'),
+                        decoration: BoxDecoration(
+                          color: color?.withAlpha(40),
+                          border: Border.all(
+                            color: color ?? Colors.grey.withAlpha(40),
+                          ),
+                          borderRadius: BorderRadius.circular(6),
                         ),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Center(
-                        child: Text(
-                          '$day',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: color ?? Colors.grey,
-                            fontWeight: entry != null
-                                ? FontWeight.bold
-                                : FontWeight.normal,
+                        child: Center(
+                          child: Text(
+                            '$day',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: color ?? Colors.grey,
+                              fontWeight: entry != null
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                            ),
                           ),
                         ),
                       ),
@@ -308,35 +421,63 @@ class _CalendarView extends StatelessWidget {
                       final entry = data[i];
                       final score = _moodScore(entry);
                       final tags = _parseTags(entry.tags);
+                      final hasNote = entry.journalNote != null &&
+                          entry.journalNote!.isNotEmpty;
                       return Semantics(
                         label:
                             '${entry.date.day}/${entry.date.month}: animo $score',
-                        child: ListTile(
+                        child: Padding(
                           key: ValueKey('mood-list-item-$i'),
-                          leading: CircleAvatar(
-                            backgroundColor:
-                                _scoreColor(score).withAlpha(40),
-                            child: Text(
-                              '$score',
-                              style: TextStyle(
-                                color: _scoreColor(score),
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 4, horizontal: 0),
+                          child: ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor:
+                                  _scoreColor(score).withAlpha(40),
+                              child: Text(
+                                '$score',
+                                style: TextStyle(
+                                  color: _scoreColor(score),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
-                          ),
-                          title: Text(
-                            '${entry.date.day}/${entry.date.month}/${entry.date.year}',
-                          ),
-                          subtitle: tags.isEmpty
-                              ? const Text('Sin etiquetas')
-                              : Text(tags.join(', ')),
-                          trailing: Text(
-                            'V:${entry.valence} E:${entry.energy}',
-                            style: TextStyle(
-                              color: mentalColor,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 12,
+                            title: Text(
+                              '${entry.date.day}/${entry.date.month}/${entry.date.year}',
+                            ),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                tags.isEmpty
+                                    ? const Text('Sin etiquetas',
+                                        style: TextStyle(fontSize: 12))
+                                    : Text(tags.join(', '),
+                                        style: const TextStyle(fontSize: 12)),
+                                if (hasNote) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    entry.journalNote!,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: theme.colorScheme.onSurface
+                                          .withAlpha(160),
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ],
+                            ),
+                            isThreeLine: hasNote,
+                            trailing: Text(
+                              'V:${entry.valence} E:${entry.energy}',
+                              style: TextStyle(
+                                color: mentalColor,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12,
+                              ),
                             ),
                           ),
                         ),
@@ -344,6 +485,59 @@ class _CalendarView extends StatelessWidget {
                     },
                   ),
           ),
+
+          const SizedBox(height: 16),
+
+          // Gratitude history (entries tagged "gratitud")
+          Builder(builder: (ctx) {
+            final gratitudeEntries = data
+                .where((e) => _parseTags(e.tags).contains('gratitud'))
+                .toList();
+            if (gratitudeEntries.isEmpty) return const SizedBox.shrink();
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Entradas de Gratitud',
+                  style: theme.textTheme.titleSmall
+                      ?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Card(
+                  key: const ValueKey('gratitude-log-list'),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  child: ListView.separated(
+                    physics: const NeverScrollableScrollPhysics(),
+                    shrinkWrap: true,
+                    itemCount: gratitudeEntries.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (context, i) {
+                      final entry = gratitudeEntries[i];
+                      return ListTile(
+                        key: ValueKey('gratitude-item-$i'),
+                        leading: Icon(Icons.favorite,
+                            color: mentalColor, size: 20),
+                        title: Text(
+                          '${entry.date.day}/${entry.date.month}/${entry.date.year}',
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                        subtitle: entry.journalNote != null &&
+                                entry.journalNote!.isNotEmpty
+                            ? Text(
+                                entry.journalNote!,
+                                style: const TextStyle(fontSize: 12),
+                                maxLines: 3,
+                                overflow: TextOverflow.ellipsis,
+                              )
+                            : null,
+                      );
+                    },
+                  ),
+                ),
+              ],
+            );
+          }),
         ],
       ),
     );
