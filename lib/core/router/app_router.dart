@@ -284,8 +284,17 @@ class _AppShell extends StatelessWidget {
             selectedIcon: Icon(Icons.check_circle),
             label: 'Habitos',
           ),
+          NavigationDestination(
+            icon: Icon(Icons.grid_view_outlined),
+            selectedIcon: Icon(Icons.grid_view),
+            label: 'Mas',
+          ),
         ],
         onDestinationSelected: (index) {
+          if (index == 5) {
+            Scaffold.of(context).openDrawer();
+            return;
+          }
           final routes = [
             AppRoutes.home,
             AppRoutes.finance,
