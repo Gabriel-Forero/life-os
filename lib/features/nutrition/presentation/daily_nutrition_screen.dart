@@ -219,10 +219,46 @@ class _DailyNutritionScreenState
               Transform.scale(scale: value, child: child),
           child: FloatingActionButton(
             key: const ValueKey('nutrition-add-meal-fab'),
-            onPressed: () => GoRouter.of(context).push(AppRoutes.nutritionSearch),
+            onPressed: () {
+              showModalBottomSheet<void>(
+                context: context,
+                builder: (ctx) => SafeArea(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ListTile(
+                        leading: const Icon(Icons.edit_note, color: AppColors.nutrition),
+                        title: const Text('Registro manual'),
+                        subtitle: const Text('Ingresa nombre, calorias y macros'),
+                        onTap: () { Navigator.pop(ctx); GoRouter.of(context).push(AppRoutes.manualFoodEntry); },
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.search, color: AppColors.nutrition),
+                        title: const Text('Buscar alimento'),
+                        subtitle: const Text('Busca en la biblioteca o en linea'),
+                        onTap: () { Navigator.pop(ctx); GoRouter.of(context).push(AppRoutes.nutritionSearch); },
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.qr_code_scanner, color: AppColors.nutrition),
+                        title: const Text('Escanear codigo de barras'),
+                        subtitle: const Text('Busca por codigo del producto'),
+                        onTap: () { Navigator.pop(ctx); GoRouter.of(context).push(AppRoutes.barcodeScanner); },
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.camera_alt, color: AppColors.nutrition),
+                        title: const Text('Analizar foto con IA'),
+                        subtitle: const Text('Toma foto y la IA estima macros'),
+                        onTap: () { Navigator.pop(ctx); GoRouter.of(context).push(AppRoutes.photoAnalysis); },
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                  ),
+                ),
+              );
+            },
             backgroundColor: AppColors.nutrition,
             foregroundColor: Colors.white,
-            tooltip: 'Agregar comida rapido',
+            tooltip: 'Agregar comida',
             child: const Icon(Icons.add),
           ),
         ),

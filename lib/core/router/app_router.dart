@@ -42,6 +42,7 @@ import 'package:life_os/features/nutrition/presentation/food_search_screen.dart'
 import 'package:life_os/features/nutrition/presentation/meal_log_screen.dart';
 import 'package:life_os/features/nutrition/presentation/nutrition_goals_screen.dart';
 import 'package:life_os/features/nutrition/presentation/barcode_scanner_screen.dart';
+import 'package:life_os/features/nutrition/presentation/manual_food_entry_screen.dart';
 import 'package:life_os/features/nutrition/presentation/photo_analysis_screen.dart';
 import 'package:life_os/features/onboarding/presentation/onboarding_shell.dart';
 import 'package:life_os/features/settings/presentation/backup_screen.dart';
@@ -80,6 +81,7 @@ abstract final class AppRoutes {
   static const String nutritionGoals = '/nutrition/goals';
   static const String barcodeScanner = '/nutrition/scan';
   static const String photoAnalysis = '/nutrition/photo';
+  static const String manualFoodEntry = '/nutrition/manual';
 
   // Settings
   static const String backup = '/settings/backup';
@@ -261,6 +263,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.photoAnalysis,
         pageBuilder: (context, state) =>
             slideUpTransition(const PhotoAnalysisScreen(), state),
+      ),
+      GoRoute(
+        path: AppRoutes.manualFoodEntry,
+        pageBuilder: (context, state) =>
+            slideUpTransition(const ManualFoodEntryScreen(), state),
       ),
       GoRoute(
         path: AppRoutes.backup,
