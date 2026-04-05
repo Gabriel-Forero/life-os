@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_os/core/constants/app_colors.dart';
+import 'package:life_os/core/providers/providers.dart';
 import 'package:life_os/features/dashboard/providers/dashboard_notifier.dart';
-import 'package:life_os/features/dashboard/providers/day_score_notifier.dart';
 
 // ---------------------------------------------------------------------------
 // Main Dashboard Screen
@@ -14,55 +15,37 @@ import 'package:life_os/features/dashboard/providers/day_score_notifier.dart';
 ///
 /// A11Y-DASH-01: todos los elementos interactivos tienen Semantics
 /// con etiquetas en espanol.
-class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({
-    super.key,
-    required this.dashboardNotifier,
-    required this.dayScoreNotifier,
-  });
-
-  final DashboardNotifier dashboardNotifier;
-  final DayScoreNotifier dayScoreNotifier;
+class DashboardScreen extends ConsumerStatefulWidget {
+  const DashboardScreen({super.key});
 
   @override
-  State<DashboardScreen> createState() => _DashboardScreenState();
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
-  late DashboardState _dashState;
-
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    _dashState = widget.dashboardNotifier.state;
     _init();
   }
 
   Future<void> _init() async {
-    await widget.dashboardNotifier.initialize();
-    await widget.dayScoreNotifier.initialize();
-    if (mounted) {
-      setState(() {
-        _dashState = widget.dashboardNotifier.state;
-      });
-    }
+    await ref.read(dashboardNotifierProvider).initialize();
+    await ref.read(dayScoreNotifierProvider).initialize();
   }
 
   Future<void> _refresh() async {
-    await widget.dayScoreNotifier.calculateDayScore(DateTime.now());
-    await widget.dashboardNotifier.refresh();
-    if (mounted) {
-      setState(() {
-        _dashState = widget.dashboardNotifier.state;
-      });
-    }
+    await ref.read(dayScoreNotifierProvider).calculateDayScore(DateTime.now());
+    await ref.read(dashboardNotifierProvider).refresh();
   }
 
   @override
   Widget build(BuildContext context) {
-    final greeting =
-        widget.dashboardNotifier.greeting();
-    final score = _dashState.dayScore;
+    final dashboardNotifier = ref.watch(dashboardNotifierProvider);
+    ref.watch(dayScoreNotifierProvider);
+    final dashState = dashboardNotifier.state;
+    final greeting = dashboardNotifier.greeting();
+    final score = dashState.dayScore;
 
     return Scaffold(
       key: const ValueKey('dashboard-screen'),
@@ -122,7 +105,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     child: _DayScoreCard(
                       key: const ValueKey('dashboard-day-score-card'),
                       score: score,
-                      isLoading: _dashState.isLoading,
+                      isLoading: dashState.isLoading,
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -142,9 +125,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   const SizedBox(height: 12),
 
                   // --- Grid de tarjetas de modulo ---
-                  if (_dashState.isLoading)
+                  if (dashState.isLoading)
                     const Center(child: CircularProgressIndicator())
-                  else if (_dashState.cards.isEmpty)
+                  else if (dashState.cards.isEmpty)
                     Semantics(
                       label: 'No hay modulos habilitados',
                       child: const _EmptyModulesCard(),
@@ -152,7 +135,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   else
                     _ModuleCardGrid(
                       key: const ValueKey('dashboard-module-grid'),
-                      cards: _dashState.cards,
+                      cards: dashState.cards,
                     ),
 
                   const SizedBox(height: 20),
@@ -174,13 +157,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     key: ValueKey('dashboard-quick-actions'),
                   ),
 
-                  if (_dashState.errorMessage != null) ...[
+                  if (dashState.errorMessage != null) ...[
                     const SizedBox(height: 16),
                     Semantics(
-                      label: 'Error: ${_dashState.errorMessage}',
+                      label: 'Error: ${dashState.errorMessage}',
                       child: _ErrorBanner(
                         key: const ValueKey('dashboard-error-banner'),
-                        message: _dashState.errorMessage!,
+                        message: dashState.errorMessage!,
                       ),
                     ),
                   ],

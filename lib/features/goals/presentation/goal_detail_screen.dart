@@ -1,196 +1,185 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_os/core/constants/app_colors.dart';
 import 'package:life_os/core/database/app_database.dart';
+import 'package:life_os/core/providers/providers.dart';
 import 'package:life_os/features/goals/domain/goals_input.dart';
 
 // ---------------------------------------------------------------------------
 // Goal Detail Screen
 // ---------------------------------------------------------------------------
 
-class GoalDetailScreen extends StatelessWidget {
+class GoalDetailScreen extends ConsumerWidget {
   const GoalDetailScreen({
     super.key,
     required this.goalId,
-    this.goal,
-    this.subGoals = const [],
-    this.milestones = const [],
-    this.onSubGoalProgressChanged,
-    this.onCompleteMilestone,
   });
 
   final int goalId;
-  final LifeGoal? goal;
-  final List<SubGoal> subGoals;
-  final List<GoalMilestone> milestones;
-  final void Function(int subGoalId, int progress)? onSubGoalProgressChanged;
-  final void Function(int milestoneId)? onCompleteMilestone;
 
   static const _goalsColor = AppColors.goals;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final goalsDao = ref.watch(goalsDaoProvider);
 
-    if (goal == null) {
-      return Scaffold(
-        key: const ValueKey('goal_detail_screen'),
-        appBar: AppBar(title: const Text('Objetivo')),
-        body: const Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
-    }
+    return StreamBuilder<LifeGoal?>(
+      stream: goalsDao.watchGoal(goalId),
+      builder: (context, goalSnapshot) {
+        final goal = goalSnapshot.data;
 
-    final category = GoalCategory.fromString(goal!.category);
-    final categoryLabel = category?.displayName ?? goal!.category;
+        if (goal == null) {
+          return Scaffold(
+            key: const ValueKey('goal_detail_screen'),
+            appBar: AppBar(title: const Text('Objetivo')),
+            body: const Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
 
-    return Scaffold(
-      key: const ValueKey('goal_detail_screen'),
-      backgroundColor: theme.scaffoldBackgroundColor,
-      body: CustomScrollView(
-        slivers: [
-          // App bar with hero color
-          SliverAppBar(
-            expandedHeight: 160,
-            pinned: true,
-            backgroundColor: Color(goal!.color),
-            flexibleSpace: FlexibleSpaceBar(
-              title: Text(
-                goal!.name,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              background: Container(
-                color: Color(goal!.color).withOpacity(0.8),
-                child: Center(
-                  child: Icon(
-                    Icons.track_changes,
-                    size: 64,
-                    color: Colors.white.withOpacity(0.3),
+        final category = GoalCategory.fromString(goal.category);
+        final categoryLabel = category?.displayName ?? goal.category;
+
+        return Scaffold(
+          key: const ValueKey('goal_detail_screen'),
+          backgroundColor: theme.scaffoldBackgroundColor,
+          body: CustomScrollView(
+            slivers: [
+              // App bar with hero color
+              SliverAppBar(
+                expandedHeight: 160,
+                pinned: true,
+                backgroundColor: Color(goal.color),
+                flexibleSpace: FlexibleSpaceBar(
+                  title: Text(
+                    goal.name,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  background: Container(
+                    color: Color(goal.color).withOpacity(0.8),
+                    child: Center(
+                      child: Icon(
+                        Icons.track_changes,
+                        size: 64,
+                        color: Colors.white.withOpacity(0.3),
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
-          ),
 
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Category + status chips
-                  Wrap(
-                    spacing: 8,
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Chip(
-                        key: const ValueKey('goal_category_chip'),
-                        label: Text(categoryLabel),
-                        backgroundColor: _goalsColor.withOpacity(0.1),
-                        labelStyle: const TextStyle(color: _goalsColor),
+                      // Category + status chips
+                      Wrap(
+                        spacing: 8,
+                        children: [
+                          Chip(
+                            key: const ValueKey('goal_category_chip'),
+                            label: Text(categoryLabel),
+                            backgroundColor: _goalsColor.withOpacity(0.1),
+                            labelStyle: const TextStyle(color: _goalsColor),
+                          ),
+                          Chip(
+                            key: const ValueKey('goal_status_chip'),
+                            label: Text(_statusLabel(goal.status)),
+                            backgroundColor:
+                                _statusColor(goal.status).withOpacity(0.1),
+                            labelStyle: TextStyle(
+                              color: _statusColor(goal.status),
+                            ),
+                          ),
+                        ],
                       ),
-                      Chip(
-                        key: const ValueKey('goal_status_chip'),
-                        label: Text(_statusLabel(goal!.status)),
-                        backgroundColor:
-                            _statusColor(goal!.status).withOpacity(0.1),
-                        labelStyle: TextStyle(
-                          color: _statusColor(goal!.status),
+                      const SizedBox(height: 16),
+
+                      // Description
+                      if (goal.description != null &&
+                          goal.description!.isNotEmpty) ...[
+                        Text(
+                          goal.description!,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.textTheme.bodySmall?.color,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+
+                      // Progress section
+                      _GoalProgressSection(goal: goal),
+                      const SizedBox(height: 24),
+
+                      // Sub-goals section
+                      Text(
+                        'Sub-objetivos',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
+                      const SizedBox(height: 12),
                     ],
                   ),
-                  const SizedBox(height: 16),
-
-                  // Description
-                  if (goal!.description != null &&
-                      goal!.description!.isNotEmpty) ...[
-                    Text(
-                      goal!.description!,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.textTheme.bodySmall?.color,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-
-                  // Progress section
-                  _GoalProgressSection(goal: goal!),
-                  const SizedBox(height: 24),
-
-                  // Milestones timeline
-                  if (milestones.isNotEmpty) ...[
-                    Text(
-                      'Hitos',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    _MilestonesTimeline(
-                      milestones: milestones,
-                      goalProgress: goal!.progress,
-                      onComplete: onCompleteMilestone,
-                    ),
-                    const SizedBox(height: 24),
-                  ],
-
-                  // Sub-goals section
-                  Text(
-                    'Sub-objetivos',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                ],
-              ),
-            ),
-          ),
-
-          // Sub-goals list
-          subGoals.isEmpty
-              ? SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Text(
-                      'Aun no hay sub-objetivos para este objetivo.',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.textTheme.bodySmall?.color,
-                      ),
-                    ),
-                  ),
-                )
-              : SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final sub = subGoals[index];
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 4,
-                        ),
-                        child: _SubGoalItem(
-                          key: ValueKey('sub_goal_${sub.id}'),
-                          subGoal: sub,
-                          onProgressChanged: onSubGoalProgressChanged != null
-                              ? (p) =>
-                                  onSubGoalProgressChanged!(sub.id, p)
-                              : null,
-                        ),
-                      );
-                    },
-                    childCount: subGoals.length,
-                  ),
                 ),
-          const SliverToBoxAdapter(child: SizedBox(height: 32)),
-        ],
-      ),
+              ),
+
+              // Sub-goals list from DB
+              StreamBuilder<List<SubGoal>>(
+                stream: goalsDao.watchSubGoals(goalId),
+                builder: (context, subSnapshot) {
+                  final subGoals = subSnapshot.data ?? [];
+                  if (subGoals.isEmpty) {
+                    return SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Text(
+                          'Aun no hay sub-objetivos para este objetivo.',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.textTheme.bodySmall?.color,
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+                  return SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final sub = subGoals[index];
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 4,
+                          ),
+                          child: _SubGoalItem(
+                            key: ValueKey('sub_goal_${sub.id}'),
+                            subGoal: sub,
+                            onProgressChanged: (p) {
+                              goalsDao.updateSubGoalProgress(sub.id, p);
+                            },
+                          ),
+                        );
+                      },
+                      childCount: subGoals.length,
+                    ),
+                  );
+                },
+              ),
+              const SliverToBoxAdapter(child: SizedBox(height: 32)),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -290,170 +279,6 @@ class _GoalProgressSection extends StatelessWidget {
       '${date.day.toString().padLeft(2, '0')}/'
       '${date.month.toString().padLeft(2, '0')}/'
       '${date.year}';
-}
-
-// ---------------------------------------------------------------------------
-// Milestones Timeline (horizontal)
-// ---------------------------------------------------------------------------
-
-class _MilestonesTimeline extends StatelessWidget {
-  const _MilestonesTimeline({
-    required this.milestones,
-    required this.goalProgress,
-    this.onComplete,
-  });
-
-  final List<GoalMilestone> milestones;
-  final int goalProgress;
-  final void Function(int milestoneId)? onComplete;
-
-  @override
-  Widget build(BuildContext context) {
-    final sorted = [...milestones]
-      ..sort((a, b) => a.targetProgress.compareTo(b.targetProgress));
-
-    return SizedBox(
-      key: const ValueKey('milestones_timeline'),
-      height: 120,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 4),
-        itemCount: sorted.length,
-        separatorBuilder: (context, idx) => _TimelineConnector(
-          isReached: goalProgress >= sorted[idx < sorted.length - 1
-              ? idx + 1
-              : idx].targetProgress,
-        ),
-        itemBuilder: (context, index) {
-          final milestone = sorted[index];
-          final isReached = goalProgress >= milestone.targetProgress;
-          return _MilestoneDot(
-            key: ValueKey('milestone_${milestone.id}'),
-            milestone: milestone,
-            isReached: isReached,
-            onComplete: (!milestone.isCompleted && isReached && onComplete != null)
-                ? () => onComplete!(milestone.id)
-                : null,
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _TimelineConnector extends StatelessWidget {
-  const _TimelineConnector({required this.isReached});
-
-  final bool isReached;
-
-  @override
-  Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.topCenter,
-      child: Padding(
-        padding: const EdgeInsets.only(top: 20),
-        child: Container(
-          width: 32,
-          height: 2,
-          color: isReached
-              ? AppColors.goals
-              : AppColors.goals.withOpacity(0.3),
-        ),
-      ),
-    );
-  }
-}
-
-class _MilestoneDot extends StatelessWidget {
-  const _MilestoneDot({
-    super.key,
-    required this.milestone,
-    required this.isReached,
-    this.onComplete,
-  });
-
-  final GoalMilestone milestone;
-  final bool isReached;
-  final VoidCallback? onComplete;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final color = milestone.isCompleted
-        ? AppColors.success
-        : isReached
-            ? AppColors.goals
-            : AppColors.goals.withOpacity(0.3);
-
-    return Semantics(
-      label: 'Hito: ${milestone.name}, ${milestone.targetProgress}%'
-          '${milestone.isCompleted ? ", completado" : ""}',
-      button: onComplete != null,
-      child: SizedBox(
-        width: 80,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            GestureDetector(
-              onTap: onComplete,
-              child: Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: color.withOpacity(0.15),
-                  border: Border.all(color: color, width: 2),
-                ),
-                child: Icon(
-                  milestone.isCompleted
-                      ? Icons.check
-                      : Icons.flag_outlined,
-                  size: 18,
-                  color: color,
-                ),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              '${milestone.targetProgress}%',
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: color,
-                fontWeight: FontWeight.bold,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            Text(
-              milestone.name,
-              style: theme.textTheme.labelSmall,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            if (milestone.isCompleted && milestone.completedAt != null) ...[
-              Text(
-                _formatDate(milestone.completedAt!),
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: AppColors.success,
-                  fontSize: 9,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ] else if (milestone.targetDate != null) ...[
-              Text(
-                _formatDate(milestone.targetDate!),
-                style: theme.textTheme.labelSmall?.copyWith(fontSize: 9),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _formatDate(DateTime date) =>
-      '${date.day.toString().padLeft(2, '0')}/'
-      '${date.month.toString().padLeft(2, '0')}';
 }
 
 // ---------------------------------------------------------------------------

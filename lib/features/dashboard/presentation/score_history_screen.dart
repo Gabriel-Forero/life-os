@@ -1,9 +1,10 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:life_os/core/constants/app_colors.dart';
 import 'package:life_os/core/database/app_database.dart';
-import 'package:life_os/features/dashboard/providers/day_score_notifier.dart';
+import 'package:life_os/core/providers/providers.dart';
 
 // ---------------------------------------------------------------------------
 // Score History Screen
@@ -16,38 +17,29 @@ import 'package:life_os/features/dashboard/providers/day_score_notifier.dart';
 /// - Mapa de calor con la puntuacion diaria.
 ///
 /// A11Y-DASH-03: todos los graficos tienen Semantics con descripcion textual.
-class ScoreHistoryScreen extends StatefulWidget {
-  const ScoreHistoryScreen({
-    super.key,
-    required this.notifier,
-  });
-
-  final DayScoreNotifier notifier;
+class ScoreHistoryScreen extends ConsumerStatefulWidget {
+  const ScoreHistoryScreen({super.key});
 
   @override
-  State<ScoreHistoryScreen> createState() => _ScoreHistoryScreenState();
+  ConsumerState<ScoreHistoryScreen> createState() => _ScoreHistoryScreenState();
 }
 
-class _ScoreHistoryScreenState extends State<ScoreHistoryScreen> {
-  late DayScoreState _state;
-
+class _ScoreHistoryScreenState extends ConsumerState<ScoreHistoryScreen> {
   @override
   void initState() {
     super.initState();
-    _state = widget.notifier.state;
     _load();
   }
 
   Future<void> _load() async {
-    await widget.notifier.initialize();
-    if (mounted) {
-      setState(() => _state = widget.notifier.state);
-    }
+    await ref.read(dayScoreNotifierProvider).initialize();
   }
 
   @override
   Widget build(BuildContext context) {
-    final history = _state.history;
+    final notifier = ref.watch(dayScoreNotifierProvider);
+    final state = notifier.state;
+    final history = state.history;
 
     return Scaffold(
       key: const ValueKey('score-history-screen'),
@@ -63,7 +55,7 @@ class _ScoreHistoryScreenState extends State<ScoreHistoryScreen> {
           ),
         ),
       ),
-      body: _state.isLoading
+      body: state.isLoading
           ? const Center(child: CircularProgressIndicator())
           : history.isEmpty
               ? Semantics(

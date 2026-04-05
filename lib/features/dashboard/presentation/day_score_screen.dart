@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_os/core/constants/app_colors.dart';
+import 'package:life_os/core/providers/providers.dart';
 import 'package:life_os/features/dashboard/providers/day_score_notifier.dart';
 
 // ---------------------------------------------------------------------------
@@ -12,38 +14,24 @@ import 'package:life_os/features/dashboard/providers/day_score_notifier.dart';
 /// por modulo con su peso y aporte individual.
 ///
 /// A11Y-DASH-02: todos los graficos tienen Semantics con descripcion textual.
-class DayScoreScreen extends StatefulWidget {
-  const DayScoreScreen({
-    super.key,
-    required this.notifier,
-  });
-
-  final DayScoreNotifier notifier;
+class DayScoreScreen extends ConsumerStatefulWidget {
+  const DayScoreScreen({super.key});
 
   @override
-  State<DayScoreScreen> createState() => _DayScoreScreenState();
+  ConsumerState<DayScoreScreen> createState() => _DayScoreScreenState();
 }
 
-class _DayScoreScreenState extends State<DayScoreScreen> {
-  late DayScoreState _state;
-
-  @override
-  void initState() {
-    super.initState();
-    _state = widget.notifier.state;
-  }
-
+class _DayScoreScreenState extends ConsumerState<DayScoreScreen> {
   Future<void> _recalculate() async {
-    await widget.notifier.calculateDayScore(DateTime.now());
-    if (mounted) {
-      setState(() => _state = widget.notifier.state);
-    }
+    await ref.read(dayScoreNotifierProvider).calculateDayScore(DateTime.now());
   }
 
   @override
   Widget build(BuildContext context) {
-    final score = _state.todayScore ?? 0;
-    final components = _state.components;
+    final notifier = ref.watch(dayScoreNotifierProvider);
+    final state = notifier.state;
+    final score = state.todayScore ?? 0;
+    final components = state.components;
 
     return Scaffold(
       key: const ValueKey('day-score-screen'),
@@ -71,7 +59,7 @@ class _DayScoreScreenState extends State<DayScoreScreen> {
           ),
         ],
       ),
-      body: _state.isLoading
+      body: state.isLoading
           ? const Center(child: CircularProgressIndicator())
           : ListView(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
@@ -148,16 +136,16 @@ class _DayScoreScreenState extends State<DayScoreScreen> {
                   totalScore: score,
                 ),
 
-                if (_state.errorMessage != null) ...[
+                if (state.errorMessage != null) ...[
                   const SizedBox(height: 16),
                   Semantics(
-                    label: 'Error: ${_state.errorMessage}',
+                    label: 'Error: ${state.errorMessage}',
                     child: Card(
                       color: AppColors.error.withAlpha(20),
                       child: Padding(
                         padding: const EdgeInsets.all(12),
                         child: Text(
-                          _state.errorMessage!,
+                          state.errorMessage!,
                           style: const TextStyle(color: AppColors.error),
                         ),
                       ),

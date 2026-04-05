@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_os/core/database/app_database.dart';
+import 'package:life_os/core/providers/providers.dart';
 import 'package:life_os/features/intelligence/domain/ai_context_builder.dart';
 import 'package:life_os/features/intelligence/providers/ai_notifier.dart';
 
@@ -9,16 +11,14 @@ import 'package:life_os/features/intelligence/providers/ai_notifier.dart';
 // Chat Screen
 // ---------------------------------------------------------------------------
 
-class ChatScreen extends StatefulWidget {
+class ChatScreen extends ConsumerStatefulWidget {
   const ChatScreen({
     super.key,
-    required this.notifier,
     required this.conversationId,
     required this.title,
     this.moduleSummary,
   });
 
-  final AINotifier notifier;
   final int conversationId;
   final String title;
 
@@ -27,10 +27,10 @@ class ChatScreen extends StatefulWidget {
   final ModuleSummary? moduleSummary;
 
   @override
-  State<ChatScreen> createState() => _ChatScreenState();
+  ConsumerState<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> {
+class _ChatScreenState extends ConsumerState<ChatScreen> {
   final _textController = TextEditingController();
   final _scrollController = ScrollController();
   StreamSubscription<String>? _streamSub;
@@ -44,7 +44,7 @@ class _ChatScreenState extends State<ChatScreen> {
   void initState() {
     super.initState();
     _loadMessages();
-    widget.notifier.onStateChanged = _onNotifierStateChanged;
+    ref.read(aiNotifierProvider).onStateChanged = _onNotifierStateChanged;
   }
 
   @override
@@ -52,7 +52,7 @@ class _ChatScreenState extends State<ChatScreen> {
     _streamSub?.cancel();
     _textController.dispose();
     _scrollController.dispose();
-    widget.notifier.onStateChanged = null;
+    ref.read(aiNotifierProvider).onStateChanged = null;
     super.dispose();
   }
 
@@ -67,7 +67,8 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _loadMessages() async {
-    final messages = await widget.notifier.dao
+    final notifier = ref.read(aiNotifierProvider);
+    final messages = await notifier.dao
         .getMessagesForConversation(widget.conversationId);
     setState(() => _messages = messages);
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
@@ -89,7 +90,8 @@ class _ChatScreenState extends State<ChatScreen> {
     _textController.clear();
     setState(() => _errorMessage = null);
 
-    final stream = widget.notifier.sendMessage(
+    final notifier = ref.read(aiNotifierProvider);
+    final stream = notifier.sendMessage(
       widget.conversationId,
       text,
       context: widget.moduleSummary,

@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_os/core/constants/app_colors.dart';
+import 'package:life_os/core/providers/providers.dart';
+import 'package:life_os/features/sleep/domain/sleep_input.dart';
 
 // ---------------------------------------------------------------------------
-// Mock models
+// Mock models (kept as fallback for local UI state)
 // ---------------------------------------------------------------------------
 
 enum _QualityLabel { muy_malo, malo, regular, bueno, excelente }
@@ -43,14 +46,14 @@ class _MockSleepLog {
 // Screen
 // ---------------------------------------------------------------------------
 
-class SleepLogScreen extends StatefulWidget {
+class SleepLogScreen extends ConsumerStatefulWidget {
   const SleepLogScreen({super.key});
 
   @override
-  State<SleepLogScreen> createState() => _SleepLogScreenState();
+  ConsumerState<SleepLogScreen> createState() => _SleepLogScreenState();
 }
 
-class _SleepLogScreenState extends State<SleepLogScreen> {
+class _SleepLogScreenState extends ConsumerState<SleepLogScreen> {
   final _mockLog = _MockSleepLog();
   final _noteController = TextEditingController();
   bool _isSaving = false;
@@ -95,25 +98,31 @@ class _SleepLogScreenState extends State<SleepLogScreen> {
     }
   }
 
-  void _saveSleep() {
+  Future<void> _saveSleep() async {
     if (_mockLog.bedTime == null || _mockLog.wakeTime == null) return;
-    setState(() {
-      _isSaving = true;
-    });
+    setState(() => _isSaving = true);
 
-    // Simulate save
-    Future.delayed(const Duration(milliseconds: 600), () {
-      if (!mounted) return;
-      final hours = _mockLog.hoursSlept ?? 0;
-      final durationScore = (hours / 8.0 * 100.0).clamp(0.0, 100.0);
-      final qualityScore = (_mockLog.qualityRating / 5.0) * 100.0;
-      final score = ((durationScore * 0.4) + (qualityScore * 0.4) + (100.0 * 0.2)).round();
+    final notifier = ref.read(sleepNotifierProvider);
+    final hours = _mockLog.hoursSlept ?? 0;
+    final durationScore = (hours / 8.0 * 100.0).clamp(0.0, 100.0);
+    final qualityScore = (_mockLog.qualityRating / 5.0) * 100.0;
+    final score = ((durationScore * 0.4) + (qualityScore * 0.4) + (100.0 * 0.2)).round();
+
+    await notifier.logSleep(SleepInput(
+      date: DateTime.now(),
+      bedTime: _mockLog.bedTime!,
+      wakeTime: _mockLog.wakeTime!,
+      qualityRating: _mockLog.qualityRating,
+      note: _mockLog.note.isEmpty ? null : _mockLog.note,
+    ));
+
+    if (mounted) {
       setState(() {
         _mockLog.sleepScore = score.clamp(0, 100);
         _mockLog.saved = true;
         _isSaving = false;
       });
-    });
+    }
   }
 
   String _formatTime(DateTime? dt) {

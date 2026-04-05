@@ -1,26 +1,47 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_os/core/database/app_database.dart';
-import 'package:life_os/features/intelligence/providers/ai_notifier.dart';
+import 'package:life_os/core/providers/providers.dart';
+import 'package:life_os/features/intelligence/presentation/chat_screen.dart';
 
 // ---------------------------------------------------------------------------
 // Conversation List Screen
 // ---------------------------------------------------------------------------
 
-class ConversationListScreen extends StatelessWidget {
-  const ConversationListScreen({
-    super.key,
-    required this.notifier,
-    required this.onOpenConversation,
-    required this.onNewConversation,
-  });
-
-  final AINotifier notifier;
-  final void Function(AiConversation conversation) onOpenConversation;
-  final VoidCallback onNewConversation;
+class ConversationListScreen extends ConsumerWidget {
+  const ConversationListScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final notifier = ref.watch(aiNotifierProvider);
     final theme = Theme.of(context);
+
+    void openConversation(AiConversation conversation) {
+      Navigator.push(
+        context,
+        MaterialPageRoute<void>(
+          builder: (_) => ChatScreen(
+            conversationId: conversation.id,
+            title: conversation.title,
+          ),
+        ),
+      );
+    }
+
+    Future<void> newConversation() async {
+      final result = await notifier.createConversation(title: 'Nueva conversacion');
+      result.when(
+        success: (conversationId) {
+          final conv = notifier.state.conversations
+              .where((c) => c.id == conversationId)
+              .firstOrNull;
+          if (conv != null && context.mounted) {
+            openConversation(conv);
+          }
+        },
+        failure: (_) {},
+      );
+    }
 
     return Scaffold(
       key: const ValueKey('conversation_list_screen'),
@@ -36,7 +57,7 @@ class ConversationListScreen extends StatelessWidget {
               key: const ValueKey('new_conversation_button'),
               icon: const Icon(Icons.add_comment_outlined),
               tooltip: 'Nueva conversacion',
-              onPressed: onNewConversation,
+              onPressed: newConversation,
             ),
           ),
         ],
@@ -73,7 +94,7 @@ class ConversationListScreen extends StatelessWidget {
                     const SizedBox(height: 24),
                     ElevatedButton.icon(
                       key: const ValueKey('empty_new_conversation_button'),
-                      onPressed: onNewConversation,
+                      onPressed: newConversation,
                       icon: const Icon(Icons.add),
                       label: const Text('Nueva conversacion'),
                     ),
@@ -92,7 +113,7 @@ class ConversationListScreen extends StatelessWidget {
                 key: ValueKey('conversation_tile_${conv.id}'),
                 conversation: conv,
                 theme: theme,
-                onTap: () => onOpenConversation(conv),
+                onTap: () => openConversation(conv),
                 onDelete: () => notifier.deleteConversation(conv.id),
               );
             },

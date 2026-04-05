@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_os/core/constants/app_colors.dart';
+import 'package:life_os/core/providers/providers.dart';
+import 'package:life_os/features/mental/domain/mental_input.dart';
 
 // ---------------------------------------------------------------------------
 // Predefined tags
@@ -22,14 +25,14 @@ const _predefinedTags = [
 // Screen
 // ---------------------------------------------------------------------------
 
-class MoodLogScreen extends StatefulWidget {
+class MoodLogScreen extends ConsumerStatefulWidget {
   const MoodLogScreen({super.key});
 
   @override
-  State<MoodLogScreen> createState() => _MoodLogScreenState();
+  ConsumerState<MoodLogScreen> createState() => _MoodLogScreenState();
 }
 
-class _MoodLogScreenState extends State<MoodLogScreen> {
+class _MoodLogScreenState extends ConsumerState<MoodLogScreen> {
   int _valence = 3; // 1–5 (negative → positive)
   int _energy = 3; // 1–5 (low → high)
   final _selectedTags = <String>{};
@@ -90,10 +93,21 @@ class _MoodLogScreenState extends State<MoodLogScreen> {
     });
   }
 
-  void _save() {
+  Future<void> _save() async {
     setState(() => _isSaving = true);
-    Future.delayed(const Duration(milliseconds: 600), () {
-      if (!mounted) return;
+
+    final notifier = ref.read(mentalNotifierProvider);
+    await notifier.logMood(MoodInput(
+      date: DateTime.now(),
+      valence: _valence,
+      energy: _energy,
+      tags: _selectedTags.toList(),
+      journalNote: _journalController.text.trim().isEmpty
+          ? null
+          : _journalController.text.trim(),
+    ));
+
+    if (mounted) {
       setState(() => _isSaving = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -101,7 +115,7 @@ class _MoodLogScreenState extends State<MoodLogScreen> {
           backgroundColor: _moodColor,
         ),
       );
-    });
+    }
   }
 
   @override

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_os/core/constants/app_colors.dart';
+import 'package:life_os/core/providers/providers.dart';
 
 // ---------------------------------------------------------------------------
-// Mock data
+// Mock data (kept as fallback until real data stream is wired)
 // ---------------------------------------------------------------------------
 
 class _MockMoodEntry {
@@ -41,14 +43,14 @@ const _dayLabels = ['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa', 'Do'];
 // Screen
 // ---------------------------------------------------------------------------
 
-class MentalHistoryScreen extends StatefulWidget {
+class MentalHistoryScreen extends ConsumerStatefulWidget {
   const MentalHistoryScreen({super.key});
 
   @override
-  State<MentalHistoryScreen> createState() => _MentalHistoryScreenState();
+  ConsumerState<MentalHistoryScreen> createState() => _MentalHistoryScreenState();
 }
 
-class _MentalHistoryScreenState extends State<MentalHistoryScreen>
+class _MentalHistoryScreenState extends ConsumerState<MentalHistoryScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
@@ -72,6 +74,9 @@ class _MentalHistoryScreenState extends State<MentalHistoryScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Read provider to ensure connection is established even if UI shows mock
+    ref.watch(mentalNotifierProvider);
+
     final theme = Theme.of(context);
     final mentalColor = AppColors.mental;
 

@@ -1,25 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_os/core/database/app_database.dart';
+import 'package:life_os/core/providers/providers.dart';
 import 'package:life_os/features/intelligence/domain/openai_provider.dart';
-import 'package:life_os/features/intelligence/providers/ai_notifier.dart';
 
 // ---------------------------------------------------------------------------
 // AI Config Screen
 // ---------------------------------------------------------------------------
 
-class AIConfigScreen extends StatefulWidget {
-  const AIConfigScreen({
-    super.key,
-    required this.notifier,
-  });
-
-  final AINotifier notifier;
+class AIConfigScreen extends ConsumerStatefulWidget {
+  const AIConfigScreen({super.key});
 
   @override
-  State<AIConfigScreen> createState() => _AIConfigScreenState();
+  ConsumerState<AIConfigScreen> createState() => _AIConfigScreenState();
 }
 
-class _AIConfigScreenState extends State<AIConfigScreen> {
+class _AIConfigScreenState extends ConsumerState<AIConfigScreen> {
   final _formKey = GlobalKey<FormState>();
   final _modelController = TextEditingController();
   final _apiKeyController = TextEditingController();
@@ -75,10 +71,11 @@ class _AIConfigScreenState extends State<AIConfigScreen> {
       _feedbackMessage = null;
     });
 
-    final result = await widget.notifier.addConfiguration(
+    final notifier = ref.read(aiNotifierProvider);
+    final result = await notifier.addConfiguration(
       providerKey: _selectedProvider,
       modelName: _modelController.text.trim(),
-      isDefault: widget.notifier.state.configurations.isEmpty,
+      isDefault: notifier.state.configurations.isEmpty,
     );
 
     setState(() => _isSaving = false);
@@ -98,6 +95,7 @@ class _AIConfigScreenState extends State<AIConfigScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final notifier = ref.watch(aiNotifierProvider);
     final theme = Theme.of(context);
     final primaryColor = theme.colorScheme.primary;
 
@@ -128,8 +126,8 @@ class _AIConfigScreenState extends State<AIConfigScreen> {
               ),
               const SizedBox(height: 8),
               StreamBuilder<List<AiConfiguration>>(
-                stream: widget.notifier.dao.watchAllConfigurations(),
-                initialData: widget.notifier.state.configurations,
+                stream: notifier.dao.watchAllConfigurations(),
+                initialData: notifier.state.configurations,
                 builder: (context, snapshot) {
                   final configs = snapshot.data ?? [];
                   if (configs.isEmpty) {
@@ -153,9 +151,9 @@ class _AIConfigScreenState extends State<AIConfigScreen> {
                         config: config,
                         primaryColor: primaryColor,
                         onSetDefault: () =>
-                            widget.notifier.setDefaultProvider(config.id),
+                            notifier.setDefaultProvider(config.id),
                         onDelete: () =>
-                            widget.notifier.deleteConfiguration(config.id),
+                            notifier.deleteConfiguration(config.id),
                       );
                     },
                   );

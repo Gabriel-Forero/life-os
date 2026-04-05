@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_os/core/constants/app_colors.dart';
+import 'package:life_os/core/providers/providers.dart';
 
 // ---------------------------------------------------------------------------
-// Mock data
+// Mock data (kept as fallback until real data stream is wired)
 // ---------------------------------------------------------------------------
 
 class _MockSleepEntry {
@@ -35,14 +37,14 @@ const _dayLabels = ['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa', 'Do'];
 // Screen
 // ---------------------------------------------------------------------------
 
-class SleepHistoryScreen extends StatefulWidget {
+class SleepHistoryScreen extends ConsumerStatefulWidget {
   const SleepHistoryScreen({super.key});
 
   @override
-  State<SleepHistoryScreen> createState() => _SleepHistoryScreenState();
+  ConsumerState<SleepHistoryScreen> createState() => _SleepHistoryScreenState();
 }
 
-class _SleepHistoryScreenState extends State<SleepHistoryScreen>
+class _SleepHistoryScreenState extends ConsumerState<SleepHistoryScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
@@ -72,6 +74,9 @@ class _SleepHistoryScreenState extends State<SleepHistoryScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Read provider to ensure connection is established even if UI shows mock
+    ref.watch(sleepNotifierProvider);
+
     final theme = Theme.of(context);
     final sleepColor = AppColors.sleep;
 

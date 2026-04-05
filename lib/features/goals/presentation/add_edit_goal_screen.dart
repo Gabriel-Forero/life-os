@@ -1,37 +1,37 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_os/core/constants/app_colors.dart';
 import 'package:life_os/core/database/app_database.dart';
+import 'package:life_os/core/providers/providers.dart';
 import 'package:life_os/features/goals/domain/goals_input.dart';
 
 // ---------------------------------------------------------------------------
 // Add / Edit Goal Screen
 // ---------------------------------------------------------------------------
 
-class AddEditGoalScreen extends StatefulWidget {
+class AddEditGoalScreen extends ConsumerStatefulWidget {
   const AddEditGoalScreen({
     super.key,
     this.existingGoal,
     this.existingSubGoals = const [],
     this.existingMilestones = const [],
-    required this.onSaveGoal,
-    this.onAddSubGoal,
-    this.onAddMilestone,
+    this.onSaveGoal,
   });
 
   final LifeGoal? existingGoal;
   final List<SubGoal> existingSubGoals;
   final List<GoalMilestone> existingMilestones;
-  final void Function(GoalInput input) onSaveGoal;
-  final void Function(SubGoalInput input)? onAddSubGoal;
-  final void Function(MilestoneInput input)? onAddMilestone;
+
+  /// Optional override callback; if null, saves via provider directly.
+  final void Function(GoalInput input)? onSaveGoal;
 
   bool get isEditing => existingGoal != null;
 
   @override
-  State<AddEditGoalScreen> createState() => _AddEditGoalScreenState();
+  ConsumerState<AddEditGoalScreen> createState() => _AddEditGoalScreenState();
 }
 
-class _AddEditGoalScreenState extends State<AddEditGoalScreen> {
+class _AddEditGoalScreenState extends ConsumerState<AddEditGoalScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
   late TextEditingController _descController;
@@ -83,7 +83,7 @@ class _AddEditGoalScreenState extends State<AddEditGoalScreen> {
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
 
-    widget.onSaveGoal(GoalInput(
+    final input = GoalInput(
       name: _nameController.text.trim(),
       description: _descController.text.trim().isEmpty
           ? null
@@ -92,7 +92,14 @@ class _AddEditGoalScreenState extends State<AddEditGoalScreen> {
       icon: 'track_changes',
       color: _selectedColor,
       targetDate: _targetDate,
-    ));
+    );
+
+    if (widget.onSaveGoal != null) {
+      widget.onSaveGoal!(input);
+    } else {
+      ref.read(goalsNotifierProvider).addGoal(input);
+      Navigator.of(context).pop();
+    }
   }
 
   void _pickDate(BuildContext context) async {

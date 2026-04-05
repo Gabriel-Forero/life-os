@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-// Screens that compile without required notifier params
-// TODO: Wire DashboardScreen, DayScoreScreen, ScoreHistoryScreen, GoalsScreens, AI screens, Sleep/Mental screens
+import 'package:life_os/features/dashboard/presentation/dashboard_screen.dart';
+import 'package:life_os/features/dashboard/presentation/day_score_screen.dart';
+import 'package:life_os/features/dashboard/presentation/score_history_screen.dart';
 import 'package:life_os/features/finance/presentation/add_edit_transaction_screen.dart';
 import 'package:life_os/features/finance/presentation/budget_overview_screen.dart';
 import 'package:life_os/features/finance/presentation/finance_dashboard_screen.dart';
 import 'package:life_os/features/finance/presentation/savings_goals_screen.dart';
 import 'package:life_os/features/finance/presentation/transactions_list_screen.dart';
+import 'package:life_os/features/goals/presentation/add_edit_goal_screen.dart';
+import 'package:life_os/features/goals/presentation/goal_detail_screen.dart';
+import 'package:life_os/features/goals/presentation/goals_overview_screen.dart';
 import 'package:life_os/features/gym/presentation/active_workout_screen.dart';
 import 'package:life_os/features/gym/presentation/body_measurements_screen.dart';
 import 'package:life_os/features/gym/presentation/exercise_library_screen.dart';
@@ -16,13 +20,20 @@ import 'package:life_os/features/gym/presentation/workout_history_screen.dart';
 import 'package:life_os/features/habits/presentation/add_edit_habit_screen.dart';
 import 'package:life_os/features/habits/presentation/habit_detail_screen.dart';
 import 'package:life_os/features/habits/presentation/habits_dashboard_screen.dart';
+import 'package:life_os/features/intelligence/presentation/ai_config_screen.dart';
+import 'package:life_os/features/intelligence/presentation/chat_screen.dart';
+import 'package:life_os/features/intelligence/presentation/conversation_list_screen.dart';
 import 'package:life_os/features/mental/presentation/breathing_screen.dart';
+import 'package:life_os/features/mental/presentation/mental_history_screen.dart';
+import 'package:life_os/features/mental/presentation/mood_log_screen.dart';
 import 'package:life_os/features/nutrition/presentation/daily_nutrition_screen.dart';
 import 'package:life_os/features/nutrition/presentation/food_search_screen.dart';
 import 'package:life_os/features/nutrition/presentation/meal_log_screen.dart';
 import 'package:life_os/features/nutrition/presentation/nutrition_goals_screen.dart';
 import 'package:life_os/features/onboarding/presentation/onboarding_shell.dart';
 import 'package:life_os/features/sleep/presentation/energy_tracker_screen.dart';
+import 'package:life_os/features/sleep/presentation/sleep_history_screen.dart';
+import 'package:life_os/features/sleep/presentation/sleep_log_screen.dart';
 
 abstract final class AppRoutes {
   // Core
@@ -98,8 +109,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           // Dashboard (home)
           GoRoute(
             path: AppRoutes.home,
-            builder: (context, state) => const _PlaceholderScreen(title: 'Dashboard'),
-            // TODO: Wire DashboardScreen with notifiers
+            builder: (context, state) => const DashboardScreen(),
           ),
           // Finance
           GoRoute(
@@ -124,8 +134,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           // Goals
           GoRoute(
             path: AppRoutes.goals,
-            builder: (context, state) => const _PlaceholderScreen(title: 'Metas'),
-            // TODO: Wire GoalsOverviewScreen
+            builder: (context, state) => const GoalsOverviewScreen(),
           ),
           // Settings placeholder
           GoRoute(
@@ -149,19 +158,34 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: AppRoutes.nutritionGoals, builder: (context, state) => const NutritionGoalsScreen()),
       GoRoute(path: AppRoutes.habitsAdd, builder: (context, state) => const AddEditHabitScreen()),
       GoRoute(path: AppRoutes.habitsDetail, builder: (context, state) => const HabitDetailScreen()),
-      GoRoute(path: AppRoutes.dayScore, builder: (context, state) => const _PlaceholderScreen(title: 'DayScore')),
-      GoRoute(path: AppRoutes.scoreHistory, builder: (context, state) => const _PlaceholderScreen(title: 'Historial Score')),
-      GoRoute(path: AppRoutes.sleep, builder: (context, state) => const _PlaceholderScreen(title: 'Sueno')),
-      GoRoute(path: AppRoutes.sleepHistory, builder: (context, state) => const _PlaceholderScreen(title: 'Historial Sueno')),
+      GoRoute(path: AppRoutes.dayScore, builder: (context, state) => const DayScoreScreen()),
+      GoRoute(path: AppRoutes.scoreHistory, builder: (context, state) => const ScoreHistoryScreen()),
+      GoRoute(path: AppRoutes.sleep, builder: (context, state) => const SleepLogScreen()),
+      GoRoute(path: AppRoutes.sleepHistory, builder: (context, state) => const SleepHistoryScreen()),
       GoRoute(path: AppRoutes.energy, builder: (context, state) => const EnergyTrackerScreen()),
-      GoRoute(path: AppRoutes.mood, builder: (context, state) => const _PlaceholderScreen(title: 'Estado de Animo')),
+      GoRoute(path: AppRoutes.mood, builder: (context, state) => const MoodLogScreen()),
       GoRoute(path: AppRoutes.breathing, builder: (context, state) => const BreathingScreen()),
-      GoRoute(path: AppRoutes.mentalHistory, builder: (context, state) => const _PlaceholderScreen(title: 'Historial Mental')),
-      GoRoute(path: AppRoutes.goalsAdd, builder: (context, state) => const _PlaceholderScreen(title: 'Crear Meta')),
-      GoRoute(path: AppRoutes.goalsDetail, builder: (context, state) => const _PlaceholderScreen(title: 'Detalle Meta')),
-      GoRoute(path: AppRoutes.aiConfig, builder: (context, state) => const _PlaceholderScreen(title: 'Configuracion AI')),
-      GoRoute(path: AppRoutes.aiConversations, builder: (context, state) => const _PlaceholderScreen(title: 'Conversaciones')),
-      GoRoute(path: AppRoutes.aiChat, builder: (context, state) => const _PlaceholderScreen(title: 'Chat AI')),
+      GoRoute(path: AppRoutes.mentalHistory, builder: (context, state) => const MentalHistoryScreen()),
+      GoRoute(path: AppRoutes.goalsAdd, builder: (context, state) => const AddEditGoalScreen()),
+      GoRoute(
+        path: AppRoutes.goalsDetail,
+        builder: (context, state) {
+          final goalId = int.tryParse(state.uri.queryParameters['id'] ?? '');
+          if (goalId == null) return const _PlaceholderScreen(title: 'Detalle Meta');
+          return GoalDetailScreen(goalId: goalId);
+        },
+      ),
+      GoRoute(path: AppRoutes.aiConfig, builder: (context, state) => const AIConfigScreen()),
+      GoRoute(path: AppRoutes.aiConversations, builder: (context, state) => const ConversationListScreen()),
+      GoRoute(
+        path: AppRoutes.aiChat,
+        builder: (context, state) {
+          final conversationId = int.tryParse(state.uri.queryParameters['id'] ?? '');
+          final title = state.uri.queryParameters['title'] ?? 'Chat AI';
+          if (conversationId == null) return const _PlaceholderScreen(title: 'Chat AI');
+          return ChatScreen(conversationId: conversationId, title: title);
+        },
+      ),
     ],
   );
 });

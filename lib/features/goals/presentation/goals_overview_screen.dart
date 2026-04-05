@@ -1,34 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_os/core/constants/app_colors.dart';
 import 'package:life_os/core/database/app_database.dart';
+import 'package:life_os/core/providers/providers.dart';
 import 'package:life_os/features/goals/domain/goals_input.dart';
+import 'package:life_os/features/goals/presentation/add_edit_goal_screen.dart';
 import 'package:life_os/features/goals/presentation/goal_detail_screen.dart';
 
 // ---------------------------------------------------------------------------
 // Goals Overview Screen
 // ---------------------------------------------------------------------------
 
-class GoalsOverviewScreen extends StatefulWidget {
-  const GoalsOverviewScreen({
-    super.key,
-    required this.goals,
-    required this.onAddGoal,
-  });
-
-  final List<LifeGoal> goals;
-  final VoidCallback onAddGoal;
+class GoalsOverviewScreen extends ConsumerStatefulWidget {
+  const GoalsOverviewScreen({super.key});
 
   @override
-  State<GoalsOverviewScreen> createState() => _GoalsOverviewScreenState();
+  ConsumerState<GoalsOverviewScreen> createState() => _GoalsOverviewScreenState();
 }
 
-class _GoalsOverviewScreenState extends State<GoalsOverviewScreen> {
+class _GoalsOverviewScreenState extends ConsumerState<GoalsOverviewScreen> {
   String? _selectedCategory;
 
   static const _goalsColor = AppColors.goals;
 
-  List<LifeGoal> get _filteredGoals {
-    var filtered = widget.goals;
+  List<LifeGoal> _filteredGoals(List<LifeGoal> goals) {
+    var filtered = goals;
     if (_selectedCategory != null) {
       filtered =
           filtered.where((g) => g.category == _selectedCategory).toList();
@@ -49,9 +45,24 @@ class _GoalsOverviewScreenState extends State<GoalsOverviewScreen> {
     return filtered;
   }
 
+  void _navigateToAddGoal() {
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => AddEditGoalScreen(
+          onSaveGoal: (input) {
+            ref.read(goalsNotifierProvider).addGoal(input);
+            Navigator.pop(context);
+          },
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final goalsDao = ref.watch(goalsDaoProvider);
 
     return Scaffold(
       key: const ValueKey('goals_overview_screen'),
@@ -71,49 +82,60 @@ class _GoalsOverviewScreenState extends State<GoalsOverviewScreen> {
               key: const ValueKey('add_goal_button'),
               icon: const Icon(Icons.add),
               color: _goalsColor,
-              onPressed: widget.onAddGoal,
+              onPressed: _navigateToAddGoal,
               tooltip: 'Agregar objetivo',
             ),
           ),
         ],
       ),
-      body: Column(
-        children: [
-          _CategoryFilterBar(
-            selectedCategory: _selectedCategory,
-            onCategorySelected: (cat) {
-              setState(() {
-                _selectedCategory = _selectedCategory == cat ? null : cat;
-              });
-            },
-          ),
-          Expanded(
-            child: _filteredGoals.isEmpty
-                ? _EmptyGoalsPlaceholder(onAddGoal: widget.onAddGoal)
-                : ListView.separated(
-                    key: const ValueKey('goals_list'),
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _filteredGoals.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
-                    itemBuilder: (context, index) {
-                      final goal = _filteredGoals[index];
-                      return _GoalCard(
-                        key: ValueKey('goal_card_${goal.id}'),
-                        goal: goal,
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute<void>(
-                              builder: (_) =>
-                                  GoalDetailScreen(goalId: goal.id),
-                            ),
+      body: StreamBuilder<List<LifeGoal>>(
+        stream: goalsDao.watchAllGoals(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final goals = snapshot.data ?? [];
+          final filtered = _filteredGoals(goals);
+
+          return Column(
+            children: [
+              _CategoryFilterBar(
+                selectedCategory: _selectedCategory,
+                onCategorySelected: (cat) {
+                  setState(() {
+                    _selectedCategory = _selectedCategory == cat ? null : cat;
+                  });
+                },
+              ),
+              Expanded(
+                child: filtered.isEmpty
+                    ? _EmptyGoalsPlaceholder(onAddGoal: _navigateToAddGoal)
+                    : ListView.separated(
+                        key: const ValueKey('goals_list'),
+                        padding: const EdgeInsets.all(16),
+                        itemCount: filtered.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 12),
+                        itemBuilder: (context, index) {
+                          final goal = filtered[index];
+                          return _GoalCard(
+                            key: ValueKey('goal_card_${goal.id}'),
+                            goal: goal,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute<void>(
+                                  builder: (_) =>
+                                      GoalDetailScreen(goalId: goal.id),
+                                ),
+                              );
+                            },
                           );
                         },
-                      );
-                    },
-                  ),
-          ),
-        ],
+                      ),
+              ),
+            ],
+          );
+        },
       ),
       floatingActionButton: Semantics(
         label: 'Nuevo objetivo',
@@ -122,7 +144,7 @@ class _GoalsOverviewScreenState extends State<GoalsOverviewScreen> {
           key: const ValueKey('fab_add_goal'),
           backgroundColor: _goalsColor,
           foregroundColor: Colors.white,
-          onPressed: widget.onAddGoal,
+          onPressed: _navigateToAddGoal,
           child: const Icon(Icons.add),
         ),
       ),
