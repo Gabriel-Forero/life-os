@@ -1,36 +1,89 @@
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:http/http.dart' as http;
 import 'package:life_os/features/intelligence/domain/ai_provider.dart';
 
 /// OpenAI implementation of [AIProvider].
 ///
-/// Stub: the interface contract is fully implemented. Actual HTTP calls
-/// via the OpenAI REST API are deferred to a future iteration — this stub
-/// returns controlled responses so the rest of the system can be integrated
-/// and tested end-to-end today.
+/// Uses the Chat Completions API with server-sent events (SSE) streaming so
+/// the UI can render tokens incrementally as they arrive from the model.
 class OpenAIProvider implements AIProvider {
-  const OpenAIProvider({required this.apiKey, required String model})
+  OpenAIProvider({required this.apiKey, required String model})
       : _model = model;
 
   final String apiKey;
   final String _model;
 
+  static const _baseUrl = 'https://api.openai.com/v1';
+
   @override
   String get providerKey => 'openai';
 
-  /// Streams a stub assistant response token by token.
+  /// Streams token chunks from the OpenAI Chat Completions endpoint using SSE.
   ///
-  /// TODO: Replace with real OpenAI streaming HTTP call when the HTTP
-  /// dependency is added to pubspec.yaml.
+  /// Each chunk emitted is a partial content string (`choices[0].delta.content`).
+  /// On any network or API error the stream emits a single human-readable error
+  /// string and then closes — callers never see an unhandled exception.
   @override
   Stream<String> sendMessage(String prompt, {String? systemContext}) async* {
-    // Simulate a short delay to mimic network latency in tests / dev.
-    await Future<void>.delayed(const Duration(milliseconds: 50));
-    final stubResponse =
-        'Hola! Soy tu asistente de LifeOS. '
-        '(Respuesta generada por el modelo $_model — '
-        'integracion HTTP pendiente.)';
-    for (final word in stubResponse.split(' ')) {
-      yield '$word ';
-      await Future<void>.delayed(const Duration(milliseconds: 10));
+    final client = http.Client();
+    try {
+      final messages = <Map<String, String>>[
+        if (systemContext != null && systemContext.isNotEmpty)
+          {'role': 'system', 'content': systemContext},
+        {'role': 'user', 'content': prompt},
+      ];
+
+      final request = http.Request(
+        'POST',
+        Uri.parse('$_baseUrl/chat/completions'),
+      )
+        ..headers['Authorization'] = 'Bearer $apiKey'
+        ..headers['Content-Type'] = 'application/json'
+        ..body = jsonEncode({
+          'model': _model,
+          'messages': messages,
+          'stream': true,
+        });
+
+      final response = await client.send(request);
+
+      if (response.statusCode != 200) {
+        final body = await response.stream.bytesToString();
+        yield 'Error ${response.statusCode}: $body';
+        return;
+      }
+
+      // Parse SSE stream line by line.
+      final lineStream = response.stream
+          .transform(utf8.decoder)
+          .transform(const LineSplitter());
+
+      await for (final line in lineStream) {
+        if (!line.startsWith('data: ')) continue;
+        final data = line.substring(6).trim();
+        if (data == '[DONE]') break;
+
+        try {
+          final json = jsonDecode(data) as Map<String, dynamic>;
+          final choices = json['choices'] as List<dynamic>?;
+          if (choices == null || choices.isEmpty) continue;
+          final delta =
+              (choices[0] as Map<String, dynamic>)['delta']
+                  as Map<String, dynamic>?;
+          final content = delta?['content'];
+          if (content is String && content.isNotEmpty) {
+            yield content;
+          }
+        } catch (_) {
+          // Malformed JSON chunk — skip silently.
+        }
+      }
+    } catch (e) {
+      yield 'Error al conectar con OpenAI: $e';
+    } finally {
+      client.close();
     }
   }
 

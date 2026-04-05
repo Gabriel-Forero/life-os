@@ -50,6 +50,9 @@ dependencies:
   # Path Provider
   path_provider: ^2.1.5
 
+  # HTTP client
+  http: ^1.2.0
+
   # Charts
   fl_chart: ^0.70.0
 

@@ -25,6 +25,9 @@ import 'package:life_os/features/gym/providers/gym_notifier.dart';
 import 'package:life_os/features/habits/database/habits_dao.dart';
 import 'package:life_os/features/habits/providers/habits_notifier.dart';
 import 'package:life_os/features/intelligence/database/ai_dao.dart';
+import 'package:life_os/features/intelligence/domain/ai_provider.dart';
+import 'package:life_os/features/intelligence/domain/anthropic_provider.dart';
+import 'package:life_os/features/intelligence/domain/gemini_provider.dart';
 import 'package:life_os/features/intelligence/domain/openai_provider.dart';
 import 'package:life_os/features/intelligence/providers/ai_notifier.dart';
 import 'package:life_os/features/mental/database/mental_dao.dart';
@@ -201,10 +204,21 @@ final goalsNotifierProvider = Provider<GoalsNotifier>((ref) {
   );
 });
 
+AIProvider _createAIProvider(AiConfiguration config) {
+  // The API key is read from secure storage at the call site; providers.dart
+  // wires up the factory — the key is injected empty here as a placeholder
+  // (the real key is fetched by SecureStorageService before sending messages).
+  const apiKey = '';
+  return switch (config.providerKey) {
+    'anthropic' => AnthropicProvider(apiKey: apiKey, model: config.modelName),
+    'gemini' => GeminiProvider(apiKey: apiKey, model: config.modelName),
+    _ => OpenAIProvider(apiKey: apiKey, model: config.modelName),
+  };
+}
+
 final aiNotifierProvider = Provider<AINotifier>((ref) {
   return AINotifier(
     dao: ref.watch(aiDaoProvider),
-    providerFactory: (providerKey) =>
-        OpenAIProvider(apiKey: '', model: 'gpt-4o-mini'),
+    providerFactory: _createAIProvider,
   );
 });
