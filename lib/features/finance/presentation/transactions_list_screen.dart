@@ -110,25 +110,23 @@ class _TransactionsListScreenState
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
-          Semantics(
-            label: 'Filtrar transacciones',
-            button: true,
-            child: IconButton(
-              key: const ValueKey('transactions-filter-button'),
-              icon: const Icon(Icons.filter_list_outlined),
-              onPressed: () {},
-              tooltip: 'Filtrar',
-            ),
+          IconButton(
+            key: const ValueKey('transactions-budget-button'),
+            icon: const Icon(Icons.pie_chart_outline),
+            onPressed: () => GoRouter.of(context).push('/finance/budgets'),
+            tooltip: 'Presupuestos',
           ),
-          Semantics(
-            label: 'Buscar transacciones',
-            button: true,
-            child: IconButton(
-              key: const ValueKey('transactions-search-button'),
-              icon: const Icon(Icons.search_outlined),
-              onPressed: () {},
-              tooltip: 'Buscar',
-            ),
+          IconButton(
+            key: const ValueKey('transactions-dashboard-button'),
+            icon: const Icon(Icons.bar_chart),
+            onPressed: () => GoRouter.of(context).push('/finance/dashboard'),
+            tooltip: 'Dashboard',
+          ),
+          IconButton(
+            key: const ValueKey('transactions-savings-button'),
+            icon: const Icon(Icons.savings_outlined),
+            onPressed: () => GoRouter.of(context).push('/finance/savings'),
+            tooltip: 'Metas de ahorro',
           ),
         ],
       ),
