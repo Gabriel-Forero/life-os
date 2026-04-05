@@ -75,3 +75,4 @@ flutter:
     - assets/fonts/
     - assets/icons/
     - assets/exercises.json
+    - assets/foods.json
