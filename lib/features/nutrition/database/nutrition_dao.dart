@@ -54,6 +54,9 @@ class NutritionDao extends DatabaseAccessor<AppDatabase>
     return q.watch();
   }
 
+  Future<FoodItem?> getFoodItemById(int id) =>
+      (select(foodItems)..where((f) => f.id.equals(id))).getSingleOrNull();
+
   Future<List<FoodItem>> searchFoodItems(String query) =>
       (select(foodItems)
             ..where((f) => f.name.like('%$query%'))

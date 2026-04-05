@@ -10,7 +10,14 @@ import 'package:life_os/features/intelligence/providers/ai_notifier.dart';
 // Provider to build real module summary once per session
 final _realModuleSummaryProvider =
     FutureProvider.autoDispose<ModuleSummary>((ref) async {
-  return buildRealModuleSummary(ref);
+  return buildModuleSummaryFromDaos(
+    financeDao: ref.read(financeDaoProvider),
+    habitsDao: ref.read(habitsDaoProvider),
+    sleepDao: ref.read(sleepDaoProvider),
+    gymDao: ref.read(gymDaoProvider),
+    nutritionDao: ref.read(nutritionDaoProvider),
+    goalsDao: ref.read(goalsDaoProvider),
+  );
 });
 
 // ---------------------------------------------------------------------------

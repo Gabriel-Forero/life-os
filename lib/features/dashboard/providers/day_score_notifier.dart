@@ -85,7 +85,8 @@ class DayScoreNotifier {
 
   /// Callback that returns the raw score [0.0–100.0] for a given module key.
   /// Injected so this notifier remains testable without other notifiers.
-  final double Function(String moduleKey) moduleScoreProvider;
+  /// May be async — returns a [Future<double>].
+  final Future<double> Function(String moduleKey) moduleScoreProvider;
 
   DayScoreState _state = const DayScoreState();
   DayScoreState get state => _state;
@@ -139,7 +140,7 @@ class DayScoreNotifier {
       double totalWeight = 0;
 
       for (final config in enabledConfigs) {
-        final rawValue = moduleScoreProvider(config.moduleKey)
+        final rawValue = (await moduleScoreProvider(config.moduleKey))
             .clamp(0.0, 100.0);
         final weightedScore = rawValue * config.weight;
         components.add(ScoreComponentData(

@@ -375,9 +375,8 @@ class _MacroStreamBodyState extends ConsumerState<_MacroStreamBody> {
     for (final meal in widget.mealLogs) {
       final items = await dao.watchMealLogItems(meal.id).first;
       for (final item in items) {
-        // Look up the food item
-        final foods = await dao.searchFoodItems('');
-        final food = foods.where((f) => f.id == item.foodItemId).firstOrNull;
+        // Look up the food item by ID (efficient point lookup)
+        final food = await dao.getFoodItemById(item.foodItemId);
         if (food != null) {
           final factor = item.quantityG / 100;
           cal += food.caloriesPer100g * factor;
