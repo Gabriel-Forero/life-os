@@ -6,6 +6,8 @@ import 'package:life_os/core/router/page_transitions.dart';
 import 'package:life_os/core/providers/providers.dart';
 import 'package:life_os/features/dashboard/presentation/dashboard_screen.dart';
 import 'package:life_os/features/dashboard/presentation/day_score_screen.dart';
+import 'package:life_os/features/dashboard/presentation/evolution_screen.dart';
+import 'package:life_os/features/dashboard/presentation/monitoring_screen.dart';
 import 'package:life_os/features/dashboard/presentation/score_history_screen.dart';
 import 'package:life_os/features/finance/presentation/add_edit_transaction_screen.dart';
 import 'package:life_os/features/finance/presentation/budget_overview_screen.dart';
@@ -89,6 +91,8 @@ abstract final class AppRoutes {
   // Dashboard
   static const String dayScore = '/day-score';
   static const String scoreHistory = '/score-history';
+  static const String monitoring = '/monitoring';
+  static const String evolution = '/evolution';
 
   // Sleep
   static const String sleep = '/sleep';
@@ -281,6 +285,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.scoreHistory,
         pageBuilder: (context, state) =>
             fadeScaleTransition(const ScoreHistoryScreen(), state),
+      ),
+      GoRoute(
+        path: AppRoutes.monitoring,
+        pageBuilder: (context, state) =>
+            fadeScaleTransition(const MonitoringScreen(), state),
+      ),
+      GoRoute(
+        path: AppRoutes.evolution,
+        pageBuilder: (context, state) =>
+            slideUpTransition(const EvolutionScreen(), state),
       ),
       GoRoute(
         path: AppRoutes.sleep,
@@ -489,6 +503,16 @@ class _AppShell extends StatelessWidget {
             leading: Icon(Icons.auto_awesome, color: AppColors.dayScore),
             title: const Text('DayScore'),
             onTap: () { Navigator.pop(context); GoRouter.of(context).push(AppRoutes.dayScore); },
+          ),
+          ListTile(
+            leading: Icon(Icons.monitor_heart_outlined, color: AppColors.dayScore),
+            title: const Text('Monitoreo'),
+            onTap: () { Navigator.pop(context); GoRouter.of(context).push(AppRoutes.monitoring); },
+          ),
+          ListTile(
+            leading: Icon(Icons.timeline_outlined, color: AppColors.dayScore),
+            title: const Text('Evolucion'),
+            onTap: () { Navigator.pop(context); GoRouter.of(context).push(AppRoutes.evolution); },
           ),
           const Divider(),
           ListTile(

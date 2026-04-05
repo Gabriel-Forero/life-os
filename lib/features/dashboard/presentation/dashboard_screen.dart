@@ -546,21 +546,21 @@ class _QuickActions extends StatelessWidget {
         },
       ),
       _QuickActionItem(
-        key: const ValueKey('quick-action-settings'),
-        icon: Icons.tune_rounded,
-        label: 'Pesos',
-        color: AppColors.goals,
+        key: const ValueKey('quick-action-monitoring'),
+        icon: Icons.monitor_heart_outlined,
+        label: 'Monitoreo',
+        color: AppColors.gym,
         onTap: () {
-          GoRouter.of(context).go(AppRoutes.settings);
+          GoRouter.of(context).push(AppRoutes.monitoring);
         },
       ),
       _QuickActionItem(
-        key: const ValueKey('quick-action-snapshot'),
-        icon: Icons.camera_alt_outlined,
-        label: 'Snapshot',
+        key: const ValueKey('quick-action-evolution'),
+        icon: Icons.timeline_outlined,
+        label: 'Evolucion',
         color: AppColors.habits,
         onTap: () {
-          GoRouter.of(context).push(AppRoutes.scoreHistory);
+          GoRouter.of(context).push(AppRoutes.evolution);
         },
       ),
     ];

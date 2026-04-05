@@ -33,12 +33,16 @@ class _WorkoutExercise {
     required this.name,
     required this.primaryMuscle,
     required List<_PendingSet> sets,
+    this.lastWeightKg,
+    this.restSeconds = 90,
   }) : sets = sets;
 
   final int id;
   final String name;
   final String primaryMuscle;
   final List<_PendingSet> sets;
+  final double? lastWeightKg;
+  final int restSeconds;
 }
 
 // ---------------------------------------------------------------------------
@@ -91,6 +95,77 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
         await notifier.startWorkout(routineId: widget.routineId);
     if (result.isSuccess && mounted) {
       setState(() => _workoutId = result.valueOrNull);
+      // Pre-populate exercises from routine if routineId provided
+      if (widget.routineId != null) {
+        await _loadRoutineExercises(widget.routineId!);
+      }
+    }
+  }
+
+  Future<void> _loadRoutineExercises(int routineId) async {
+    final dao = ref.read(gymDaoProvider);
+    final routineExercises =
+        await dao.watchRoutineExercises(routineId).first;
+    if (!mounted) return;
+    final List<_WorkoutExercise> loaded = [];
+    for (final re in routineExercises) {
+      // Fetch the exercise record by id
+      final allExercises = await dao.watchExercises().first;
+      final ex = allExercises.where((e) => e.id == re.exerciseId).firstOrNull;
+      if (ex == null) continue;
+
+      // Look up last-session weight for reference
+      final lastWeightPR = await dao.getWeightPR(re.exerciseId);
+
+      final sets = List.generate(
+        re.defaultSets,
+        (i) => _PendingSet(
+          setNumber: i + 1,
+          weightKg: re.defaultWeightKg ?? lastWeightPR,
+          reps: re.defaultReps,
+        ),
+      );
+      loaded.add(_WorkoutExercise(
+        id: ex.id,
+        name: ex.name,
+        primaryMuscle: ex.primaryMuscle,
+        sets: sets,
+        lastWeightKg: lastWeightPR,
+        restSeconds: re.restSeconds,
+      ));
+    }
+    if (mounted) {
+      setState(() {
+        _exercises.addAll(loaded);
+      });
+    }
+  }
+
+  Future<void> _openExercisePicker() async {
+    final result =
+        await showModalBottomSheet<({int id, String name, String muscle})>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => _ExercisePickerSheet(),
+    );
+    if (result != null && mounted) {
+      final dao = ref.read(gymDaoProvider);
+      final lastWeight = await dao.getWeightPR(result.id);
+      setState(() {
+        _exercises.add(_WorkoutExercise(
+          id: result.id,
+          name: result.name,
+          primaryMuscle: result.muscle,
+          sets: [
+            _PendingSet(setNumber: 1, weightKg: lastWeight),
+          ],
+          lastWeightKg: lastWeight,
+          restSeconds: 90,
+        ));
+      });
     }
   }
 
@@ -251,7 +326,8 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
                         'workout-exercise-section-${entry.value.id}'),
                     exercise: entry.value,
                     onConfirmSet: (set) =>
-                        _confirmSet(entry.value, set),
+                        _confirmSet(entry.value, set,
+                            restSeconds: entry.value.restSeconds),
                     onWarmupToggled: (set, value) =>
                         setState(() => set.isWarmup = value),
                     onWeightChanged: (set, value) =>
@@ -262,6 +338,12 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
                       () => entry.value.sets.add(
                         _PendingSet(
                           setNumber: entry.value.sets.length + 1,
+                          weightKg: entry.value.sets.isNotEmpty
+                              ? entry.value.sets.last.weightKg
+                              : null,
+                          reps: entry.value.sets.isNotEmpty
+                              ? entry.value.sets.last.reps
+                              : null,
                         ),
                       ),
                     ),
@@ -277,7 +359,7 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
                     child: OutlinedButton.icon(
                       key: const ValueKey(
                           'active-workout-add-exercise-button'),
-                      onPressed: () {},
+                      onPressed: _openExercisePicker,
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.gym,
                         side: const BorderSide(color: AppColors.gym),
@@ -428,6 +510,14 @@ class _WorkoutExerciseSection extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
                     ),
+                    if (exercise.lastWeightKg != null)
+                      Text(
+                        'Ultima vez: ${exercise.lastWeightKg} kg',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurface.withAlpha(120),
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -744,6 +834,131 @@ class _SetRowState extends State<_SetRow> {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Bottom sheet: selector de ejercicio durante entrenamiento activo
+// ---------------------------------------------------------------------------
+
+class _ExercisePickerSheet extends ConsumerStatefulWidget {
+  const _ExercisePickerSheet();
+
+  @override
+  ConsumerState<_ExercisePickerSheet> createState() =>
+      _ExercisePickerSheetState();
+}
+
+class _ExercisePickerSheetState extends ConsumerState<_ExercisePickerSheet> {
+  final _searchController = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final dao = ref.watch(gymDaoProvider);
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.75,
+      maxChildSize: 0.95,
+      minChildSize: 0.5,
+      expand: false,
+      builder: (context, scrollController) {
+        return Column(
+          children: [
+            Container(
+              width: 36,
+              height: 4,
+              margin: const EdgeInsets.only(top: 12, bottom: 8),
+              decoration: BoxDecoration(
+                color: theme.dividerColor,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Text(
+                'Agregar ejercicio',
+                style: theme.textTheme.titleMedium,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Semantics(
+                label: 'Buscar ejercicio',
+                textField: true,
+                child: TextField(
+                  key: const ValueKey('active-exercise-picker-search'),
+                  controller: _searchController,
+                  decoration: const InputDecoration(
+                    hintText: 'Buscar...',
+                    prefixIcon: Icon(Icons.search_outlined),
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                  onChanged: (v) => setState(() => _query = v),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: StreamBuilder(
+                stream: dao.watchExercises(
+                    query: _query.isEmpty ? null : _query),
+                builder: (context, snapshot) {
+                  final exercises = snapshot.data ?? [];
+                  return ListView.separated(
+                    controller: scrollController,
+                    itemCount: exercises.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      final ex = exercises[index];
+                      return Semantics(
+                        label: '${ex.name}, ${ex.primaryMuscle}',
+                        button: true,
+                        child: ListTile(
+                          key: ValueKey('active-exercise-item-${ex.id}'),
+                          leading: CircleAvatar(
+                            radius: 16,
+                            backgroundColor: AppColors.gym.withAlpha(25),
+                            child: const Icon(
+                              Icons.fitness_center,
+                              color: AppColors.gym,
+                              size: 16,
+                            ),
+                          ),
+                          title: Text(
+                            ex.name,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          subtitle: Text(
+                            ex.primaryMuscle,
+                            style: const TextStyle(
+                                color: AppColors.gym, fontSize: 12),
+                          ),
+                          trailing: const Icon(Icons.add_circle_outline),
+                          onTap: () => Navigator.of(context).pop((
+                            id: ex.id,
+                            name: ex.name,
+                            muscle: ex.primaryMuscle,
+                          )),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

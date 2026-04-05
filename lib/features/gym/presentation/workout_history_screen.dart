@@ -92,7 +92,7 @@ class WorkoutHistoryScreen extends ConsumerWidget {
 // Widget: tarjeta de sesion de entrenamiento
 // ---------------------------------------------------------------------------
 
-class _WorkoutSessionCard extends StatelessWidget {
+class _WorkoutSessionCard extends ConsumerWidget {
   const _WorkoutSessionCard({
     super.key,
     required this.workout,
@@ -120,8 +120,7 @@ class _WorkoutSessionCard extends StatelessWidget {
 
   String _formatDuration(Workout w) {
     if (w.finishedAt == null) return '—';
-    final minutes =
-        w.finishedAt!.difference(w.startedAt).inMinutes;
+    final minutes = w.finishedAt!.difference(w.startedAt).inMinutes;
     if (minutes < 60) return '$minutes min';
     final h = minutes ~/ 60;
     final m = minutes % 60;
@@ -129,92 +128,110 @@ class _WorkoutSessionCard extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final label = 'Entrenamiento ${workout.id}';
+    final dao = ref.watch(gymDaoProvider);
 
-    return Semantics(
-      label: '$label, ${_formatDate(workout.startedAt)}, '
-          'duracion ${_formatDuration(workout)}',
-      button: true,
-      child: PressableCard(
-        onTap: onTap,
-        child: Card(
-          margin: EdgeInsets.zero,
-          child: InkWell(
-            key: ValueKey('workout-session-item-${workout.id}'),
+    return StreamBuilder<List<WorkoutSet>>(
+      stream: dao.watchWorkoutSets(workout.id),
+      builder: (context, snapshot) {
+        final sets = snapshot.data ?? [];
+        final workSets = sets.where((s) => !s.isWarmup).toList();
+        final exerciseIds = sets.map((s) => s.exerciseId).toSet().length;
+        final totalVolume = workSets
+            .where((s) => s.weightKg != null)
+            .fold<double>(0.0, (sum, s) => sum + s.weightKg! * s.reps);
+        final label = _formatDate(workout.startedAt);
+        final semanticLabel = '$label, duracion ${_formatDuration(workout)}, '
+            '$exerciseIds ejercicios, ${sets.length} series';
+
+        return Semantics(
+          label: semanticLabel,
+          button: true,
+          child: PressableCard(
             onTap: onTap,
-            borderRadius: BorderRadius.circular(12),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Encabezado: fecha + icono
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppColors.gym.withAlpha(20),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(
-                        Icons.fitness_center,
-                        color: AppColors.gym,
-                        size: 20,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+            child: Card(
+              margin: EdgeInsets.zero,
+              child: InkWell(
+                key: ValueKey('workout-session-item-${workout.id}'),
+                onTap: onTap,
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Encabezado: fecha + icono
+                      Row(
                         children: [
-                          Text(
-                            label,
-                            style: theme.textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w700,
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppColors.gym.withAlpha(20),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(
+                              Icons.fitness_center,
+                              color: AppColors.gym,
+                              size: 20,
                             ),
                           ),
-                          Text(
-                            _formatDate(workout.startedAt),
-                            style: theme.textTheme.bodySmall,
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  label,
+                                  style: theme.textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                Text(
+                                  _formatDuration(workout),
+                                  style: theme.textTheme.bodySmall,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(
+                            Icons.chevron_right_outlined,
+                            color: Colors.grey,
                           ),
                         ],
                       ),
-                    ),
-                    const Icon(
-                      Icons.chevron_right_outlined,
-                      color: Colors.grey,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
+                      const SizedBox(height: 12),
 
-                // Estadisticas rapidas
-                Row(
-                  children: [
-                    _StatChip(
-                      icon: Icons.timer_outlined,
-                      label: _formatDuration(workout),
-                    ),
-                    if (workout.note != null && workout.note!.isNotEmpty) ...[
-                      const SizedBox(width: 8),
-                      _StatChip(
-                        icon: Icons.notes_outlined,
-                        label: workout.note!,
+                      // Estadisticas rapidas
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
+                        children: [
+                          _StatChip(
+                            icon: Icons.fitness_center,
+                            label: '$exerciseIds ejerc.',
+                          ),
+                          _StatChip(
+                            icon: Icons.repeat_outlined,
+                            label: '${sets.length} series',
+                          ),
+                          if (totalVolume > 0)
+                            _StatChip(
+                              icon: Icons.monitor_weight_outlined,
+                              label: '${totalVolume.toStringAsFixed(0)} kg',
+                            ),
+                        ],
                       ),
                     ],
-                  ],
+                  ),
                 ),
-              ],
+              ),
             ),
           ),
-        ),
-      ),
-    ),
-  );
-}
+        );
+      },
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -286,7 +303,7 @@ class _WorkoutDetailScreen extends ConsumerWidget {
         elevation: 0,
         title: Semantics(
           header: true,
-          child: Text('Entrenamiento ${workout.id}'),
+          child: Text(_formatDate(workout.startedAt)),
         ),
         leading: Semantics(
           label: 'Volver al historial',
@@ -303,6 +320,17 @@ class _WorkoutDetailScreen extends ConsumerWidget {
         stream: dao.watchWorkoutSets(workout.id),
         builder: (context, snapshot) {
           final sets = snapshot.data ?? [];
+          final workSets = sets.where((s) => !s.isWarmup).toList();
+          final totalVolume = workSets
+              .where((s) => s.weightKg != null)
+              .fold<double>(0.0, (sum, s) => sum + s.weightKg! * s.reps);
+          final exerciseIds = sets.map((s) => s.exerciseId).toSet();
+
+          // Group sets by exerciseId preserving order
+          final Map<int, List<WorkoutSet>> byExercise = {};
+          for (final s in sets) {
+            byExercise.putIfAbsent(s.exerciseId, () => []).add(s);
+          }
 
           return ListView(
             key: const ValueKey('workout-detail-list'),
@@ -338,9 +366,18 @@ class _WorkoutDetailScreen extends ConsumerWidget {
                           ),
                           Expanded(
                             child: _DetailStat(
-                              label: 'Series',
-                              value: '${sets.length}',
-                              icon: Icons.repeat_outlined,
+                              label: 'Ejercicios',
+                              value: '${exerciseIds.length}',
+                              icon: Icons.fitness_center,
+                            ),
+                          ),
+                          Expanded(
+                            child: _DetailStat(
+                              label: 'Volumen',
+                              value: totalVolume > 0
+                                  ? '${totalVolume.toStringAsFixed(0)} kg'
+                                  : '—',
+                              icon: Icons.monitor_weight_outlined,
                             ),
                           ),
                         ],
@@ -359,120 +396,156 @@ class _WorkoutDetailScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 16),
 
-              // Series del entrenamiento
-              if (sets.isNotEmpty)
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Series realizadas',
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            SizedBox(
-                              width: 28,
-                              child: Text('#',
-                                  style: theme.textTheme.labelSmall),
-                            ),
-                            Expanded(
-                              child: Text(
-                                'Peso (kg)',
-                                style: theme.textTheme.labelSmall,
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                            Expanded(
-                              child: Text(
-                                'Reps',
-                                style: theme.textTheme.labelSmall,
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                            const SizedBox(width: 40),
-                          ],
-                        ),
-                        const Divider(),
-                        ...sets.map(
-                          (set) => Semantics(
-                            label:
-                                '${set.isWarmup ? 'Calentamiento' : 'Serie ${set.setNumber}'}: '
-                                '${set.weightKg != null ? '${set.weightKg} kg, ' : ''}'
-                                '${set.reps} repeticiones',
-                            child: Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 4),
-                              child: Row(
+              // Ejercicios agrupados
+              ...byExercise.entries.map((entry) {
+                final exerciseId = entry.key;
+                final exSets = entry.value;
+                final exVolume = exSets
+                    .where((s) => !s.isWarmup && s.weightKg != null)
+                    .fold<double>(
+                        0.0, (sum, s) => sum + s.weightKg! * s.reps);
+
+                return Padding(
+                  key: ValueKey('detail-exercise-$exerciseId'),
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Encabezado del ejercicio
+                          StreamBuilder(
+                            stream: dao.watchExercises(),
+                            builder: (ctx, snap) {
+                              final exName = snap.data
+                                      ?.where((e) => e.id == exerciseId)
+                                      .firstOrNull
+                                      ?.name ??
+                                  'Ejercicio $exerciseId';
+                              return Row(
                                 children: [
-                                  SizedBox(
-                                    width: 28,
-                                    child: Container(
-                                      alignment: Alignment.center,
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 4, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: set.isWarmup
-                                            ? Colors.blue.withAlpha(25)
-                                            : AppColors.gym.withAlpha(20),
-                                        borderRadius:
-                                            BorderRadius.circular(4),
-                                      ),
+                                  Expanded(
+                                    child: Semantics(
+                                      header: true,
                                       child: Text(
-                                        set.isWarmup
-                                            ? 'C'
-                                            : '${set.setNumber}',
-                                        style: TextStyle(
-                                          fontSize: 11,
+                                        exName,
+                                        style: theme.textTheme.titleSmall
+                                            ?.copyWith(
                                           fontWeight: FontWeight.w700,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ),
+                                  if (exVolume > 0)
+                                    _StatChip(
+                                      icon: Icons.monitor_weight_outlined,
+                                      label:
+                                          '${exVolume.toStringAsFixed(0)} kg',
+                                    ),
+                                ],
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 8),
+                          // Cabecera columnas
+                          Row(
+                            children: [
+                              SizedBox(
+                                  width: 28,
+                                  child: Text('#',
+                                      style: theme.textTheme.labelSmall)),
+                              Expanded(
+                                child: Text('Peso (kg)',
+                                    style: theme.textTheme.labelSmall,
+                                    textAlign: TextAlign.center),
+                              ),
+                              Expanded(
+                                child: Text('Reps',
+                                    style: theme.textTheme.labelSmall,
+                                    textAlign: TextAlign.center),
+                              ),
+                              const SizedBox(width: 40),
+                            ],
+                          ),
+                          const Divider(),
+                          ...exSets.map(
+                            (set) => Semantics(
+                              label:
+                                  '${set.isWarmup ? 'Calentamiento' : 'Serie ${set.setNumber}'}: '
+                                  '${set.weightKg != null ? '${set.weightKg} kg, ' : ''}'
+                                  '${set.reps} repeticiones',
+                              child: Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 4),
+                                child: Row(
+                                  children: [
+                                    SizedBox(
+                                      width: 28,
+                                      child: Container(
+                                        alignment: Alignment.center,
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 4, vertical: 2),
+                                        decoration: BoxDecoration(
                                           color: set.isWarmup
-                                              ? Colors.blue
-                                              : AppColors.gym,
+                                              ? Colors.blue.withAlpha(25)
+                                              : AppColors.gym.withAlpha(20),
+                                          borderRadius:
+                                              BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          set.isWarmup
+                                              ? 'C'
+                                              : '${set.setNumber}',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w700,
+                                            color: set.isWarmup
+                                                ? Colors.blue
+                                                : AppColors.gym,
+                                          ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                                  Expanded(
-                                    child: Text(
-                                      set.weightKg != null
-                                          ? '${set.weightKg}'
-                                          : '—',
-                                      textAlign: TextAlign.center,
-                                      style: theme.textTheme.bodyMedium,
-                                    ),
-                                  ),
-                                  Expanded(
-                                    child: Text(
-                                      '${set.reps}',
-                                      textAlign: TextAlign.center,
-                                      style:
-                                          theme.textTheme.bodyMedium?.copyWith(
-                                        fontWeight: FontWeight.w600,
+                                    Expanded(
+                                      child: Text(
+                                        set.weightKg != null
+                                            ? '${set.weightKg}'
+                                            : '—',
+                                        textAlign: TextAlign.center,
+                                        style: theme.textTheme.bodyMedium,
                                       ),
                                     ),
-                                  ),
-                                  SizedBox(
-                                    width: 40,
-                                    child: Icon(
-                                      Icons.check_circle,
-                                      size: 16,
-                                      color: AppColors.gym,
+                                    Expanded(
+                                      child: Text(
+                                        '${set.reps}',
+                                        textAlign: TextAlign.center,
+                                        style: theme.textTheme.bodyMedium
+                                            ?.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                    SizedBox(
+                                      width: 40,
+                                      child: Icon(
+                                        Icons.check_circle,
+                                        size: 16,
+                                        color: AppColors.gym,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                ),
+                );
+              }),
             ],
           );
         },
