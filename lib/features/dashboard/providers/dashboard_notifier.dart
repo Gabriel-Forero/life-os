@@ -114,6 +114,7 @@ class DashboardNotifier {
   Future<void> initialize() async {
     _state = _state.copyWith(isLoading: true);
     try {
+      await dao.seedDefaultConfigsIfEmpty();
       await maybeGenerateYesterdaySnapshot();
       await refresh();
     } on Exception catch (e) {

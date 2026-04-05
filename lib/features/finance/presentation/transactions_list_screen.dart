@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:life_os/core/constants/app_colors.dart';
 import 'package:life_os/core/widgets/empty_state_view.dart';
 import 'package:life_os/l10n/app_localizations.dart';
@@ -207,7 +208,7 @@ class TransactionsListScreen extends StatelessWidget {
           backgroundColor: AppColors.finance,
           foregroundColor: Colors.white,
           onPressed: () {
-            // TODO: navigate to add/edit screen when wired
+            GoRouter.of(context).push('/finance/add');
           },
           tooltip: 'Agregar transaccion',
           child: const Icon(Icons.add),

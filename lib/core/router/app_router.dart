@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:life_os/core/constants/app_colors.dart';
 import 'package:life_os/features/dashboard/presentation/dashboard_screen.dart';
 import 'package:life_os/features/dashboard/presentation/day_score_screen.dart';
 import 'package:life_os/features/dashboard/presentation/score_history_screen.dart';
@@ -199,6 +200,62 @@ class _AppShell extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: child,
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            DrawerHeader(
+              decoration: BoxDecoration(color: AppColors.darkSurface),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Icon(Icons.shield_outlined, color: AppColors.finance, size: 40),
+                  const SizedBox(height: 8),
+                  Text('LifeOS', style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: Colors.white)),
+                  Text('Todos los modulos', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.darkTextSecondary)),
+                ],
+              ),
+            ),
+            ListTile(
+              leading: Icon(Icons.bedtime_outlined, color: AppColors.sleep),
+              title: const Text('Sueno'),
+              onTap: () { Navigator.pop(context); GoRouter.of(context).push(AppRoutes.sleep); },
+            ),
+            ListTile(
+              leading: Icon(Icons.psychology_outlined, color: AppColors.mental),
+              title: const Text('Bienestar Mental'),
+              onTap: () { Navigator.pop(context); GoRouter.of(context).push(AppRoutes.mood); },
+            ),
+            ListTile(
+              leading: Icon(Icons.self_improvement_outlined, color: AppColors.mental),
+              title: const Text('Respiracion'),
+              onTap: () { Navigator.pop(context); GoRouter.of(context).push(AppRoutes.breathing); },
+            ),
+            ListTile(
+              leading: Icon(Icons.flag_outlined, color: AppColors.goals),
+              title: const Text('Metas'),
+              onTap: () { Navigator.pop(context); GoRouter.of(context).go(AppRoutes.goals); },
+            ),
+            ListTile(
+              leading: Icon(Icons.auto_awesome, color: AppColors.dayScore),
+              title: const Text('DayScore'),
+              onTap: () { Navigator.pop(context); GoRouter.of(context).push(AppRoutes.dayScore); },
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.smart_toy_outlined),
+              title: const Text('Asistente AI'),
+              onTap: () { Navigator.pop(context); GoRouter.of(context).push(AppRoutes.aiConversations); },
+            ),
+            ListTile(
+              leading: const Icon(Icons.settings_outlined),
+              title: const Text('Configuracion'),
+              onTap: () { Navigator.pop(context); GoRouter.of(context).go(AppRoutes.settings); },
+            ),
+          ],
+        ),
+      ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex(context),
         destinations: const [
