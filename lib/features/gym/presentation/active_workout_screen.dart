@@ -2,8 +2,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:life_os/core/constants/app_colors.dart';
 import 'package:life_os/core/providers/providers.dart';
+import 'package:life_os/core/router/app_router.dart';
 import 'package:life_os/features/gym/domain/gym_input.dart';
 import 'package:life_os/features/gym/providers/rest_timer_notifier.dart';
 
@@ -190,7 +192,13 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
   Future<void> _confirmSet(_WorkoutExercise exercise, _PendingSet set,
       {int restSeconds = 90}) async {
     final wId = _workoutId;
-    if (wId == null || set.reps == null) return;
+    if (wId == null) return;
+    if (set.reps == null || set.reps! <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ingresa las repeticiones')),
+      );
+      return;
+    }
 
     final notifier = ref.read(gymNotifierProvider);
     await notifier.logSet(
@@ -250,7 +258,7 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
     if (wId != null) {
       await ref.read(gymNotifierProvider).discardWorkout(wId);
     }
-    if (mounted) Navigator.of(context).pop();
+    if (mounted) GoRouter.of(context).go(AppRoutes.gym);
   }
 
   Future<void> _finishWorkout() async {
@@ -260,8 +268,8 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
     }
     if (mounted) {
       ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Guardado!')));
-      Navigator.of(context).pop();
+          .showSnackBar(const SnackBar(content: Text('Entrenamiento guardado!')));
+      GoRouter.of(context).go(AppRoutes.gym);
     }
   }
 
