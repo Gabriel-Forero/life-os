@@ -1,49 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_os/core/constants/app_colors.dart';
+import 'package:life_os/core/database/app_database.dart';
+import 'package:life_os/core/providers/providers.dart';
+import 'package:life_os/features/finance/domain/finance_input.dart';
 import 'package:life_os/l10n/app_localizations.dart';
-
-/// Categorias de ejemplo usadas como placeholder hasta que el notifier sea conectado.
-class _MockCategory {
-  const _MockCategory({
-    required this.id,
-    required this.name,
-    required this.icon,
-    required this.type,
-  });
-
-  final int id;
-  final String name;
-  final IconData icon;
-  final String type;
-}
-
-const _expenseCategories = [
-  _MockCategory(id: 1, name: 'Alimentacion', icon: Icons.restaurant, type: 'expense'),
-  _MockCategory(id: 2, name: 'Transporte', icon: Icons.directions_car_outlined, type: 'expense'),
-  _MockCategory(id: 3, name: 'Entretenimiento', icon: Icons.movie_outlined, type: 'expense'),
-  _MockCategory(id: 4, name: 'Salud', icon: Icons.local_hospital_outlined, type: 'expense'),
-  _MockCategory(id: 5, name: 'Hogar', icon: Icons.home_outlined, type: 'expense'),
-  _MockCategory(id: 6, name: 'Educacion', icon: Icons.school_outlined, type: 'expense'),
-  _MockCategory(id: 7, name: 'Ropa', icon: Icons.checkroom_outlined, type: 'expense'),
-  _MockCategory(id: 8, name: 'Otros', icon: Icons.category_outlined, type: 'expense'),
-];
-
-const _incomeCategories = [
-  _MockCategory(id: 9, name: 'Salario', icon: Icons.payments_outlined, type: 'income'),
-  _MockCategory(id: 10, name: 'Freelance', icon: Icons.work_outline, type: 'income'),
-  _MockCategory(id: 11, name: 'Inversiones', icon: Icons.account_balance_outlined, type: 'income'),
-  _MockCategory(id: 12, name: 'General', icon: Icons.receipt_long_outlined, type: 'income'),
-];
 
 /// Pantalla de alta/edicion de transaccion.
 ///
-/// Es un shell de presentacion. La integracion con FinanceNotifier y los
-/// providers de Riverpod se realizara en un paso posterior.
-///
 /// Accesibilidad: A11Y-FIN-02 — cada campo tiene etiqueta semantica y
 /// teclado numerico para importes.
-class AddEditTransactionScreen extends StatefulWidget {
+class AddEditTransactionScreen extends ConsumerStatefulWidget {
   const AddEditTransactionScreen({
     super.key,
     this.transactionId,
@@ -53,23 +21,22 @@ class AddEditTransactionScreen extends StatefulWidget {
   final int? transactionId;
 
   @override
-  State<AddEditTransactionScreen> createState() =>
+  ConsumerState<AddEditTransactionScreen> createState() =>
       _AddEditTransactionScreenState();
 }
 
-class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
+class _AddEditTransactionScreenState
+    extends ConsumerState<AddEditTransactionScreen> {
   final _formKey = GlobalKey<FormState>();
   final _amountController = TextEditingController();
   final _noteController = TextEditingController();
 
   String _type = 'expense';
-  _MockCategory? _selectedCategory;
+  Category? _selectedCategory;
   DateTime _selectedDate = DateTime.now();
+  bool _isSaving = false;
 
   bool get _isEditing => widget.transactionId != null;
-
-  List<_MockCategory> get _categoriesForType =>
-      _type == 'expense' ? _expenseCategories : _incomeCategories;
 
   @override
   void dispose() {
@@ -109,17 +76,40 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
     }
   }
 
-  void _handleSave() {
+  Future<void> _handleSave() async {
     if (!_formKey.currentState!.validate()) return;
-    // TODO: Conectar con FinanceNotifier.addTransaction / editTransaction
-    // cuando se realice la integracion de Riverpod.
-    Navigator.of(context).pop();
+    setState(() => _isSaving = true);
+
+    final notifier = ref.read(financeNotifierProvider);
+    final input = TransactionInput(
+      type: _type,
+      amountCents: int.parse(_amountController.text),
+      categoryId: _selectedCategory?.id,
+      note: _noteController.text.trim().isEmpty
+          ? null
+          : _noteController.text.trim(),
+      date: _selectedDate,
+    );
+
+    if (_isEditing) {
+      await notifier.editTransaction(widget.transactionId!, input);
+    } else {
+      await notifier.addTransaction(input);
+    }
+
+    if (mounted) {
+      setState(() => _isSaving = false);
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Guardado!')));
+      Navigator.of(context).pop();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
+    final dao = ref.watch(financeDaoProvider);
 
     return Scaffold(
       key: const ValueKey('add-edit-transaction-screen'),
@@ -143,186 +133,213 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
           ),
         ),
       ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            // --- Selector tipo: Ingreso / Gasto ---
-            Semantics(
-              label: 'Tipo de transaccion',
-              child: _TypeToggle(
-                key: const ValueKey('add-edit-tx-type-toggle'),
-                selectedType: _type,
-                onChanged: _handleTypeChange,
-              ),
-            ),
-            const SizedBox(height: 20),
+      body: StreamBuilder<List<Category>>(
+        stream: dao.watchCategories(),
+        builder: (context, snapshot) {
+          final allCategories = snapshot.data ?? [];
+          final categoriesForType = allCategories
+              .where((c) => c.type == _type || c.type == 'both')
+              .toList();
 
-            // --- Importe ---
-            Semantics(
-              label: 'Monto de la transaccion',
-              textField: true,
-              child: TextFormField(
-                key: const ValueKey('add-edit-tx-amount-field'),
-                controller: _amountController,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: false,
-                  signed: false,
-                ),
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                ],
-                decoration: const InputDecoration(
-                  labelText: 'Monto',
-                  hintText: '0',
-                  prefixIcon: Icon(Icons.attach_money_outlined),
-                  prefixText: '\$',
-                  border: OutlineInputBorder(),
-                  focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: AppColors.finance, width: 2),
-                  ),
-                ),
-                style: theme.textTheme.headlineMedium?.copyWith(
-                  color: _type == 'expense'
-                      ? AppColors.error
-                      : AppColors.finance,
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return l10n.validationRequired;
-                  }
-                  final parsed = int.tryParse(value);
-                  if (parsed == null || parsed <= 0) {
-                    return 'El monto debe ser mayor a \$0';
-                  }
-                  return null;
-                },
-              ),
-            ),
-            const SizedBox(height: 16),
+          // Reset selected category if it no longer matches the type
+          if (_selectedCategory != null &&
+              !categoriesForType.any((c) => c.id == _selectedCategory!.id)) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) setState(() => _selectedCategory = null);
+            });
+          }
 
-            // --- Categoria ---
-            Semantics(
-              label: 'Categoria de la transaccion',
-              child: DropdownButtonFormField<_MockCategory>(
-                key: const ValueKey('add-edit-tx-category-dropdown'),
-                initialValue: _selectedCategory,
-                isExpanded: true,
-                decoration: InputDecoration(
-                  labelText: 'Categoria',
-                  prefixIcon: Icon(
-                    _selectedCategory?.icon ?? Icons.category_outlined,
-                  ),
-                  border: const OutlineInputBorder(),
-                  focusedBorder: const OutlineInputBorder(
-                    borderSide: BorderSide(color: AppColors.finance, width: 2),
+          return Form(
+            key: _formKey,
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                // --- Selector tipo: Ingreso / Gasto ---
+                Semantics(
+                  label: 'Tipo de transaccion',
+                  child: _TypeToggle(
+                    key: const ValueKey('add-edit-tx-type-toggle'),
+                    selectedType: _type,
+                    onChanged: _handleTypeChange,
                   ),
                 ),
-                hint: const Text('Seleccionar categoria'),
-                items: _categoriesForType
-                    .map(
-                      (cat) => DropdownMenuItem<_MockCategory>(
-                        key: ValueKey('category-option-${cat.id}'),
-                        value: cat,
-                        child: Row(
-                          children: [
-                            Icon(cat.icon, size: 18, color: AppColors.finance),
-                            const SizedBox(width: 8),
-                            Text(cat.name),
-                          ],
+                const SizedBox(height: 20),
+
+                // --- Importe ---
+                Semantics(
+                  label: 'Monto de la transaccion',
+                  textField: true,
+                  child: TextFormField(
+                    key: const ValueKey('add-edit-tx-amount-field'),
+                    controller: _amountController,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: false,
+                      signed: false,
+                    ),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                    ],
+                    decoration: const InputDecoration(
+                      labelText: 'Monto',
+                      hintText: '0',
+                      prefixIcon: Icon(Icons.attach_money_outlined),
+                      prefixText: '\$',
+                      border: OutlineInputBorder(),
+                      focusedBorder: OutlineInputBorder(
+                        borderSide:
+                            BorderSide(color: AppColors.finance, width: 2),
+                      ),
+                    ),
+                    style: theme.textTheme.headlineMedium?.copyWith(
+                      color: _type == 'expense'
+                          ? AppColors.error
+                          : AppColors.finance,
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return l10n.validationRequired;
+                      }
+                      final parsed = int.tryParse(value);
+                      if (parsed == null || parsed <= 0) {
+                        return 'El monto debe ser mayor a \$0';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // --- Categoria ---
+                Semantics(
+                  label: 'Categoria de la transaccion',
+                  child: DropdownButtonFormField<Category>(
+                    key: const ValueKey('add-edit-tx-category-dropdown'),
+                    value: _selectedCategory,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Categoria',
+                      prefixIcon: Icon(Icons.category_outlined),
+                      border: OutlineInputBorder(),
+                      focusedBorder: OutlineInputBorder(
+                        borderSide:
+                            BorderSide(color: AppColors.finance, width: 2),
+                      ),
+                    ),
+                    hint: const Text('Seleccionar categoria'),
+                    items: categoriesForType
+                        .map(
+                          (cat) => DropdownMenuItem<Category>(
+                            key: ValueKey('category-option-${cat.id}'),
+                            value: cat,
+                            child: Row(
+                              children: [
+                                Icon(Icons.label_outline,
+                                    size: 18, color: AppColors.finance),
+                                const SizedBox(width: 8),
+                                Text(cat.name),
+                              ],
+                            ),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (cat) =>
+                        setState(() => _selectedCategory = cat),
+                    validator: (value) {
+                      if (value == null) return l10n.validationRequired;
+                      return null;
+                    },
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // --- Fecha ---
+                Semantics(
+                  label: 'Fecha de la transaccion',
+                  button: true,
+                  child: InkWell(
+                    key: const ValueKey('add-edit-tx-date-picker'),
+                    onTap: _pickDate,
+                    borderRadius: BorderRadius.circular(4),
+                    child: InputDecorator(
+                      decoration: const InputDecoration(
+                        labelText: 'Fecha',
+                        prefixIcon: Icon(Icons.calendar_today_outlined),
+                        border: OutlineInputBorder(),
+                        focusedBorder: OutlineInputBorder(
+                          borderSide:
+                              BorderSide(color: AppColors.finance, width: 2),
                         ),
                       ),
-                    )
-                    .toList(),
-                onChanged: (cat) => setState(() => _selectedCategory = cat),
-                validator: (value) {
-                  if (value == null) return l10n.validationRequired;
-                  return null;
-                },
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // --- Fecha ---
-            Semantics(
-              label: 'Fecha de la transaccion',
-              button: true,
-              child: InkWell(
-                key: const ValueKey('add-edit-tx-date-picker'),
-                onTap: _pickDate,
-                borderRadius: BorderRadius.circular(4),
-                child: InputDecorator(
-                  decoration: const InputDecoration(
-                    labelText: 'Fecha',
-                    prefixIcon: Icon(Icons.calendar_today_outlined),
-                    border: OutlineInputBorder(),
-                    focusedBorder: OutlineInputBorder(
-                      borderSide:
-                          BorderSide(color: AppColors.finance, width: 2),
+                      child: Text(
+                        _formatDate(_selectedDate),
+                        style: theme.textTheme.bodyMedium,
+                      ),
                     ),
                   ),
-                  child: Text(
-                    _formatDate(_selectedDate),
-                    style: theme.textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 16),
+
+                // --- Nota (opcional) ---
+                Semantics(
+                  label: 'Nota opcional para la transaccion',
+                  textField: true,
+                  child: TextFormField(
+                    key: const ValueKey('add-edit-tx-note-field'),
+                    controller: _noteController,
+                    decoration: const InputDecoration(
+                      labelText: 'Nota (opcional)',
+                      hintText: 'Agrega un detalle...',
+                      prefixIcon: Icon(Icons.notes_outlined),
+                      border: OutlineInputBorder(),
+                    ),
+                    maxLength: 200,
+                    maxLines: 2,
+                    keyboardType: TextInputType.text,
+                    textCapitalization: TextCapitalization.sentences,
+                    validator: (value) {
+                      if (value != null && value.length > 200) {
+                        return l10n.validationMaxLength(200);
+                      }
+                      return null;
+                    },
                   ),
                 ),
-              ),
-            ),
-            const SizedBox(height: 16),
+                const SizedBox(height: 24),
 
-            // --- Nota (opcional) ---
-            Semantics(
-              label: 'Nota opcional para la transaccion',
-              textField: true,
-              child: TextFormField(
-                key: const ValueKey('add-edit-tx-note-field'),
-                controller: _noteController,
-                decoration: const InputDecoration(
-                  labelText: 'Nota (opcional)',
-                  hintText: 'Agrega un detalle...',
-                  prefixIcon: Icon(Icons.notes_outlined),
-                  border: OutlineInputBorder(),
-                ),
-                maxLength: 200,
-                maxLines: 2,
-                keyboardType: TextInputType.text,
-                textCapitalization: TextCapitalization.sentences,
-                validator: (value) {
-                  if (value != null && value.length > 200) {
-                    return l10n.validationMaxLength(200);
-                  }
-                  return null;
-                },
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // --- Boton guardar ---
-            Semantics(
-              label: _isEditing
-                  ? 'Guardar cambios de transaccion'
-                  : 'Guardar nueva transaccion',
-              button: true,
-              child: FilledButton.icon(
-                key: const ValueKey('add-edit-tx-save-button'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.finance,
-                  minimumSize: const Size.fromHeight(52),
-                ),
-                onPressed: _handleSave,
-                icon: const Icon(Icons.check),
-                label: Text(
-                  l10n.commonSave,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
+                // --- Boton guardar ---
+                Semantics(
+                  label: _isEditing
+                      ? 'Guardar cambios de transaccion'
+                      : 'Guardar nueva transaccion',
+                  button: true,
+                  child: FilledButton.icon(
+                    key: const ValueKey('add-edit-tx-save-button'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.finance,
+                      minimumSize: const Size.fromHeight(52),
+                    ),
+                    onPressed: _isSaving ? null : _handleSave,
+                    icon: _isSaving
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Icon(Icons.check),
+                    label: Text(
+                      _isSaving ? 'Guardando...' : l10n.commonSave,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }

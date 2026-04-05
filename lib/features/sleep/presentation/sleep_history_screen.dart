@@ -1,35 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_os/core/constants/app_colors.dart';
+import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
-
-// ---------------------------------------------------------------------------
-// Mock data (kept as fallback until real data stream is wired)
-// ---------------------------------------------------------------------------
-
-class _MockSleepEntry {
-  const _MockSleepEntry({
-    required this.date,
-    required this.hoursSlept,
-    required this.sleepScore,
-    required this.qualityRating,
-  });
-
-  final DateTime date;
-  final double hoursSlept;
-  final int sleepScore;
-  final int qualityRating;
-}
-
-final _mockWeekData = [
-  _MockSleepEntry(date: DateTime(2024, 1, 10), hoursSlept: 6.5, sleepScore: 72, qualityRating: 3),
-  _MockSleepEntry(date: DateTime(2024, 1, 11), hoursSlept: 7.0, sleepScore: 78, qualityRating: 4),
-  _MockSleepEntry(date: DateTime(2024, 1, 12), hoursSlept: 5.5, sleepScore: 60, qualityRating: 2),
-  _MockSleepEntry(date: DateTime(2024, 1, 13), hoursSlept: 8.0, sleepScore: 95, qualityRating: 5),
-  _MockSleepEntry(date: DateTime(2024, 1, 14), hoursSlept: 7.5, sleepScore: 88, qualityRating: 4),
-  _MockSleepEntry(date: DateTime(2024, 1, 15), hoursSlept: 6.0, sleepScore: 65, qualityRating: 3),
-  _MockSleepEntry(date: DateTime(2024, 1, 16), hoursSlept: 7.8, sleepScore: 90, qualityRating: 5),
-];
 
 const _dayLabels = ['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa', 'Do'];
 
@@ -60,25 +33,16 @@ class _SleepHistoryScreenState extends ConsumerState<SleepHistoryScreen>
     super.dispose();
   }
 
-  double get _avgScore {
-    if (_mockWeekData.isEmpty) return 0;
-    return _mockWeekData.map((e) => e.sleepScore).reduce((a, b) => a + b) /
-        _mockWeekData.length;
-  }
-
-  double get _avgHours {
-    if (_mockWeekData.isEmpty) return 0;
-    return _mockWeekData.map((e) => e.hoursSlept).reduce((a, b) => a + b) /
-        _mockWeekData.length;
-  }
-
   @override
   Widget build(BuildContext context) {
-    // Read provider to ensure connection is established even if UI shows mock
-    ref.watch(sleepNotifierProvider);
-
+    final dao = ref.watch(sleepDaoProvider);
     final theme = Theme.of(context);
     final sleepColor = AppColors.sleep;
+
+    final now = DateTime.now();
+    final weekStart = now.subtract(Duration(days: now.weekday - 1 + 6));
+    final monthStart = DateTime(now.year, now.month, 1);
+    final monthEnd = DateTime(now.year, now.month + 1, 0);
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -100,14 +64,43 @@ class _SleepHistoryScreenState extends ConsumerState<SleepHistoryScreen>
       body: TabBarView(
         controller: _tabController,
         children: [
-          _WeeklyView(
-            data: _mockWeekData,
-            avgScore: _avgScore,
-            avgHours: _avgHours,
-            sleepColor: sleepColor,
-            theme: theme,
+          StreamBuilder<List<SleepLog>>(
+            stream: dao.watchSleepLogs(weekStart, now),
+            builder: (context, snapshot) {
+              final data = snapshot.data ?? [];
+              final avgScore = data.isEmpty
+                  ? 0.0
+                  : data.map((e) => e.sleepScore).reduce((a, b) => a + b) /
+                      data.length;
+              final avgHours = data.isEmpty
+                  ? 0.0
+                  : data
+                          .map((e) =>
+                              e.wakeTime.difference(e.bedTime).inMinutes /
+                              60.0)
+                          .reduce((a, b) => a + b) /
+                      data.length;
+              return _WeeklyView(
+                data: data,
+                avgScore: avgScore,
+                avgHours: avgHours,
+                sleepColor: sleepColor,
+                theme: theme,
+              );
+            },
           ),
-          _MonthlyView(sleepColor: sleepColor, theme: theme),
+          StreamBuilder<List<SleepLog>>(
+            stream: dao.watchSleepLogs(monthStart, monthEnd),
+            builder: (context, snapshot) {
+              final data = snapshot.data ?? [];
+              return _MonthlyView(
+                data: data,
+                monthStart: monthStart,
+                sleepColor: sleepColor,
+                theme: theme,
+              );
+            },
+          ),
         ],
       ),
     );
@@ -127,7 +120,7 @@ class _WeeklyView extends StatelessWidget {
     required this.theme,
   });
 
-  final List<_MockSleepEntry> data;
+  final List<SleepLog> data;
   final double avgScore;
   final double avgHours;
   final Color sleepColor;
@@ -189,42 +182,54 @@ class _WeeklyView extends StatelessWidget {
                   const SizedBox(height: 16),
                   SizedBox(
                     height: 140,
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: List.generate(data.length, (i) {
-                        final entry = data[i];
-                        final barHeight = (entry.sleepScore / 100.0) * 120;
-                        return Expanded(
-                          child: Semantics(
-                            label: '${_dayLabels[i]}: ${entry.sleepScore} puntos',
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                Text(
-                                  '${entry.sleepScore}',
-                                  style: const TextStyle(fontSize: 9),
-                                ),
-                                const SizedBox(height: 2),
-                                Container(
-                                  key: ValueKey('bar-$i'),
-                                  height: barHeight,
-                                  margin: const EdgeInsets.symmetric(horizontal: 3),
-                                  decoration: BoxDecoration(
-                                    color: sleepColor.withAlpha(200),
-                                    borderRadius: BorderRadius.circular(4),
+                    child: data.isEmpty
+                        ? Center(
+                            child: Text(
+                              'Sin datos esta semana',
+                              style: theme.textTheme.bodySmall,
+                            ),
+                          )
+                        : Row(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: List.generate(data.length, (i) {
+                              final entry = data[i];
+                              final barHeight =
+                                  (entry.sleepScore / 100.0) * 120;
+                              final dayLabel =
+                                  _dayLabels[(entry.date.weekday - 1) % 7];
+                              return Expanded(
+                                child: Semantics(
+                                  label: '$dayLabel: ${entry.sleepScore} puntos',
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
+                                      Text(
+                                        '${entry.sleepScore}',
+                                        style: const TextStyle(fontSize: 9),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Container(
+                                        key: ValueKey('bar-$i'),
+                                        height: barHeight,
+                                        margin: const EdgeInsets.symmetric(
+                                            horizontal: 3),
+                                        decoration: BoxDecoration(
+                                          color: sleepColor.withAlpha(200),
+                                          borderRadius:
+                                              BorderRadius.circular(4),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        dayLabel,
+                                        style: theme.textTheme.labelSmall,
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  _dayLabels[i],
-                                  style: theme.textTheme.labelSmall,
-                                ),
-                              ],
-                            ),
+                              );
+                            }),
                           ),
-                        );
-                      }),
-                    ),
                   ),
                 ],
               ),
@@ -247,42 +252,51 @@ class _WeeklyView extends StatelessWidget {
                     style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 12),
-                  ...data.map((entry) {
-                    final pct = (entry.hoursSlept / 10.0).clamp(0.0, 1.0);
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Semantics(
-                        label: '${_dayLabels[data.indexOf(entry)]}: ${entry.hoursSlept} horas',
-                        child: Row(
-                          children: [
-                            SizedBox(
-                              width: 28,
-                              child: Text(
-                                _dayLabels[data.indexOf(entry)],
-                                style: theme.textTheme.labelSmall,
-                              ),
-                            ),
-                            Expanded(
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(4),
-                                child: LinearProgressIndicator(
-                                  value: pct,
-                                  minHeight: 16,
-                                  backgroundColor: sleepColor.withAlpha(30),
-                                  valueColor: AlwaysStoppedAnimation(sleepColor),
+                  if (data.isEmpty)
+                    Text('Sin datos', style: theme.textTheme.bodySmall)
+                  else
+                    ...data.map((entry) {
+                      final hours =
+                          entry.wakeTime.difference(entry.bedTime).inMinutes /
+                              60.0;
+                      final pct = (hours / 10.0).clamp(0.0, 1.0);
+                      final dayLabel =
+                          _dayLabels[(entry.date.weekday - 1) % 7];
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Semantics(
+                          label: '$dayLabel: ${hours.toStringAsFixed(1)} horas',
+                          child: Row(
+                            children: [
+                              SizedBox(
+                                width: 28,
+                                child: Text(
+                                  dayLabel,
+                                  style: theme.textTheme.labelSmall,
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              '${entry.hoursSlept}h',
-                              style: theme.textTheme.labelSmall,
-                            ),
-                          ],
+                              Expanded(
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(4),
+                                  child: LinearProgressIndicator(
+                                    value: pct,
+                                    minHeight: 16,
+                                    backgroundColor: sleepColor.withAlpha(30),
+                                    valueColor:
+                                        AlwaysStoppedAnimation(sleepColor),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                '${hours.toStringAsFixed(1)}h',
+                                style: theme.textTheme.labelSmall,
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    );
-                  }),
+                      );
+                    }),
                 ],
               ),
             ),
@@ -294,42 +308,61 @@ class _WeeklyView extends StatelessWidget {
           Card(
             key: const ValueKey('sleep-log-list-card'),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: ListView.separated(
-              physics: const NeverScrollableScrollPhysics(),
-              shrinkWrap: true,
-              itemCount: data.length,
-              separatorBuilder: (_, __) => const Divider(height: 1),
-              itemBuilder: (context, i) {
-                final entry = data[i];
-                return Semantics(
-                  label: 'Sueno del ${entry.date.day}/${entry.date.month}: ${entry.sleepScore} puntos',
-                  child: ListTile(
-                    key: ValueKey('sleep-log-item-$i'),
-                    leading: CircleAvatar(
-                      backgroundColor: sleepColor.withAlpha(30),
-                      child: Text(
-                        '${entry.sleepScore}',
-                        style: TextStyle(color: sleepColor, fontSize: 12, fontWeight: FontWeight.bold),
-                      ),
+            child: data.isEmpty
+                ? Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text(
+                      'No hay registros esta semana',
+                      style: theme.textTheme.bodyMedium,
+                      textAlign: TextAlign.center,
                     ),
-                    title: Text('${entry.date.day}/${entry.date.month}/${entry.date.year}'),
-                    subtitle: Text('${entry.hoursSlept}h • Calidad ${entry.qualityRating}/5'),
-                    trailing: Icon(
-                      entry.sleepScore >= 80
-                          ? Icons.check_circle
-                          : entry.sleepScore >= 60
-                              ? Icons.info_outline
-                              : Icons.warning_amber,
-                      color: entry.sleepScore >= 80
-                          ? AppColors.success
-                          : entry.sleepScore >= 60
-                              ? AppColors.warning
-                              : AppColors.error,
-                    ),
+                  )
+                : ListView.separated(
+                    physics: const NeverScrollableScrollPhysics(),
+                    shrinkWrap: true,
+                    itemCount: data.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (context, i) {
+                      final entry = data[i];
+                      final hours = entry.wakeTime
+                              .difference(entry.bedTime)
+                              .inMinutes /
+                          60.0;
+                      return Semantics(
+                        label:
+                            'Sueno del ${entry.date.day}/${entry.date.month}: ${entry.sleepScore} puntos',
+                        child: ListTile(
+                          key: ValueKey('sleep-log-item-$i'),
+                          leading: CircleAvatar(
+                            backgroundColor: sleepColor.withAlpha(30),
+                            child: Text(
+                              '${entry.sleepScore}',
+                              style: TextStyle(
+                                  color: sleepColor,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          title: Text(
+                              '${entry.date.day}/${entry.date.month}/${entry.date.year}'),
+                          subtitle: Text(
+                              '${hours.toStringAsFixed(1)}h • Calidad ${entry.qualityRating}/5'),
+                          trailing: Icon(
+                            entry.sleepScore >= 80
+                                ? Icons.check_circle
+                                : entry.sleepScore >= 60
+                                    ? Icons.info_outline
+                                    : Icons.warning_amber,
+                            color: entry.sleepScore >= 80
+                                ? AppColors.success
+                                : entry.sleepScore >= 60
+                                    ? AppColors.warning
+                                    : AppColors.error,
+                          ),
+                        ),
+                      );
+                    },
                   ),
-                );
-              },
-            ),
           ),
         ],
       ),
@@ -338,17 +371,34 @@ class _WeeklyView extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Monthly View (simplified calendar grid)
+// Monthly View (calendar grid with real data)
 // ---------------------------------------------------------------------------
 
 class _MonthlyView extends StatelessWidget {
-  const _MonthlyView({required this.sleepColor, required this.theme});
+  const _MonthlyView({
+    required this.data,
+    required this.monthStart,
+    required this.sleepColor,
+    required this.theme,
+  });
 
+  final List<SleepLog> data;
+  final DateTime monthStart;
   final Color sleepColor;
   final ThemeData theme;
 
   @override
   Widget build(BuildContext context) {
+    // Build a map of day → sleepScore for quick lookup
+    final scoreByDay = <int, int>{};
+    for (final entry in data) {
+      scoreByDay[entry.date.day] = entry.sleepScore;
+    }
+
+    final daysInMonth = DateUtils.getDaysInMonth(monthStart.year, monthStart.month);
+    final monthLabel =
+        '${_monthName(monthStart.month)} ${monthStart.year}';
+
     return SingleChildScrollView(
       key: const ValueKey('monthly-scroll'),
       padding: const EdgeInsets.all(16),
@@ -356,7 +406,7 @@ class _MonthlyView extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Enero 2024',
+            monthLabel,
             style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
             textAlign: TextAlign.center,
           ),
@@ -375,12 +425,11 @@ class _MonthlyView extends StatelessWidget {
                   mainAxisSpacing: 4,
                   crossAxisSpacing: 4,
                 ),
-                itemCount: 31,
+                itemCount: daysInMonth,
                 itemBuilder: (context, index) {
                   final day = index + 1;
-                  // Mock: some days have sleep data
-                  final hasData = day <= 16 && day % 2 == 0;
-                  final score = hasData ? (60 + (day * 3) % 40) : 0;
+                  final score = scoreByDay[day];
+                  final hasData = score != null;
                   final color = hasData
                       ? (score >= 80
                           ? AppColors.success
@@ -390,7 +439,9 @@ class _MonthlyView extends StatelessWidget {
                       : Colors.transparent;
 
                   return Semantics(
-                    label: hasData ? 'Dia $day: puntuacion $score' : 'Dia $day sin datos',
+                    label: hasData
+                        ? 'Dia $day: puntuacion $score'
+                        : 'Dia $day sin datos',
                     child: Container(
                       key: ValueKey('month-day-$day'),
                       decoration: BoxDecoration(
@@ -406,7 +457,8 @@ class _MonthlyView extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 11,
                             color: hasData ? color : Colors.grey,
-                            fontWeight: hasData ? FontWeight.bold : FontWeight.normal,
+                            fontWeight:
+                                hasData ? FontWeight.bold : FontWeight.normal,
                           ),
                         ),
                       ),
@@ -432,6 +484,22 @@ class _MonthlyView extends StatelessWidget {
       ),
     );
   }
+
+  String _monthName(int month) => const [
+        '',
+        'Enero',
+        'Febrero',
+        'Marzo',
+        'Abril',
+        'Mayo',
+        'Junio',
+        'Julio',
+        'Agosto',
+        'Septiembre',
+        'Octubre',
+        'Noviembre',
+        'Diciembre',
+      ][month];
 }
 
 class _LegendItem extends StatelessWidget {

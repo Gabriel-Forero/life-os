@@ -1,177 +1,60 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_os/core/constants/app_colors.dart';
+import 'package:life_os/core/database/app_database.dart';
+import 'package:life_os/core/providers/providers.dart';
 
 // ---------------------------------------------------------------------------
-// Enums y modelos mock
+// Muscle group filter labels (string-based, matching DB values)
 // ---------------------------------------------------------------------------
 
-enum _MuscleGroup {
-  pecho,
-  espalda,
-  hombros,
-  biceps,
-  triceps,
-  cuadriceps,
-  isquiotibiales,
-  gluteos,
-  pantorrillas,
-  core,
-  cardio,
-}
-
-extension _MuscleGroupLabel on _MuscleGroup {
-  String get label => switch (this) {
-        _MuscleGroup.pecho => 'Pecho',
-        _MuscleGroup.espalda => 'Espalda',
-        _MuscleGroup.hombros => 'Hombros',
-        _MuscleGroup.biceps => 'Biceps',
-        _MuscleGroup.triceps => 'Triceps',
-        _MuscleGroup.cuadriceps => 'Cuadriceps',
-        _MuscleGroup.isquiotibiales => 'Isquiotibiales',
-        _MuscleGroup.gluteos => 'Gluteos',
-        _MuscleGroup.pantorrillas => 'Pantorrillas',
-        _MuscleGroup.core => 'Core',
-        _MuscleGroup.cardio => 'Cardio',
-      };
-}
-
-enum _Equipment {
-  barra,
-  mancuernas,
-  maquina,
-  cable,
-  pesoLibre,
-  ninguno,
-}
-
-extension _EquipmentIcon on _Equipment {
-  IconData get icon => switch (this) {
-        _Equipment.barra => Icons.fitness_center,
-        _Equipment.mancuernas => Icons.sports_gymnastics,
-        _Equipment.maquina => Icons.precision_manufacturing_outlined,
-        _Equipment.cable => Icons.cable_outlined,
-        _Equipment.pesoLibre => Icons.sports_handball_outlined,
-        _Equipment.ninguno => Icons.accessibility_new_outlined,
-      };
-
-  String get label => switch (this) {
-        _Equipment.barra => 'Barra',
-        _Equipment.mancuernas => 'Mancuernas',
-        _Equipment.maquina => 'Maquina',
-        _Equipment.cable => 'Cable',
-        _Equipment.pesoLibre => 'Peso libre',
-        _Equipment.ninguno => 'Sin equipo',
-      };
-}
-
-class _MockExercise {
-  const _MockExercise({
-    required this.id,
-    required this.name,
-    required this.primaryMuscle,
-    required this.equipment,
-    this.isCustom = false,
-  });
-
-  final int id;
-  final String name;
-  final _MuscleGroup primaryMuscle;
-  final _Equipment equipment;
-  final bool isCustom;
-}
-
-const _mockExercises = [
-  _MockExercise(
-    id: 1,
-    name: 'Press de banca',
-    primaryMuscle: _MuscleGroup.pecho,
-    equipment: _Equipment.barra,
-  ),
-  _MockExercise(
-    id: 2,
-    name: 'Press inclinado con mancuernas',
-    primaryMuscle: _MuscleGroup.pecho,
-    equipment: _Equipment.mancuernas,
-  ),
-  _MockExercise(
-    id: 3,
-    name: 'Dominadas',
-    primaryMuscle: _MuscleGroup.espalda,
-    equipment: _Equipment.ninguno,
-  ),
-  _MockExercise(
-    id: 4,
-    name: 'Remo con barra',
-    primaryMuscle: _MuscleGroup.espalda,
-    equipment: _Equipment.barra,
-  ),
-  _MockExercise(
-    id: 5,
-    name: 'Press militar',
-    primaryMuscle: _MuscleGroup.hombros,
-    equipment: _Equipment.barra,
-  ),
-  _MockExercise(
-    id: 6,
-    name: 'Curl de biceps',
-    primaryMuscle: _MuscleGroup.biceps,
-    equipment: _Equipment.mancuernas,
-  ),
-  _MockExercise(
-    id: 7,
-    name: 'Extension de triceps en polea',
-    primaryMuscle: _MuscleGroup.triceps,
-    equipment: _Equipment.cable,
-  ),
-  _MockExercise(
-    id: 8,
-    name: 'Sentadilla',
-    primaryMuscle: _MuscleGroup.cuadriceps,
-    equipment: _Equipment.barra,
-  ),
-  _MockExercise(
-    id: 9,
-    name: 'Peso muerto rumano',
-    primaryMuscle: _MuscleGroup.isquiotibiales,
-    equipment: _Equipment.barra,
-  ),
-  _MockExercise(
-    id: 10,
-    name: 'Hip thrust',
-    primaryMuscle: _MuscleGroup.gluteos,
-    equipment: _Equipment.barra,
-  ),
-  _MockExercise(
-    id: 11,
-    name: 'Elevaciones de pantorrilla',
-    primaryMuscle: _MuscleGroup.pantorrillas,
-    equipment: _Equipment.maquina,
-  ),
-  _MockExercise(
-    id: 12,
-    name: 'Plancha',
-    primaryMuscle: _MuscleGroup.core,
-    equipment: _Equipment.ninguno,
-  ),
-  _MockExercise(
-    id: 13,
-    name: 'Correr en cinta',
-    primaryMuscle: _MuscleGroup.cardio,
-    equipment: _Equipment.maquina,
-  ),
-  _MockExercise(
-    id: 14,
-    name: 'Press de pecho en maquina',
-    primaryMuscle: _MuscleGroup.pecho,
-    equipment: _Equipment.maquina,
-  ),
-  _MockExercise(
-    id: 15,
-    name: 'Jalones al pecho en polea',
-    primaryMuscle: _MuscleGroup.espalda,
-    equipment: _Equipment.cable,
-  ),
+const _muscleGroups = [
+  'pecho',
+  'espalda',
+  'hombros',
+  'biceps',
+  'triceps',
+  'cuadriceps',
+  'isquiotibiales',
+  'gluteos',
+  'pantorrillas',
+  'core',
+  'cardio',
 ];
+
+String _muscleLabel(String muscle) => switch (muscle) {
+      'pecho' => 'Pecho',
+      'espalda' => 'Espalda',
+      'hombros' => 'Hombros',
+      'biceps' => 'Biceps',
+      'triceps' => 'Triceps',
+      'cuadriceps' => 'Cuadriceps',
+      'isquiotibiales' => 'Isquiotibiales',
+      'gluteos' => 'Gluteos',
+      'pantorrillas' => 'Pantorrillas',
+      'core' => 'Core',
+      'cardio' => 'Cardio',
+      _ => muscle,
+    };
+
+const _equipmentOptions = [
+  'barra',
+  'mancuernas',
+  'maquina',
+  'cable',
+  'peso_libre',
+  'ninguno',
+];
+
+String _equipmentLabel(String eq) => switch (eq) {
+      'barra' => 'Barra',
+      'mancuernas' => 'Mancuernas',
+      'maquina' => 'Maquina',
+      'cable' => 'Cable',
+      'peso_libre' => 'Peso libre',
+      'ninguno' => 'Sin equipo',
+      _ => eq,
+    };
 
 // ---------------------------------------------------------------------------
 // Pantalla: biblioteca de ejercicios
@@ -180,21 +63,20 @@ const _mockExercises = [
 /// Biblioteca de ejercicios con busqueda, filtros por grupo muscular y
 /// listado de tarjetas de ejercicio.
 ///
-/// Shell de presentacion — la integracion con Riverpod se realizara en un
-/// paso posterior.
-///
 /// Accesibilidad: A11Y-GYM-01 — todos los elementos interactivos tienen
 /// etiquetas semanticas.
-class ExerciseLibraryScreen extends StatefulWidget {
+class ExerciseLibraryScreen extends ConsumerStatefulWidget {
   const ExerciseLibraryScreen({super.key});
 
   @override
-  State<ExerciseLibraryScreen> createState() => _ExerciseLibraryScreenState();
+  ConsumerState<ExerciseLibraryScreen> createState() =>
+      _ExerciseLibraryScreenState();
 }
 
-class _ExerciseLibraryScreenState extends State<ExerciseLibraryScreen> {
+class _ExerciseLibraryScreenState
+    extends ConsumerState<ExerciseLibraryScreen> {
   final _searchController = TextEditingController();
-  _MuscleGroup? _selectedMuscle;
+  String? _selectedMuscle;
   String _searchQuery = '';
 
   @override
@@ -203,20 +85,10 @@ class _ExerciseLibraryScreenState extends State<ExerciseLibraryScreen> {
     super.dispose();
   }
 
-  List<_MockExercise> get _filteredExercises {
-    return _mockExercises.where((e) {
-      final matchesSearch = _searchQuery.isEmpty ||
-          e.name.toLowerCase().contains(_searchQuery.toLowerCase());
-      final matchesMuscle =
-          _selectedMuscle == null || e.primaryMuscle == _selectedMuscle;
-      return matchesSearch && matchesMuscle;
-    }).toList();
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final filtered = _filteredExercises;
+    final dao = ref.watch(gymDaoProvider);
 
     return Scaffold(
       key: const ValueKey('exercise-library-screen'),
@@ -234,166 +106,177 @@ class _ExerciseLibraryScreenState extends State<ExerciseLibraryScreen> {
             child: IconButton(
               key: const ValueKey('exercise-library-sort-button'),
               icon: const Icon(Icons.sort_outlined),
-              onPressed: () {
-                // TODO: mostrar opciones de ordenamiento cuando se conecte
-              },
+              onPressed: () {},
               tooltip: 'Ordenar',
             ),
           ),
         ],
       ),
-      body: Column(
-        children: [
-          // --- Barra de busqueda ---
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: Semantics(
-              label: 'Buscar ejercicio',
-              textField: true,
-              child: SearchBar(
-                key: const ValueKey('exercise-library-search-bar'),
-                controller: _searchController,
-                hintText: 'Buscar ejercicio...',
-                leading: const Icon(Icons.search_outlined),
-                trailing: [
-                  if (_searchQuery.isNotEmpty)
-                    Semantics(
-                      label: 'Limpiar busqueda',
-                      button: true,
-                      child: IconButton(
-                        key: const ValueKey('exercise-library-search-clear'),
-                        icon: const Icon(Icons.close),
-                        onPressed: () {
+      body: StreamBuilder<List<Exercise>>(
+        stream: dao.watchExercises(
+          muscleGroup: _selectedMuscle,
+          query: _searchQuery.isEmpty ? null : _searchQuery,
+        ),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final exercises = snapshot.data ?? [];
+
+          return Column(
+            children: [
+              // --- Barra de busqueda ---
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: Semantics(
+                  label: 'Buscar ejercicio',
+                  textField: true,
+                  child: SearchBar(
+                    key: const ValueKey('exercise-library-search-bar'),
+                    controller: _searchController,
+                    hintText: 'Buscar ejercicio...',
+                    leading: const Icon(Icons.search_outlined),
+                    trailing: [
+                      if (_searchQuery.isNotEmpty)
+                        Semantics(
+                          label: 'Limpiar busqueda',
+                          button: true,
+                          child: IconButton(
+                            key: const ValueKey(
+                                'exercise-library-search-clear'),
+                            icon: const Icon(Icons.close),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() => _searchQuery = '');
+                            },
+                          ),
+                        ),
+                    ],
+                    onChanged: (value) =>
+                        setState(() => _searchQuery = value),
+                    backgroundColor: WidgetStateProperty.all(
+                      theme.colorScheme.surfaceContainerHighest,
+                    ),
+                    elevation: WidgetStateProperty.all(0),
+                  ),
+                ),
+              ),
+
+              // --- Chips de filtro por grupo muscular ---
+              SizedBox(
+                height: 44,
+                child: Semantics(
+                  label: 'Filtrar por grupo muscular',
+                  child: ListView(
+                    key: const ValueKey('exercise-library-muscle-filter'),
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: Semantics(
+                          selected: _selectedMuscle == null,
+                          button: true,
+                          label: 'Todos los grupos musculares',
+                          child: FilterChip(
+                            key: const ValueKey('muscle-chip-all'),
+                            label: const Text('Todos'),
+                            selected: _selectedMuscle == null,
+                            onSelected: (_) =>
+                                setState(() => _selectedMuscle = null),
+                            selectedColor: AppColors.gym.withAlpha(30),
+                            checkmarkColor: AppColors.gym,
+                            labelStyle: TextStyle(
+                              color: _selectedMuscle == null
+                                  ? AppColors.gym
+                                  : null,
+                              fontWeight: _selectedMuscle == null
+                                  ? FontWeight.w600
+                                  : FontWeight.w400,
+                            ),
+                          ),
+                        ),
+                      ),
+                      ..._muscleGroups.map(
+                        (muscle) => Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: Semantics(
+                            selected: _selectedMuscle == muscle,
+                            button: true,
+                            label: 'Filtrar por ${_muscleLabel(muscle)}',
+                            child: FilterChip(
+                              key: ValueKey('muscle-chip-$muscle'),
+                              label: Text(_muscleLabel(muscle)),
+                              selected: _selectedMuscle == muscle,
+                              onSelected: (_) => setState(
+                                () => _selectedMuscle =
+                                    _selectedMuscle == muscle ? null : muscle,
+                              ),
+                              selectedColor: AppColors.gym.withAlpha(30),
+                              checkmarkColor: AppColors.gym,
+                              labelStyle: TextStyle(
+                                color: _selectedMuscle == muscle
+                                    ? AppColors.gym
+                                    : null,
+                                fontWeight: _selectedMuscle == muscle
+                                    ? FontWeight.w600
+                                    : FontWeight.w400,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 4),
+
+              // --- Conteo de resultados ---
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+                child: Row(
+                  children: [
+                    Text(
+                      '${exercises.length} ejercicio${exercises.length == 1 ? '' : 's'}',
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+
+              // --- Lista de ejercicios ---
+              Expanded(
+                child: exercises.isEmpty
+                    ? _EmptySearchState(
+                        key: const ValueKey('exercise-library-empty'),
+                        query: _searchQuery,
+                        selectedMuscle: _selectedMuscle,
+                        onClearFilters: () => setState(() {
+                          _selectedMuscle = null;
+                          _searchQuery = '';
                           _searchController.clear();
-                          setState(() => _searchQuery = '');
+                        }),
+                      )
+                    : ListView.separated(
+                        key: const ValueKey('exercise-library-list'),
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+                        itemCount: exercises.length,
+                        separatorBuilder: (_, __) =>
+                            const Divider(height: 1),
+                        itemBuilder: (context, index) {
+                          final exercise = exercises[index];
+                          return _ExerciseCard(
+                            key: ValueKey('exercise-card-${exercise.id}'),
+                            exercise: exercise,
+                            onTap: () {},
+                          );
                         },
                       ),
-                    ),
-                ],
-                onChanged: (value) => setState(() => _searchQuery = value),
-                backgroundColor: WidgetStateProperty.all(
-                  theme.colorScheme.surfaceContainerHighest,
-                ),
-                elevation: WidgetStateProperty.all(0),
               ),
-            ),
-          ),
-
-          // --- Chips de filtro por grupo muscular ---
-          SizedBox(
-            height: 44,
-            child: Semantics(
-              label: 'Filtrar por grupo muscular',
-              child: ListView(
-                key: const ValueKey('exercise-library-muscle-filter'),
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: Semantics(
-                      selected: _selectedMuscle == null,
-                      button: true,
-                      label: 'Todos los grupos musculares',
-                      child: FilterChip(
-                        key: const ValueKey('muscle-chip-all'),
-                        label: const Text('Todos'),
-                        selected: _selectedMuscle == null,
-                        onSelected: (_) =>
-                            setState(() => _selectedMuscle = null),
-                        selectedColor: AppColors.gym.withAlpha(30),
-                        checkmarkColor: AppColors.gym,
-                        labelStyle: TextStyle(
-                          color: _selectedMuscle == null
-                              ? AppColors.gym
-                              : null,
-                          fontWeight: _selectedMuscle == null
-                              ? FontWeight.w600
-                              : FontWeight.w400,
-                        ),
-                      ),
-                    ),
-                  ),
-                  ..._MuscleGroup.values.map(
-                    (muscle) => Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: Semantics(
-                        selected: _selectedMuscle == muscle,
-                        button: true,
-                        label: 'Filtrar por ${muscle.label}',
-                        child: FilterChip(
-                          key: ValueKey('muscle-chip-${muscle.name}'),
-                          label: Text(muscle.label),
-                          selected: _selectedMuscle == muscle,
-                          onSelected: (_) => setState(
-                            () => _selectedMuscle =
-                                _selectedMuscle == muscle ? null : muscle,
-                          ),
-                          selectedColor: AppColors.gym.withAlpha(30),
-                          checkmarkColor: AppColors.gym,
-                          labelStyle: TextStyle(
-                            color: _selectedMuscle == muscle
-                                ? AppColors.gym
-                                : null,
-                            fontWeight: _selectedMuscle == muscle
-                                ? FontWeight.w600
-                                : FontWeight.w400,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 4),
-
-          // --- Conteo de resultados ---
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-            child: Row(
-              children: [
-                Text(
-                  '${filtered.length} ejercicio${filtered.length == 1 ? '' : 's'}',
-                  style: theme.textTheme.bodySmall,
-                ),
-              ],
-            ),
-          ),
-
-          // --- Lista de ejercicios ---
-          Expanded(
-            child: filtered.isEmpty
-                ? _EmptySearchState(
-                    key: const ValueKey('exercise-library-empty'),
-                    query: _searchQuery,
-                    selectedMuscle: _selectedMuscle,
-                    onClearFilters: () => setState(() {
-                      _selectedMuscle = null;
-                      _searchQuery = '';
-                      _searchController.clear();
-                    }),
-                  )
-                : ListView.separated(
-                    key: const ValueKey('exercise-library-list'),
-                    padding:
-                        const EdgeInsets.fromLTRB(16, 8, 16, 100),
-                    itemCount: filtered.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1),
-                    itemBuilder: (context, index) {
-                      final exercise = filtered[index];
-                      return _ExerciseCard(
-                        key: ValueKey('exercise-card-${exercise.id}'),
-                        exercise: exercise,
-                        onTap: () {
-                          // TODO: abrir detalle del ejercicio cuando se conecte
-                        },
-                      );
-                    },
-                  ),
-          ),
-        ],
+            ],
+          );
+        },
       ),
       floatingActionButton: Semantics(
         label: 'Agregar ejercicio personalizado',
@@ -402,10 +285,7 @@ class _ExerciseLibraryScreenState extends State<ExerciseLibraryScreen> {
           key: const ValueKey('exercise-library-add-fab'),
           backgroundColor: AppColors.gym,
           foregroundColor: Colors.white,
-          onPressed: () {
-            // TODO: abrir formulario de ejercicio personalizado cuando se conecte
-            _showAddCustomExerciseDialog(context);
-          },
+          onPressed: () => _showAddCustomExerciseDialog(context),
           icon: const Icon(Icons.add),
           label: const Text('Personalizado'),
           tooltip: 'Agregar ejercicio personalizado',
@@ -417,7 +297,7 @@ class _ExerciseLibraryScreenState extends State<ExerciseLibraryScreen> {
   void _showAddCustomExerciseDialog(BuildContext context) {
     showDialog<void>(
       context: context,
-      builder: (ctx) => const _AddCustomExerciseDialog(),
+      builder: (ctx) => _AddCustomExerciseDialog(ref: ref),
     );
   }
 }
@@ -433,26 +313,28 @@ class _ExerciseCard extends StatelessWidget {
     required this.onTap,
   });
 
-  final _MockExercise exercise;
+  final Exercise exercise;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final muscleLabel = _muscleLabel(exercise.primaryMuscle);
+    final equipLabel =
+        exercise.equipment != null ? _equipmentLabel(exercise.equipment!) : '';
 
     return Semantics(
-      label:
-          '${exercise.name}, ${exercise.primaryMuscle.label}, ${exercise.equipment.label}',
+      label: '${exercise.name}, $muscleLabel, $equipLabel',
       button: true,
       child: ListTile(
         key: ValueKey('exercise-item-${exercise.id}'),
         onTap: onTap,
         leading: Semantics(
-          label: 'Equipo: ${exercise.equipment.label}',
+          label: 'Equipo: $equipLabel',
           child: CircleAvatar(
             backgroundColor: AppColors.gym.withAlpha(25),
-            child: Icon(
-              exercise.equipment.icon,
+            child: const Icon(
+              Icons.fitness_center,
               color: AppColors.gym,
               size: 20,
             ),
@@ -475,7 +357,7 @@ class _ExerciseCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Text(
-                exercise.primaryMuscle.label,
+                muscleLabel,
                 style: TextStyle(
                   fontSize: 11,
                   color: AppColors.gym,
@@ -483,11 +365,13 @@ class _ExerciseCard extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(width: 6),
-            Text(
-              exercise.equipment.label,
-              style: theme.textTheme.bodySmall,
-            ),
+            if (equipLabel.isNotEmpty) ...[
+              const SizedBox(width: 6),
+              Text(
+                equipLabel,
+                style: theme.textTheme.bodySmall,
+              ),
+            ],
             if (exercise.isCustom) ...[
               const SizedBox(width: 6),
               Container(
@@ -528,7 +412,7 @@ class _EmptySearchState extends StatelessWidget {
   });
 
   final String query;
-  final _MuscleGroup? selectedMuscle;
+  final String? selectedMuscle;
   final VoidCallback onClearFilters;
 
   @override
@@ -583,7 +467,9 @@ class _EmptySearchState extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _AddCustomExerciseDialog extends StatefulWidget {
-  const _AddCustomExerciseDialog();
+  const _AddCustomExerciseDialog({required this.ref});
+
+  final WidgetRef ref;
 
   @override
   State<_AddCustomExerciseDialog> createState() =>
@@ -593,13 +479,32 @@ class _AddCustomExerciseDialog extends StatefulWidget {
 class _AddCustomExerciseDialogState extends State<_AddCustomExerciseDialog> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  _MuscleGroup? _selectedMuscle;
-  _Equipment? _selectedEquipment;
+  String? _selectedMuscle;
+  String? _selectedEquipment;
+  bool _isSaving = false;
 
   @override
   void dispose() {
     _nameController.dispose();
     super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _isSaving = true);
+
+    final notifier = widget.ref.read(gymNotifierProvider);
+    await notifier.addCustomExercise(
+      name: _nameController.text.trim(),
+      primaryMuscle: _selectedMuscle!,
+      equipment: _selectedEquipment,
+    );
+
+    if (mounted) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Guardado!')));
+      Navigator.of(context).pop();
+    }
   }
 
   @override
@@ -625,16 +530,15 @@ class _AddCustomExerciseDialogState extends State<_AddCustomExerciseDialog> {
                     border: OutlineInputBorder(),
                   ),
                   textCapitalization: TextCapitalization.sentences,
-                  validator: (v) =>
-                      (v == null || v.trim().isEmpty)
-                          ? 'El nombre es requerido'
-                          : null,
+                  validator: (v) => (v == null || v.trim().isEmpty)
+                      ? 'El nombre es requerido'
+                      : null,
                 ),
               ),
               const SizedBox(height: 12),
               Semantics(
                 label: 'Grupo muscular principal',
-                child: DropdownButtonFormField<_MuscleGroup>(
+                child: DropdownButtonFormField<String>(
                   key: const ValueKey('custom-exercise-muscle-dropdown'),
                   value: _selectedMuscle,
                   decoration: const InputDecoration(
@@ -642,12 +546,12 @@ class _AddCustomExerciseDialogState extends State<_AddCustomExerciseDialog> {
                     border: OutlineInputBorder(),
                   ),
                   hint: const Text('Seleccionar'),
-                  items: _MuscleGroup.values
+                  items: _muscleGroups
                       .map(
                         (m) => DropdownMenuItem(
-                          key: ValueKey('muscle-option-${m.name}'),
+                          key: ValueKey('muscle-option-$m'),
                           value: m,
-                          child: Text(m.label),
+                          child: Text(_muscleLabel(m)),
                         ),
                       )
                       .toList(),
@@ -659,7 +563,7 @@ class _AddCustomExerciseDialogState extends State<_AddCustomExerciseDialog> {
               const SizedBox(height: 12),
               Semantics(
                 label: 'Equipo requerido',
-                child: DropdownButtonFormField<_Equipment>(
+                child: DropdownButtonFormField<String>(
                   key: const ValueKey('custom-exercise-equipment-dropdown'),
                   value: _selectedEquipment,
                   decoration: const InputDecoration(
@@ -667,16 +571,17 @@ class _AddCustomExerciseDialogState extends State<_AddCustomExerciseDialog> {
                     border: OutlineInputBorder(),
                   ),
                   hint: const Text('Seleccionar'),
-                  items: _Equipment.values
+                  items: _equipmentOptions
                       .map(
                         (e) => DropdownMenuItem(
-                          key: ValueKey('equipment-option-${e.name}'),
+                          key: ValueKey('equipment-option-$e'),
                           value: e,
                           child: Row(
                             children: [
-                              Icon(e.icon, size: 16, color: AppColors.gym),
+                              const Icon(Icons.fitness_center,
+                                  size: 16, color: AppColors.gym),
                               const SizedBox(width: 8),
-                              Text(e.label),
+                              Text(_equipmentLabel(e)),
                             ],
                           ),
                         ),
@@ -699,13 +604,8 @@ class _AddCustomExerciseDialogState extends State<_AddCustomExerciseDialog> {
         FilledButton(
           key: const ValueKey('custom-exercise-save-button'),
           style: FilledButton.styleFrom(backgroundColor: AppColors.gym),
-          onPressed: () {
-            if (_formKey.currentState!.validate()) {
-              // TODO: llamar a GymNotifier.addCustomExercise cuando se conecte
-              Navigator.of(context).pop();
-            }
-          },
-          child: const Text('Guardar'),
+          onPressed: _isSaving ? null : _save,
+          child: Text(_isSaving ? 'Guardando...' : 'Guardar'),
         ),
       ],
     );

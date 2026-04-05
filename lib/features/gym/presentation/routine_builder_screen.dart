@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_os/core/constants/app_colors.dart';
+import 'package:life_os/core/providers/providers.dart';
+import 'package:life_os/features/gym/domain/gym_input.dart';
 
 // ---------------------------------------------------------------------------
-// Modelos mock
+// Modelo local de ejercicio en construccion de rutina
 // ---------------------------------------------------------------------------
 
-class _MockExerciseRef {
-  _MockExerciseRef({
+class _ExerciseRef {
+  _ExerciseRef({
     required this.id,
     required this.name,
     required this.primaryMuscle,
@@ -24,20 +27,6 @@ class _MockExerciseRef {
   int restSeconds;
 }
 
-/// Ejercicios disponibles en la biblioteca (subset para el picker).
-const _libraryExercises = [
-  (id: 1, name: 'Press de banca', muscle: 'Pecho'),
-  (id: 2, name: 'Dominadas', muscle: 'Espalda'),
-  (id: 3, name: 'Press militar', muscle: 'Hombros'),
-  (id: 4, name: 'Curl de biceps', muscle: 'Biceps'),
-  (id: 5, name: 'Extension de triceps en polea', muscle: 'Triceps'),
-  (id: 6, name: 'Sentadilla', muscle: 'Cuadriceps'),
-  (id: 7, name: 'Peso muerto rumano', muscle: 'Isquiotibiales'),
-  (id: 8, name: 'Hip thrust', muscle: 'Gluteos'),
-  (id: 9, name: 'Plancha', muscle: 'Core'),
-  (id: 10, name: 'Correr en cinta', muscle: 'Cardio'),
-];
-
 // ---------------------------------------------------------------------------
 // Pantalla: constructor de rutina
 // ---------------------------------------------------------------------------
@@ -45,12 +34,9 @@ const _libraryExercises = [
 /// Constructor de rutinas con nombre, descripcion, lista reordenable de
 /// ejercicios y configuracion de series/repeticiones/descanso por ejercicio.
 ///
-/// Shell de presentacion — la integracion con Riverpod se realizara en un
-/// paso posterior.
-///
 /// Accesibilidad: A11Y-GYM-02 — todos los campos y botones tienen etiquetas
 /// semanticas.
-class RoutineBuilderScreen extends StatefulWidget {
+class RoutineBuilderScreen extends ConsumerStatefulWidget {
   const RoutineBuilderScreen({
     super.key,
     this.routineId,
@@ -60,14 +46,16 @@ class RoutineBuilderScreen extends StatefulWidget {
   final int? routineId;
 
   @override
-  State<RoutineBuilderScreen> createState() => _RoutineBuilderScreenState();
+  ConsumerState<RoutineBuilderScreen> createState() =>
+      _RoutineBuilderScreenState();
 }
 
-class _RoutineBuilderScreenState extends State<RoutineBuilderScreen> {
+class _RoutineBuilderScreenState extends ConsumerState<RoutineBuilderScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
-  final List<_MockExerciseRef> _exercises = [];
+  final List<_ExerciseRef> _exercises = [];
+  bool _isSaving = false;
 
   bool get _isEditing => widget.routineId != null;
 
@@ -78,7 +66,7 @@ class _RoutineBuilderScreenState extends State<RoutineBuilderScreen> {
     super.dispose();
   }
 
-  void _handleSave() {
+  Future<void> _handleSave() async {
     if (!_formKey.currentState!.validate()) return;
     if (_exercises.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -89,8 +77,33 @@ class _RoutineBuilderScreenState extends State<RoutineBuilderScreen> {
       );
       return;
     }
-    // TODO: llamar a GymNotifier.saveRoutine cuando se conecte
-    Navigator.of(context).pop();
+
+    setState(() => _isSaving = true);
+
+    final notifier = ref.read(gymNotifierProvider);
+    await notifier.createRoutine(RoutineInput(
+      name: _nameController.text.trim(),
+      description: _descriptionController.text.trim().isEmpty
+          ? null
+          : _descriptionController.text.trim(),
+      exercises: _exercises
+          .map(
+            (e) => RoutineExerciseInput(
+              exerciseId: e.id,
+              defaultSets: e.sets,
+              defaultReps: e.reps,
+              restSeconds: e.restSeconds,
+            ),
+          )
+          .toList(),
+    ));
+
+    if (mounted) {
+      setState(() => _isSaving = false);
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Guardado!')));
+      Navigator.of(context).pop();
+    }
   }
 
   void _removeExercise(int index) {
@@ -129,7 +142,7 @@ class _RoutineBuilderScreenState extends State<RoutineBuilderScreen> {
       }
       setState(() {
         _exercises.add(
-          _MockExerciseRef(
+          _ExerciseRef(
             id: result.id,
             name: result.name,
             primaryMuscle: result.muscle,
@@ -171,12 +184,12 @@ class _RoutineBuilderScreenState extends State<RoutineBuilderScreen> {
             button: true,
             child: TextButton.icon(
               key: const ValueKey('routine-builder-save-button'),
-              onPressed: _handleSave,
+              onPressed: _isSaving ? null : _handleSave,
               style: TextButton.styleFrom(foregroundColor: AppColors.gym),
               icon: const Icon(Icons.check),
-              label: const Text(
-                'Guardar',
-                style: TextStyle(fontWeight: FontWeight.w600),
+              label: Text(
+                _isSaving ? 'Guardando...' : 'Guardar',
+                style: const TextStyle(fontWeight: FontWeight.w600),
               ),
             ),
           ),
@@ -321,7 +334,7 @@ class _ExerciseRow extends StatelessWidget {
     required this.onRestChanged,
   });
 
-  final _MockExerciseRef exercise;
+  final _ExerciseRef exercise;
   final int index;
   final VoidCallback onRemove;
   final ValueChanged<int> onSetsChanged;
@@ -588,14 +601,15 @@ class _EmptyExerciseList extends StatelessWidget {
 // Bottom sheet: selector de ejercicio de la biblioteca
 // ---------------------------------------------------------------------------
 
-class _ExercisePickerSheet extends StatefulWidget {
+class _ExercisePickerSheet extends ConsumerStatefulWidget {
   const _ExercisePickerSheet();
 
   @override
-  State<_ExercisePickerSheet> createState() => _ExercisePickerSheetState();
+  ConsumerState<_ExercisePickerSheet> createState() =>
+      _ExercisePickerSheetState();
 }
 
-class _ExercisePickerSheetState extends State<_ExercisePickerSheet> {
+class _ExercisePickerSheetState extends ConsumerState<_ExercisePickerSheet> {
   final _searchController = TextEditingController();
   String _query = '';
 
@@ -608,13 +622,7 @@ class _ExercisePickerSheetState extends State<_ExercisePickerSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final filtered = _libraryExercises
-        .where(
-          (e) =>
-              _query.isEmpty ||
-              e.name.toLowerCase().contains(_query.toLowerCase()),
-        )
-        .toList();
+    final dao = ref.watch(gymDaoProvider);
 
     return DraggableScrollableSheet(
       initialChildSize: 0.75,
@@ -661,38 +669,50 @@ class _ExercisePickerSheetState extends State<_ExercisePickerSheet> {
             ),
             const SizedBox(height: 8),
             Expanded(
-              child: ListView.separated(
-                key: const ValueKey('exercise-picker-list'),
-                controller: scrollController,
-                itemCount: filtered.length,
-                separatorBuilder: (_, __) => const Divider(height: 1),
-                itemBuilder: (context, index) {
-                  final ex = filtered[index];
-                  return Semantics(
-                    label: '${ex.name}, ${ex.muscle}',
-                    button: true,
-                    child: ListTile(
-                      key: ValueKey('exercise-picker-item-${ex.id}'),
-                      leading: CircleAvatar(
-                        radius: 16,
-                        backgroundColor: AppColors.gym.withAlpha(25),
-                        child: const Icon(
-                          Icons.fitness_center,
-                          color: AppColors.gym,
-                          size: 16,
+              child: StreamBuilder(
+                stream: dao.watchExercises(
+                    query: _query.isEmpty ? null : _query),
+                builder: (context, snapshot) {
+                  final exercises = snapshot.data ?? [];
+                  return ListView.separated(
+                    key: const ValueKey('exercise-picker-list'),
+                    controller: scrollController,
+                    itemCount: exercises.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      final ex = exercises[index];
+                      return Semantics(
+                        label:
+                            '${ex.name}, ${ex.primaryMuscle}',
+                        button: true,
+                        child: ListTile(
+                          key: ValueKey('exercise-picker-item-${ex.id}'),
+                          leading: CircleAvatar(
+                            radius: 16,
+                            backgroundColor: AppColors.gym.withAlpha(25),
+                            child: const Icon(
+                              Icons.fitness_center,
+                              color: AppColors.gym,
+                              size: 16,
+                            ),
+                          ),
+                          title: Text(ex.name),
+                          subtitle: Text(
+                            ex.primaryMuscle,
+                            style: const TextStyle(
+                              color: AppColors.gym,
+                              fontSize: 12,
+                            ),
+                          ),
+                          trailing: const Icon(Icons.add_circle_outline),
+                          onTap: () => Navigator.of(context).pop((
+                            id: ex.id,
+                            name: ex.name,
+                            muscle: ex.primaryMuscle,
+                          )),
                         ),
-                      ),
-                      title: Text(ex.name),
-                      subtitle: Text(
-                        ex.muscle,
-                        style: const TextStyle(
-                          color: AppColors.gym,
-                          fontSize: 12,
-                        ),
-                      ),
-                      trailing: const Icon(Icons.add_circle_outline),
-                      onTap: () => Navigator.of(context).pop(ex),
-                    ),
+                      );
+                    },
                   );
                 },
               ),

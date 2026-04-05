@@ -1,13 +1,15 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_os/core/constants/app_colors.dart';
+import 'package:life_os/core/providers/providers.dart';
 import 'package:life_os/core/widgets/chart_card.dart';
 import 'package:life_os/core/widgets/stat_card.dart';
 import 'package:life_os/features/finance/domain/amount_formatting.dart';
 import 'package:intl/intl.dart';
 
 // ---------------------------------------------------------------------------
-// Enums y modelos mock
+// Enums y modelos
 // ---------------------------------------------------------------------------
 
 /// Rango de fechas seleccionable para el dashboard.
@@ -20,30 +22,6 @@ extension _DateRangeLabel on _DateRange {
         _DateRange.year => 'Ano',
       };
 }
-
-class _MockSummary {
-  const _MockSummary({
-    required this.incomeCents,
-    required this.expenseCents,
-  });
-
-  final int incomeCents;
-  final int expenseCents;
-
-  int get balanceCents => incomeCents - expenseCents;
-}
-
-const _mockSummaries = {
-  _DateRange.week: _MockSummary(incomeCents: 0, expenseCents: 12500000),
-  _DateRange.month: _MockSummary(
-    incomeCents: 300000000,
-    expenseCents: 85000000,
-  ),
-  _DateRange.year: _MockSummary(
-    incomeCents: 3600000000,
-    expenseCents: 1020000000,
-  ),
-};
 
 class _MockPieSlice {
   const _MockPieSlice({
@@ -95,27 +73,44 @@ const _mockLinePoints = [0.0, 2.8, 2.6, 2.7, 2.5, 2.6, 2.15];
 
 /// Dashboard de finanzas con resumen, grafico de pastel, barras y linea.
 ///
-/// Shell de presentacion — la integracion con Riverpod se realizara en un
-/// paso posterior.
-///
 /// Accesibilidad: A11Y-FIN-03 — todos los graficos tienen Semantics con
 /// descripcion textual alternativa del contenido representado.
-class FinanceDashboardScreen extends StatefulWidget {
+class FinanceDashboardScreen extends ConsumerStatefulWidget {
   const FinanceDashboardScreen({super.key});
 
   @override
-  State<FinanceDashboardScreen> createState() => _FinanceDashboardScreenState();
+  ConsumerState<FinanceDashboardScreen> createState() =>
+      _FinanceDashboardScreenState();
 }
 
-class _FinanceDashboardScreenState extends State<FinanceDashboardScreen> {
+class _FinanceDashboardScreenState
+    extends ConsumerState<FinanceDashboardScreen> {
   _DateRange _selectedRange = _DateRange.month;
   int? _touchedPieIndex;
 
-  _MockSummary get _summary => _mockSummaries[_selectedRange]!;
+  (DateTime, DateTime) _dateRangeFor(_DateRange range) {
+    final now = DateTime.now();
+    return switch (range) {
+      _DateRange.week => (
+          now.subtract(Duration(days: now.weekday - 1)),
+          DateTime(now.year, now.month, now.day, 23, 59, 59),
+        ),
+      _DateRange.month => (
+          DateTime(now.year, now.month, 1),
+          DateTime(now.year, now.month + 1, 0, 23, 59, 59),
+        ),
+      _DateRange.year => (
+          DateTime(now.year, 1, 1),
+          DateTime(now.year, 12, 31, 23, 59, 59),
+        ),
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
     final formatter = NumberFormat('#,##0', 'es_CO');
+    final dao = ref.watch(financeDaoProvider);
+    final (from, to) = _dateRangeFor(_selectedRange);
 
     return Scaffold(
       key: const ValueKey('finance-dashboard-screen'),
@@ -133,125 +128,133 @@ class _FinanceDashboardScreenState extends State<FinanceDashboardScreen> {
             child: IconButton(
               key: const ValueKey('dashboard-notifications-button'),
               icon: const Icon(Icons.notifications_outlined),
-              onPressed: () {
-                // TODO: mostrar panel de notificaciones cuando se conecte
-              },
+              onPressed: () {},
               tooltip: 'Notificaciones',
             ),
           ),
         ],
       ),
-      body: RefreshIndicator(
-        color: AppColors.finance,
-        onRefresh: () async {
-          // TODO: llamar a provider.refresh() cuando se conecte
-          await Future<void>.delayed(const Duration(milliseconds: 600));
-        },
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-          children: [
-            // --- Selector de rango de fecha ---
-            Semantics(
-              label: 'Seleccionar rango de fecha',
-              child: _DateRangeSelector(
-                key: const ValueKey('dashboard-date-range-selector'),
-                selected: _selectedRange,
-                onChanged: (range) => setState(() => _selectedRange = range),
-              ),
-            ),
-            const SizedBox(height: 16),
+      body: FutureBuilder<List<int>>(
+        future: Future.wait([
+          dao.sumByType('income', from, to),
+          dao.sumByType('expense', from, to),
+        ]),
+        builder: (context, snapshot) {
+          final incomeCents = snapshot.data?[0] ?? 0;
+          final expenseCents = snapshot.data?[1] ?? 0;
+          final balanceCents = incomeCents - expenseCents;
 
-            // --- Tarjetas de resumen ---
-            Semantics(
-              label: 'Resumen financiero: '
-                  'Ingresos ${_summary.incomeCents.toCurrency('COP')}, '
-                  'Gastos ${_summary.expenseCents.toCurrency('COP')}, '
-                  'Balance ${_summary.balanceCents.toCurrency('COP')}',
-              child: Row(
-                children: [
-                  Expanded(
-                    child: StatCard(
-                      key: const ValueKey('dashboard-income-card'),
-                      icon: Icons.arrow_upward_rounded,
-                      value: '\$${formatter.format(_summary.incomeCents)}',
-                      label: 'Ingresos',
-                      color: AppColors.finance,
-                    ),
+          return RefreshIndicator(
+            color: AppColors.finance,
+            onRefresh: () async => setState(() {}),
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+              children: [
+                // --- Selector de rango de fecha ---
+                Semantics(
+                  label: 'Seleccionar rango de fecha',
+                  child: _DateRangeSelector(
+                    key: const ValueKey('dashboard-date-range-selector'),
+                    selected: _selectedRange,
+                    onChanged: (range) =>
+                        setState(() => _selectedRange = range),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: StatCard(
-                      key: const ValueKey('dashboard-expense-card'),
-                      icon: Icons.arrow_downward_rounded,
-                      value: '\$${formatter.format(_summary.expenseCents)}',
-                      label: 'Gastos',
-                      color: AppColors.error,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: StatCard(
-                      key: const ValueKey('dashboard-balance-card'),
-                      icon: Icons.account_balance_wallet_outlined,
-                      value: '\$${formatter.format(_summary.balanceCents)}',
-                      label: 'Balance',
-                      color: _summary.balanceCents >= 0
-                          ? AppColors.finance
-                          : AppColors.error,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // --- Grafico de pastel: gastos por categoria ---
-            ChartCard(
-              key: const ValueKey('dashboard-pie-chart-card'),
-              title: 'Gastos por categoria',
-              height: 220,
-              testId: 'dashboard-pie-chart',
-              child: Semantics(
-                label: 'Grafico de pastel: distribucion de gastos. '
-                    '${_mockPieSlices.map((s) => '${s.label} ${(s.percentage * 100).round()}%').join(', ')}',
-                child: _PieChartSection(
-                  slices: _mockPieSlices,
-                  touchedIndex: _touchedPieIndex,
-                  onTouch: (index) =>
-                      setState(() => _touchedPieIndex = index),
                 ),
-              ),
-            ),
-            const SizedBox(height: 16),
+                const SizedBox(height: 16),
 
-            // --- Grafico de barras: ingresos vs gastos diarios ---
-            ChartCard(
-              key: const ValueKey('dashboard-bar-chart-card'),
-              title: 'Ingresos vs Gastos',
-              height: 200,
-              testId: 'dashboard-bar-chart',
-              child: Semantics(
-                label: 'Grafico de barras: ingresos y gastos por dia. '
-                    '${_mockBarDays.map((d) => '${d.label}: gastos \$${formatter.format(d.expenseCents)}').join(', ')}',
-                child: const _BarChartSection(days: _mockBarDays),
-              ),
-            ),
-            const SizedBox(height: 16),
+                // --- Tarjetas de resumen ---
+                Semantics(
+                  label: 'Resumen financiero: '
+                      'Ingresos ${incomeCents.toCurrency('COP')}, '
+                      'Gastos ${expenseCents.toCurrency('COP')}, '
+                      'Balance ${balanceCents.toCurrency('COP')}',
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: StatCard(
+                          key: const ValueKey('dashboard-income-card'),
+                          icon: Icons.arrow_upward_rounded,
+                          value: '\$${formatter.format(incomeCents)}',
+                          label: 'Ingresos',
+                          color: AppColors.finance,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: StatCard(
+                          key: const ValueKey('dashboard-expense-card'),
+                          icon: Icons.arrow_downward_rounded,
+                          value: '\$${formatter.format(expenseCents)}',
+                          label: 'Gastos',
+                          color: AppColors.error,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: StatCard(
+                          key: const ValueKey('dashboard-balance-card'),
+                          icon: Icons.account_balance_wallet_outlined,
+                          value: '\$${formatter.format(balanceCents)}',
+                          label: 'Balance',
+                          color: balanceCents >= 0
+                              ? AppColors.finance
+                              : AppColors.error,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
 
-            // --- Grafico de linea: saldo acumulado ---
-            ChartCard(
-              key: const ValueKey('dashboard-line-chart-card'),
-              title: 'Saldo acumulado',
-              height: 180,
-              testId: 'dashboard-line-chart',
-              child: Semantics(
-                label:
-                    'Grafico de linea: evolucion del saldo acumulado en el tiempo.',
-                child: const _LineChartSection(points: _mockLinePoints),
-              ),
+                // --- Grafico de pastel: gastos por categoria ---
+                ChartCard(
+                  key: const ValueKey('dashboard-pie-chart-card'),
+                  title: 'Gastos por categoria',
+                  height: 220,
+                  testId: 'dashboard-pie-chart',
+                  child: Semantics(
+                    label: 'Grafico de pastel: distribucion de gastos. '
+                        '${_mockPieSlices.map((s) => '${s.label} ${(s.percentage * 100).round()}%').join(', ')}',
+                    child: _PieChartSection(
+                      slices: _mockPieSlices,
+                      touchedIndex: _touchedPieIndex,
+                      onTouch: (index) =>
+                          setState(() => _touchedPieIndex = index),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // --- Grafico de barras: ingresos vs gastos diarios ---
+                ChartCard(
+                  key: const ValueKey('dashboard-bar-chart-card'),
+                  title: 'Ingresos vs Gastos',
+                  height: 200,
+                  testId: 'dashboard-bar-chart',
+                  child: Semantics(
+                    label: 'Grafico de barras: ingresos y gastos por dia. '
+                        '${_mockBarDays.map((d) => '${d.label}: gastos \$${formatter.format(d.expenseCents)}').join(', ')}',
+                    child: const _BarChartSection(days: _mockBarDays),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // --- Grafico de linea: saldo acumulado ---
+                ChartCard(
+                  key: const ValueKey('dashboard-line-chart-card'),
+                  title: 'Saldo acumulado',
+                  height: 180,
+                  testId: 'dashboard-line-chart',
+                  child: Semantics(
+                    label:
+                        'Grafico de linea: evolucion del saldo acumulado en el tiempo.',
+                    child: const _LineChartSection(points: _mockLinePoints),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }

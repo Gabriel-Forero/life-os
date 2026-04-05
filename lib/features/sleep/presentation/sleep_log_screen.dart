@@ -122,6 +122,9 @@ class _SleepLogScreenState extends ConsumerState<SleepLogScreen> {
         _mockLog.saved = true;
         _isSaving = false;
       });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Guardado!')),
+      );
     }
   }
 

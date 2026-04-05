@@ -1,6 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_os/core/constants/app_colors.dart';
+import 'package:life_os/core/providers/providers.dart';
+import 'package:life_os/features/mental/domain/mental_input.dart';
 
 // ---------------------------------------------------------------------------
 // Breathing technique data
@@ -64,14 +67,14 @@ enum _Phase { inhale, hold1, exhale, hold2, idle }
 // Screen
 // ---------------------------------------------------------------------------
 
-class BreathingScreen extends StatefulWidget {
+class BreathingScreen extends ConsumerStatefulWidget {
   const BreathingScreen({super.key});
 
   @override
-  State<BreathingScreen> createState() => _BreathingScreenState();
+  ConsumerState<BreathingScreen> createState() => _BreathingScreenState();
 }
 
-class _BreathingScreenState extends State<BreathingScreen>
+class _BreathingScreenState extends ConsumerState<BreathingScreen>
     with TickerProviderStateMixin {
   int _selectedIndex = 0;
   bool _isRunning = false;
@@ -204,12 +207,23 @@ class _BreathingScreenState extends State<BreathingScreen>
     return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
   }
 
-  void _finishSession() {
+  Future<void> _finishSession() async {
     _stopSession();
     setState(() => _isCompleted = true);
+
+    final notifier = ref.read(mentalNotifierProvider);
+    await notifier.startBreathingSession(
+      BreathingSessionInput(
+        techniqueName: _technique.key,
+        durationSeconds: _totalSeconds,
+        isCompleted: true,
+      ),
+    );
+
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Sesion completada: $_formattedTotal'),
+        content: Text('Guardado! Sesion completada: $_formattedTotal'),
         backgroundColor: AppColors.mental,
       ),
     );

@@ -1,60 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_os/core/constants/app_colors.dart';
+import 'package:life_os/core/database/app_database.dart';
+import 'package:life_os/core/providers/providers.dart';
 import 'package:life_os/core/widgets/empty_state_view.dart';
 import 'package:life_os/features/finance/domain/amount_formatting.dart';
+import 'package:life_os/features/finance/domain/finance_input.dart';
 import 'package:life_os/l10n/app_localizations.dart';
-
-// ---------------------------------------------------------------------------
-// Modelo mock
-// ---------------------------------------------------------------------------
-
-class _MockGoal {
-  const _MockGoal({
-    required this.id,
-    required this.name,
-    required this.targetCents,
-    required this.currentCents,
-    required this.isCompleted,
-    this.deadline,
-  });
-
-  final int id;
-  final String name;
-  final int targetCents;
-  final int currentCents;
-  final bool isCompleted;
-  final DateTime? deadline;
-
-  double get progress =>
-      targetCents > 0 ? (currentCents / targetCents).clamp(0.0, 1.0) : 0.0;
-}
-
-final _mockGoals = [
-  _MockGoal(
-    id: 1,
-    name: 'Fondo de emergencia',
-    targetCents: 600000000,
-    currentCents: 240000000,
-    isCompleted: false,
-    deadline: DateTime(2025, 12, 31),
-  ),
-  const _MockGoal(
-    id: 2,
-    name: 'Viaje a Europa',
-    targetCents: 500000000,
-    currentCents: 500000000,
-    isCompleted: true,
-  ),
-  _MockGoal(
-    id: 3,
-    name: 'Computador nuevo',
-    targetCents: 400000000,
-    currentCents: 80000000,
-    isCompleted: false,
-    deadline: DateTime(2025, 6, 1),
-  ),
-];
 
 // ---------------------------------------------------------------------------
 // Pantalla de metas de ahorro
@@ -63,17 +16,14 @@ final _mockGoals = [
 /// Muestra la lista de metas de ahorro como tarjetas con barras de progreso.
 /// Permite agregar nuevas metas (FAB) y contribuir a las existentes.
 ///
-/// Shell de presentacion — la integracion con FinanceNotifier y Riverpod se
-/// realizara en un paso posterior.
-///
 /// Accesibilidad: A11Y-FIN-01 — cada tarjeta de meta tiene Semantics con el
 /// estado de progreso, monto acumulado y fecha limite.
-class SavingsGoalsScreen extends StatelessWidget {
+class SavingsGoalsScreen extends ConsumerWidget {
   const SavingsGoalsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final completedCount = _mockGoals.where((g) => g.isCompleted).length;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final dao = ref.watch(financeDaoProvider);
 
     return Scaffold(
       key: const ValueKey('savings-goals-screen'),
@@ -84,106 +34,131 @@ class SavingsGoalsScreen extends StatelessWidget {
           header: true,
           child: const Text('Metas de ahorro'),
         ),
-        actions: [
-          Semantics(
-            label: 'Metas completadas: $completedCount de ${_mockGoals.length}',
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Chip(
-                key: const ValueKey('savings-completed-chip'),
-                label: Text('$completedCount / ${_mockGoals.length}'),
-                avatar: const Icon(Icons.check_circle_outline, size: 16),
-                backgroundColor: AppColors.finance.withAlpha(25),
-                labelStyle: const TextStyle(
-                  color: AppColors.finance,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-        ],
       ),
       floatingActionButton: Semantics(
         label: 'Agregar nueva meta de ahorro',
         button: true,
         child: FloatingActionButton(
           key: const ValueKey('savings-add-goal-fab'),
-          onPressed: () {
-            // TODO: abrir dialogo cuando se conecte
-            _showAddGoalDialog(context);
-          },
+          onPressed: () => _showAddGoalDialog(context, ref),
           backgroundColor: AppColors.finance,
           foregroundColor: Colors.white,
           tooltip: 'Nueva meta',
           child: const Icon(Icons.add),
         ),
       ),
-      body: _mockGoals.isEmpty
-          ? EmptyStateView(
+      body: StreamBuilder<List<SavingsGoal>>(
+        stream: dao.watchSavingsGoals(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final goals = snapshot.data ?? [];
+          final completedCount = goals.where((g) => g.isCompleted).length;
+
+          if (goals.isEmpty) {
+            return EmptyStateView(
               key: const ValueKey('savings-empty-state'),
               icon: Icons.savings_outlined,
               title: 'Sin metas de ahorro',
               message:
                   'Crea tu primera meta de ahorro para empezar a progresar',
               actionLabel: 'Crear meta',
-              onAction: () {
-                // TODO: abrir dialogo cuando se conecte
-              },
-            )
-          : ListView(
-              key: const ValueKey('savings-goals-list'),
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-              children: [
-                // Metas activas primero, luego completadas
-                ..._mockGoals
-                    .where((g) => !g.isCompleted)
-                    .map(
+              onAction: () => _showAddGoalDialog(context, ref),
+            );
+          }
+
+          final activeGoals = goals.where((g) => !g.isCompleted).toList();
+          final completedGoals = goals.where((g) => g.isCompleted).toList();
+
+          return Column(
+            children: [
+              // Completed chip in a row at top
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Semantics(
+                      label: 'Metas completadas: $completedCount de ${goals.length}',
+                      child: Chip(
+                        key: const ValueKey('savings-completed-chip'),
+                        label: Text('$completedCount / ${goals.length}'),
+                        avatar: const Icon(Icons.check_circle_outline, size: 16),
+                        backgroundColor: AppColors.finance.withAlpha(25),
+                        labelStyle: const TextStyle(
+                          color: AppColors.finance,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: ListView(
+                  key: const ValueKey('savings-goals-list'),
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
+                  children: [
+                    ...activeGoals.map(
                       (goal) => _GoalCard(
                         key: ValueKey('savings-goal-${goal.id}'),
                         goal: goal,
-                        onContribute: () => _showContributeDialog(context, goal),
+                        onContribute: () =>
+                            _showContributeDialog(context, ref, goal),
                       ),
                     ),
-                if (_mockGoals.any((g) => g.isCompleted)) ...[
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    child: Semantics(
-                      header: true,
-                      child: Text(
-                        'Completadas',
-                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                              color: Theme.of(context).textTheme.bodySmall?.color,
-                              letterSpacing: 0.5,
-                            ),
+                    if (completedGoals.isNotEmpty) ...[
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        child: Semantics(
+                          header: true,
+                          child: Text(
+                            'Completadas',
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelMedium
+                                ?.copyWith(
+                                  color: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.color,
+                                  letterSpacing: 0.5,
+                                ),
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                  ..._mockGoals
-                      .where((g) => g.isCompleted)
-                      .map(
+                      ...completedGoals.map(
                         (goal) => _GoalCard(
                           key: ValueKey('savings-goal-${goal.id}'),
                           goal: goal,
                           onContribute: () {},
                         ),
                       ),
-                ],
-              ],
-            ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 
-  void _showAddGoalDialog(BuildContext context) {
+  void _showAddGoalDialog(BuildContext context, WidgetRef ref) {
     showDialog<void>(
       context: context,
-      builder: (ctx) => const _AddGoalDialog(),
+      builder: (ctx) => _AddGoalDialog(ref: ref),
     );
   }
 
-  void _showContributeDialog(BuildContext context, _MockGoal goal) {
+  void _showContributeDialog(
+      BuildContext context, WidgetRef ref, SavingsGoal goal) {
     showDialog<void>(
       context: context,
-      builder: (ctx) => _ContributeDialog(goal: goal),
+      builder: (ctx) => _ContributeDialog(goal: goal, ref: ref),
     );
   }
 }
@@ -199,13 +174,15 @@ class _GoalCard extends StatelessWidget {
     required this.onContribute,
   });
 
-  final _MockGoal goal;
+  final SavingsGoal goal;
   final VoidCallback onContribute;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final progress = goal.progress;
+    final progress = goal.targetCents > 0
+        ? (goal.currentCents / goal.targetCents).clamp(0.0, 1.0)
+        : 0.0;
     final percentage = (progress * 100).round();
     final remaining = goal.targetCents - goal.currentCents;
     final hasDeadline = goal.deadline != null;
@@ -273,7 +250,7 @@ class _GoalCard extends StatelessWidget {
                   key: ValueKey('savings-goal-progress-${goal.id}'),
                   value: progress,
                   backgroundColor: theme.dividerColor,
-                  color: goal.isCompleted ? AppColors.finance : AppColors.finance,
+                  color: AppColors.finance,
                   minHeight: 8,
                 ),
               ),
@@ -340,7 +317,9 @@ class _GoalCard extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _AddGoalDialog extends StatefulWidget {
-  const _AddGoalDialog();
+  const _AddGoalDialog({required this.ref});
+
+  final WidgetRef ref;
 
   @override
   State<_AddGoalDialog> createState() => _AddGoalDialogState();
@@ -351,6 +330,7 @@ class _AddGoalDialogState extends State<_AddGoalDialog> {
   final _nameController = TextEditingController();
   final _targetController = TextEditingController();
   DateTime? _deadline;
+  bool _isSaving = false;
 
   @override
   void dispose() {
@@ -380,6 +360,24 @@ class _AddGoalDialogState extends State<_AddGoalDialog> {
     if (picked != null) setState(() => _deadline = picked);
   }
 
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _isSaving = true);
+
+    final notifier = widget.ref.read(financeNotifierProvider);
+    await notifier.addSavingsGoal(SavingsGoalInput(
+      name: _nameController.text.trim(),
+      targetCents: int.parse(_targetController.text),
+      deadline: _deadline,
+    ));
+
+    if (mounted) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Guardado!')));
+      Navigator.of(context).pop();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -405,8 +403,9 @@ class _AddGoalDialogState extends State<_AddGoalDialog> {
                     border: OutlineInputBorder(),
                   ),
                   textCapitalization: TextCapitalization.sentences,
-                  validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? l10n.validationRequired : null,
+                  validator: (v) => (v == null || v.trim().isEmpty)
+                      ? l10n.validationRequired
+                      : null,
                 ),
               ),
               const SizedBox(height: 12),
@@ -470,13 +469,8 @@ class _AddGoalDialogState extends State<_AddGoalDialog> {
         FilledButton(
           key: const ValueKey('add-goal-save-button'),
           style: FilledButton.styleFrom(backgroundColor: AppColors.finance),
-          onPressed: () {
-            if (_formKey.currentState!.validate()) {
-              // TODO: llamar a FinanceNotifier.addSavingsGoal cuando se conecte
-              Navigator.of(context).pop();
-            }
-          },
-          child: Text(l10n.commonSave),
+          onPressed: _isSaving ? null : _save,
+          child: Text(_isSaving ? 'Guardando...' : l10n.commonSave),
         ),
       ],
     );
@@ -488,9 +482,10 @@ class _AddGoalDialogState extends State<_AddGoalDialog> {
 // ---------------------------------------------------------------------------
 
 class _ContributeDialog extends StatefulWidget {
-  const _ContributeDialog({required this.goal});
+  const _ContributeDialog({required this.goal, required this.ref});
 
-  final _MockGoal goal;
+  final SavingsGoal goal;
+  final WidgetRef ref;
 
   @override
   State<_ContributeDialog> createState() => _ContributeDialogState();
@@ -499,11 +494,29 @@ class _ContributeDialog extends StatefulWidget {
 class _ContributeDialogState extends State<_ContributeDialog> {
   final _formKey = GlobalKey<FormState>();
   final _amountController = TextEditingController();
+  bool _isSaving = false;
 
   @override
   void dispose() {
     _amountController.dispose();
     super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _isSaving = true);
+
+    final notifier = widget.ref.read(financeNotifierProvider);
+    await notifier.contributeToGoal(
+      widget.goal.id,
+      int.parse(_amountController.text),
+    );
+
+    if (mounted) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Guardado!')));
+      Navigator.of(context).pop();
+    }
   }
 
   @override
@@ -550,13 +563,8 @@ class _ContributeDialogState extends State<_ContributeDialog> {
         FilledButton(
           key: const ValueKey('contribute-save-button'),
           style: FilledButton.styleFrom(backgroundColor: AppColors.finance),
-          onPressed: () {
-            if (_formKey.currentState!.validate()) {
-              // TODO: llamar a FinanceNotifier.contributeToGoal cuando se conecte
-              Navigator.of(context).pop();
-            }
-          },
-          child: const Text('Contribuir'),
+          onPressed: _isSaving ? null : _save,
+          child: Text(_isSaving ? 'Contribuyendo...' : 'Contribuir'),
         ),
       ],
     );

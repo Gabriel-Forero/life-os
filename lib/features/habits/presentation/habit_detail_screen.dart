@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:life_os/core/constants/app_colors.dart';
+import 'package:life_os/core/database/app_database.dart';
+import 'package:life_os/core/providers/providers.dart';
 
 // ---------------------------------------------------------------------------
-// Enums y modelos mock
+// Estado de un dia en el calendario del habito.
 // ---------------------------------------------------------------------------
 
-/// Estado de un dia en el calendario del habito.
 enum _DayStatus {
   completed,
   missed,
@@ -14,88 +17,6 @@ enum _DayStatus {
   future,
 }
 
-class _MockCalendarDay {
-  const _MockCalendarDay({
-    required this.date,
-    required this.status,
-  });
-
-  final DateTime date;
-  final _DayStatus status;
-}
-
-class _MockHabitDetail {
-  const _MockHabitDetail({
-    required this.id,
-    required this.name,
-    required this.icon,
-    required this.color,
-    required this.currentStreak,
-    required this.bestStreak,
-    required this.totalCheckIns,
-    required this.completionRate,
-    required this.calendarDays,
-    this.isArchived = false,
-  });
-
-  final int id;
-  final String name;
-  final IconData icon;
-  final Color color;
-  final int currentStreak;
-  final int bestStreak;
-  final int totalCheckIns;
-  final double completionRate;
-  final List<_MockCalendarDay> calendarDays;
-  final bool isArchived;
-}
-
-/// Genera un mes de dias mock con estados variados para visualizacion.
-List<_MockCalendarDay> _buildMockCalendar() {
-  final today = DateTime.now();
-  final firstDay = DateTime(today.year, today.month, 1);
-  final daysInMonth =
-      DateTime(today.year, today.month + 1, 0).day;
-
-  return List.generate(daysInMonth, (i) {
-    final date = firstDay.add(Duration(days: i));
-    final isToday =
-        date.year == today.year &&
-        date.month == today.month &&
-        date.day == today.day;
-    final isFuture = date.isAfter(today);
-
-    if (isFuture) {
-      return _MockCalendarDay(date: date, status: _DayStatus.future);
-    }
-    if (isToday) {
-      return _MockCalendarDay(date: date, status: _DayStatus.todayPending);
-    }
-
-    // Distribucion mock: 70% completados, 15% perdidos, 15% N/A
-    final mod = i % 20;
-    if (mod >= 17) {
-      return _MockCalendarDay(date: date, status: _DayStatus.notApplicable);
-    }
-    if (mod >= 14) {
-      return _MockCalendarDay(date: date, status: _DayStatus.missed);
-    }
-    return _MockCalendarDay(date: date, status: _DayStatus.completed);
-  });
-}
-
-final _mockHabitDetail = _MockHabitDetail(
-  id: 1,
-  name: 'Meditar',
-  icon: Icons.self_improvement,
-  color: AppColors.habits,
-  currentStreak: 14,
-  bestStreak: 32,
-  totalCheckIns: 87,
-  completionRate: 0.78,
-  calendarDays: _buildMockCalendar(),
-);
-
 // ---------------------------------------------------------------------------
 // Pantalla: detalle de habito
 // ---------------------------------------------------------------------------
@@ -103,12 +24,9 @@ final _mockHabitDetail = _MockHabitDetail(
 /// Detalle de un habito con calendario mensual de cumplimiento, estadisticas
 /// y acciones de archivar y editar.
 ///
-/// Shell de presentacion — la integracion con Riverpod se realizara en un
-/// paso posterior.
-///
 /// Accesibilidad: A11Y-HAB-03 — el calendario tiene descripcion semantica y
 /// cada dia tiene etiqueta con fecha y estado.
-class HabitDetailScreen extends StatefulWidget {
+class HabitDetailScreen extends ConsumerStatefulWidget {
   const HabitDetailScreen({
     super.key,
     this.habitId,
@@ -117,13 +35,10 @@ class HabitDetailScreen extends StatefulWidget {
   final int? habitId;
 
   @override
-  State<HabitDetailScreen> createState() => _HabitDetailScreenState();
+  ConsumerState<HabitDetailScreen> createState() => _HabitDetailScreenState();
 }
 
-class _HabitDetailScreenState extends State<HabitDetailScreen> {
-  // En produccion se obtendria del provider por habitId.
-  final _habit = _mockHabitDetail;
-
+class _HabitDetailScreenState extends ConsumerState<HabitDetailScreen> {
   DateTime _displayedMonth = DateTime(
     DateTime.now().year,
     DateTime.now().month,
@@ -153,14 +68,14 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
     return _displayedMonth.isBefore(currentMonth);
   }
 
-  void _handleArchive() {
+  void _handleArchive(Habit habit) {
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         key: const ValueKey('habit-archive-dialog'),
         title: const Text('Archivar habito'),
         content: Text(
-          'Archivar "${_habit.name}" lo ocultara del dashboard pero '
+          'Archivar "${habit.name}" lo ocultara del dashboard pero '
           'conservara todo el historial.',
         ),
         actions: [
@@ -174,10 +89,12 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.warning,
             ),
-            onPressed: () {
+            onPressed: () async {
               Navigator.of(ctx).pop();
-              Navigator.of(context).pop();
-              // TODO: conectar con HabitsNotifier.archiveHabit cuando se integre
+              await ref
+                  .read(habitsNotifierProvider)
+                  .archiveHabit(habit.id);
+              if (mounted) Navigator.of(context).pop();
             },
             child: const Text('Archivar'),
           ),
@@ -186,13 +103,23 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
     );
   }
 
-  void _handleEdit() {
-    // TODO: navegar a AddEditHabitScreen con habitId cuando se integre
+  void _handleEdit(Habit habit) {
+    GoRouter.of(context).push('/habits/${habit.id}/edit');
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final dao = ref.watch(habitsDaoProvider);
+    final habitId = widget.habitId;
+
+    if (habitId == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Habito')),
+        body: const Center(child: Text('Habito no encontrado')),
+      );
+    }
+
     final months = [
       'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
       'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
@@ -200,145 +127,271 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
     final monthLabel =
         '${months[_displayedMonth.month - 1]} ${_displayedMonth.year}';
 
-    return Scaffold(
-      key: const ValueKey('habit-detail-screen'),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: Semantics(
-          header: true,
-          child: Text(_habit.name),
-        ),
-        leading: Semantics(
-          label: 'Volver',
-          button: true,
-          child: IconButton(
-            key: const ValueKey('habit-detail-back-button'),
-            icon: const Icon(Icons.arrow_back_outlined),
-            onPressed: () => Navigator.of(context).pop(),
-            tooltip: 'Volver',
-          ),
-        ),
-        actions: [
-          Semantics(
-            label: 'Editar habito ${_habit.name}',
-            button: true,
-            child: IconButton(
-              key: const ValueKey('habit-detail-edit-button'),
-              icon: const Icon(Icons.edit_outlined),
-              onPressed: _handleEdit,
-              tooltip: 'Editar',
+    return StreamBuilder<List<Habit>>(
+      stream: dao.watchActiveHabits(),
+      builder: (context, snapshot) {
+        final habits = snapshot.data ?? [];
+        final habit =
+            habits.where((h) => h.id == habitId).firstOrNull;
+
+        if (snapshot.connectionState == ConnectionState.waiting &&
+            habit == null) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        if (habit == null) {
+          return Scaffold(
+            appBar: AppBar(title: const Text('Habito')),
+            body: const Center(child: Text('Habito no encontrado')),
+          );
+        }
+
+        return Scaffold(
+          key: const ValueKey('habit-detail-screen'),
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            title: Semantics(
+              header: true,
+              child: Text(habit.name),
             ),
-          ),
-          Semantics(
-            label: 'Archivar habito ${_habit.name}',
-            button: true,
-            child: IconButton(
-              key: const ValueKey('habit-detail-archive-button'),
-              icon: const Icon(Icons.archive_outlined),
-              onPressed: _handleArchive,
-              tooltip: 'Archivar',
-            ),
-          ),
-        ],
-      ),
-      body: ListView(
-        key: const ValueKey('habit-detail-list'),
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-        children: [
-          // --- Encabezado: icono + nombre + rachas ---
-          _HabitHeader(
-            key: const ValueKey('habit-detail-header'),
-            habit: _habit,
-          ),
-          const SizedBox(height: 20),
-
-          // --- Calendario mensual ---
-          Card(
-            key: const ValueKey('habit-detail-calendar-card'),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Controles de navegacion del mes
-                  Row(
-                    children: [
-                      Semantics(
-                        label: 'Mes anterior',
-                        button: true,
-                        child: IconButton(
-                          key: const ValueKey('habit-calendar-prev-month'),
-                          icon: const Icon(Icons.chevron_left),
-                          onPressed: _previousMonth,
-                          tooltip: 'Mes anterior',
-                        ),
-                      ),
-                      Expanded(
-                        child: Text(
-                          monthLabel,
-                          textAlign: TextAlign.center,
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      Semantics(
-                        label: 'Mes siguiente',
-                        button: true,
-                        child: IconButton(
-                          key: const ValueKey('habit-calendar-next-month'),
-                          icon: Icon(
-                            Icons.chevron_right,
-                            color: _canGoNext ? null : theme.disabledColor,
-                          ),
-                          onPressed: _canGoNext ? _nextMonth : null,
-                          tooltip: 'Mes siguiente',
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-
-                  // Cabecera de dias de la semana
-                  _CalendarWeekHeader(
-                    key: const ValueKey('habit-calendar-week-header'),
-                  ),
-                  const SizedBox(height: 4),
-
-                  // Cuadricula de dias
-                  Semantics(
-                    label: 'Calendario de cumplimiento de $monthLabel',
-                    child: _CalendarGrid(
-                      key: const ValueKey('habit-calendar-grid'),
-                      habit: _habit,
-                      displayedMonth: _displayedMonth,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Leyenda
-                  _CalendarLegend(
-                    key: const ValueKey('habit-calendar-legend'),
-                    color: _habit.color,
-                  ),
-                ],
+            leading: Semantics(
+              label: 'Volver',
+              button: true,
+              child: IconButton(
+                key: const ValueKey('habit-detail-back-button'),
+                icon: const Icon(Icons.arrow_back_outlined),
+                onPressed: () => Navigator.of(context).pop(),
+                tooltip: 'Volver',
               ),
             ),
+            actions: [
+              Semantics(
+                label: 'Editar habito ${habit.name}',
+                button: true,
+                child: IconButton(
+                  key: const ValueKey('habit-detail-edit-button'),
+                  icon: const Icon(Icons.edit_outlined),
+                  onPressed: () => _handleEdit(habit),
+                  tooltip: 'Editar',
+                ),
+              ),
+              Semantics(
+                label: 'Archivar habito ${habit.name}',
+                button: true,
+                child: IconButton(
+                  key: const ValueKey('habit-detail-archive-button'),
+                  icon: const Icon(Icons.archive_outlined),
+                  onPressed: () => _handleArchive(habit),
+                  tooltip: 'Archivar',
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
-
-          // --- Estadisticas ---
-          Semantics(
-            label: 'Estadisticas del habito ${_habit.name}',
-            child: _StatsGrid(
-              key: const ValueKey('habit-detail-stats-grid'),
-              habit: _habit,
-            ),
+          body: _HabitDetailBody(
+            habit: habit,
+            displayedMonth: _displayedMonth,
+            monthLabel: monthLabel,
+            canGoNext: _canGoNext,
+            onPreviousMonth: _previousMonth,
+            onNextMonth: _nextMonth,
           ),
-        ],
-      ),
+        );
+      },
     );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Widget: cuerpo del detalle (carga estadisticas async)
+// ---------------------------------------------------------------------------
+
+class _HabitDetailBody extends ConsumerWidget {
+  const _HabitDetailBody({
+    required this.habit,
+    required this.displayedMonth,
+    required this.monthLabel,
+    required this.canGoNext,
+    required this.onPreviousMonth,
+    required this.onNextMonth,
+  });
+
+  final Habit habit;
+  final DateTime displayedMonth;
+  final String monthLabel;
+  final bool canGoNext;
+  final VoidCallback onPreviousMonth;
+  final VoidCallback onNextMonth;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final dao = ref.watch(habitsDaoProvider);
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    // Load stats + calendar logs
+    final from = DateTime(displayedMonth.year, displayedMonth.month, 1);
+    final daysInMonth =
+        DateTime(displayedMonth.year, displayedMonth.month + 1, 0).day;
+    final to = DateTime(displayedMonth.year, displayedMonth.month, daysInMonth);
+
+    return StreamBuilder<List<HabitLog>>(
+      stream: dao.watchHabitLogs(habit.id, from, to),
+      builder: (context, logsSnapshot) {
+        final monthLogs = logsSnapshot.data ?? [];
+
+        return FutureBuilder<(int, int, int, double)>(
+          future: _loadStats(dao, today),
+          builder: (context, statsSnapshot) {
+            final stats = statsSnapshot.data;
+            final currentStreak = stats?.$1 ?? 0;
+            final bestStreak = stats?.$2 ?? 0;
+            final totalCheckIns = stats?.$3 ?? 0;
+            final completionRate = stats?.$4 ?? 0.0;
+
+            return ListView(
+              key: const ValueKey('habit-detail-list'),
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+              children: [
+                // --- Encabezado: icono + nombre + rachas ---
+                _HabitHeader(
+                  key: const ValueKey('habit-detail-header'),
+                  habit: habit,
+                  currentStreak: currentStreak,
+                  bestStreak: bestStreak,
+                ),
+                const SizedBox(height: 20),
+
+                // --- Calendario mensual ---
+                Card(
+                  key: const ValueKey('habit-detail-calendar-card'),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Controles de navegacion del mes
+                        Row(
+                          children: [
+                            Semantics(
+                              label: 'Mes anterior',
+                              button: true,
+                              child: IconButton(
+                                key: const ValueKey(
+                                    'habit-calendar-prev-month'),
+                                icon: const Icon(Icons.chevron_left),
+                                onPressed: onPreviousMonth,
+                                tooltip: 'Mes anterior',
+                              ),
+                            ),
+                            Expanded(
+                              child: Text(
+                                monthLabel,
+                                textAlign: TextAlign.center,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleSmall
+                                    ?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            Semantics(
+                              label: 'Mes siguiente',
+                              button: true,
+                              child: IconButton(
+                                key: const ValueKey(
+                                    'habit-calendar-next-month'),
+                                icon: Icon(
+                                  Icons.chevron_right,
+                                  color: canGoNext
+                                      ? null
+                                      : Theme.of(context).disabledColor,
+                                ),
+                                onPressed: canGoNext ? onNextMonth : null,
+                                tooltip: 'Mes siguiente',
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+
+                        // Cabecera de dias de la semana
+                        _CalendarWeekHeader(
+                          key: const ValueKey('habit-calendar-week-header'),
+                        ),
+                        const SizedBox(height: 4),
+
+                        // Cuadricula de dias
+                        Semantics(
+                          label:
+                              'Calendario de cumplimiento de $monthLabel',
+                          child: _CalendarGrid(
+                            key: const ValueKey('habit-calendar-grid'),
+                            habit: habit,
+                            displayedMonth: displayedMonth,
+                            monthLogs: monthLogs,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Leyenda
+                        _CalendarLegend(
+                          key: const ValueKey('habit-calendar-legend'),
+                          color: Color(habit.color),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // --- Estadisticas ---
+                Semantics(
+                  label: 'Estadisticas del habito ${habit.name}',
+                  child: _StatsGrid(
+                    key: const ValueKey('habit-detail-stats-grid'),
+                    habit: habit,
+                    currentStreak: currentStreak,
+                    bestStreak: bestStreak,
+                    totalCheckIns: totalCheckIns,
+                    completionRate: completionRate,
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<(int, int, int, double)> _loadStats(
+    dynamic dao,
+    DateTime today,
+  ) async {
+    final currentStreak =
+        await dao.streakCount(habit.id, today) as int;
+    final bestStreak = await dao.longestStreak(habit.id) as int;
+    final now = DateTime.now();
+    final from30 = now.subtract(const Duration(days: 30));
+    final rate = await dao.completionRate(
+      habit.id,
+      from30,
+      now,
+    ) as double;
+
+    // Total check-ins: count all logs
+    final allLogs = await (dao as dynamic)
+        .watchHabitLogs(
+          habit.id,
+          DateTime(2000),
+          DateTime(2100),
+        )
+        .first as List<HabitLog>;
+    return (currentStreak, bestStreak, allLogs.length, rate);
   }
 }
 
@@ -347,22 +400,36 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
 // ---------------------------------------------------------------------------
 
 class _HabitHeader extends StatelessWidget {
-  const _HabitHeader({super.key, required this.habit});
+  const _HabitHeader({
+    super.key,
+    required this.habit,
+    required this.currentStreak,
+    required this.bestStreak,
+  });
 
-  final _MockHabitDetail habit;
+  final Habit habit;
+  final int currentStreak;
+  final int bestStreak;
+
+  IconData get _habitIcon {
+    final cp = int.tryParse(habit.icon);
+    if (cp != null) return IconData(cp, fontFamily: 'MaterialIcons');
+    return Icons.check_circle_outline;
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final color = Color(habit.color);
     return Semantics(
-      label: '${habit.name}, racha actual ${habit.currentStreak} dias, '
-          'mejor racha ${habit.bestStreak} dias',
+      label: '${habit.name}, racha actual $currentStreak dias, '
+          'mejor racha $bestStreak dias',
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: habit.color.withAlpha(15),
+          color: color.withAlpha(15),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: habit.color.withAlpha(40)),
+          border: Border.all(color: color.withAlpha(40)),
         ),
         child: Row(
           children: [
@@ -371,10 +438,10 @@ class _HabitHeader extends StatelessWidget {
               width: 64,
               height: 64,
               decoration: BoxDecoration(
-                color: habit.color.withAlpha(30),
+                color: color.withAlpha(30),
                 borderRadius: BorderRadius.circular(18),
               ),
-              child: Icon(habit.icon, color: habit.color, size: 32),
+              child: Icon(_habitIcon, color: color, size: 32),
             ),
             const SizedBox(width: 16),
 
@@ -395,15 +462,15 @@ class _HabitHeader extends StatelessWidget {
                       _StreakCounter(
                         key: const ValueKey('habit-current-streak'),
                         label: 'Racha actual',
-                        days: habit.currentStreak,
-                        color: habit.color,
+                        days: currentStreak,
+                        color: color,
                         icon: Icons.local_fire_department,
                       ),
                       const SizedBox(width: 16),
                       _StreakCounter(
                         key: const ValueKey('habit-best-streak'),
                         label: 'Mejor racha',
-                        days: habit.bestStreak,
+                        days: bestStreak,
                         color: AppColors.warning,
                         icon: Icons.emoji_events_outlined,
                       ),
@@ -508,12 +575,14 @@ class _CalendarGrid extends StatelessWidget {
     super.key,
     required this.habit,
     required this.displayedMonth,
+    required this.monthLogs,
   });
 
-  final _MockHabitDetail habit;
+  final Habit habit;
   final DateTime displayedMonth;
+  final List<HabitLog> monthLogs;
 
-  Color _dayColor(_DayStatus status, Color habitColor) => switch (status) {
+  Color _dayColor(_DayStatus status) => switch (status) {
         _DayStatus.completed => AppColors.success,
         _DayStatus.missed => AppColors.error,
         _DayStatus.notApplicable => Colors.grey.withAlpha(80),
@@ -535,55 +604,50 @@ class _CalendarGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final firstDay = DateTime(displayedMonth.year, displayedMonth.month, 1);
-    // weekday: 1=Lunes ... 7=Domingo
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    final firstDay =
+        DateTime(displayedMonth.year, displayedMonth.month, 1);
     final startOffset = (firstDay.weekday - 1) % 7;
     final daysInMonth =
         DateTime(displayedMonth.year, displayedMonth.month + 1, 0).day;
 
-    // Filtrar dias del mes visible
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    List<_MockCalendarDay?> gridCells =
-        List.filled(startOffset, null, growable: true);
-
-    for (int d = 1; d <= daysInMonth; d++) {
-      final date = DateTime(displayedMonth.year, displayedMonth.month, d);
-      final isCurrentMonth =
-          displayedMonth.year == now.year &&
-          displayedMonth.month == now.month;
-
-      _DayStatus status;
-      if (isCurrentMonth) {
-        // Usar los dias mock del habito (solo para el mes actual)
-        final idx = d - 1;
-        if (idx < habit.calendarDays.length) {
-          status = habit.calendarDays[idx].status;
-        } else {
-          status = date.isAfter(today)
-              ? _DayStatus.future
-              : _DayStatus.notApplicable;
-        }
-      } else if (date.isAfter(today)) {
-        status = _DayStatus.future;
-      } else {
-        // Meses anteriores: patron mock
-        final mod = d % 20;
-        if (mod >= 17) {
-          status = _DayStatus.notApplicable;
-        } else if (mod >= 14) {
-          status = _DayStatus.missed;
-        } else {
-          status = _DayStatus.completed;
-        }
+    // Build a set of days that have logs
+    final loggedDays = <int>{};
+    for (final log in monthLogs) {
+      if (log.date.year == displayedMonth.year &&
+          log.date.month == displayedMonth.month) {
+        loggedDays.add(log.date.day);
       }
-
-      gridCells.add(_MockCalendarDay(date: date, status: status));
     }
 
-    // Padding al final para completar la ultima semana
-    while (gridCells.length % 7 != 0) {
-      gridCells.add(null);
+    // Build grid cells
+    final List<({int? day, _DayStatus status, DateTime? date})> cells = [
+      for (int i = 0; i < startOffset; i++) (day: null, status: _DayStatus.future, date: null),
+      for (int d = 1; d <= daysInMonth; d++) (() {
+        final date = DateTime(displayedMonth.year, displayedMonth.month, d);
+        _DayStatus status;
+        if (date.isAfter(today)) {
+          status = _DayStatus.future;
+        } else if (date.year == today.year &&
+            date.month == today.month &&
+            date.day == today.day) {
+          status = loggedDays.contains(d)
+              ? _DayStatus.completed
+              : _DayStatus.todayPending;
+        } else {
+          status = loggedDays.contains(d)
+              ? _DayStatus.completed
+              : _DayStatus.missed;
+        }
+        return (day: d, status: status, date: date);
+      })(),
+    ];
+
+    // Pad to full weeks
+    while (cells.length % 7 != 0) {
+      cells.add((day: null, status: _DayStatus.future, date: null));
     }
 
     return GridView.builder(
@@ -595,23 +659,25 @@ class _CalendarGrid extends StatelessWidget {
         crossAxisSpacing: 4,
         childAspectRatio: 1,
       ),
-      itemCount: gridCells.length,
+      itemCount: cells.length,
       itemBuilder: (context, index) {
-        final cell = gridCells[index];
-        if (cell == null) return const SizedBox.shrink();
+        final cell = cells[index];
+        if (cell.day == null) return const SizedBox.shrink();
 
-        final day = cell.date.day;
-        final bgColor = _dayColor(cell.status, habit.color);
+        final day = cell.day!;
+        final bgColor = _dayColor(cell.status);
         final isFuture = cell.status == _DayStatus.future;
         final isTodayPending = cell.status == _DayStatus.todayPending;
+        final dateStr =
+            cell.date?.toIso8601String().substring(0, 10) ?? 'x-$index';
 
         return Semantics(
           label: _daySemanticLabel(day, cell.status),
           child: Container(
-            key: ValueKey(
-                'habit-calendar-day-${cell.date.toIso8601String().substring(0, 10)}'),
+            key: ValueKey('habit-calendar-day-$dateStr'),
             decoration: BoxDecoration(
-              color: isFuture ? Colors.transparent : bgColor.withAlpha(30),
+              color:
+                  isFuture ? Colors.transparent : bgColor.withAlpha(30),
               borderRadius: BorderRadius.circular(6),
               border: isTodayPending
                   ? Border.all(color: AppColors.warning, width: 1.5)
@@ -687,14 +753,25 @@ class _CalendarLegend extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _StatsGrid extends StatelessWidget {
-  const _StatsGrid({super.key, required this.habit});
+  const _StatsGrid({
+    super.key,
+    required this.habit,
+    required this.currentStreak,
+    required this.bestStreak,
+    required this.totalCheckIns,
+    required this.completionRate,
+  });
 
-  final _MockHabitDetail habit;
+  final Habit habit;
+  final int currentStreak;
+  final int bestStreak;
+  final int totalCheckIns;
+  final double completionRate;
 
   @override
   Widget build(BuildContext context) {
-    final completionPct =
-        '${(habit.completionRate * 100).round()}%';
+    final color = Color(habit.color);
+    final completionPct = '${(completionRate * 100).round()}%';
 
     return GridView.count(
       key: const ValueKey('habit-stats-grid'),
@@ -710,26 +787,26 @@ class _StatsGrid extends StatelessWidget {
           icon: Icons.percent_outlined,
           value: completionPct,
           label: 'Tasa de cumplimiento',
-          color: habit.color,
+          color: color,
         ),
         _StatCard(
           key: const ValueKey('habit-stat-total-checkins'),
           icon: Icons.check_circle_outline,
-          value: '${habit.totalCheckIns}',
+          value: '$totalCheckIns',
           label: 'Check-ins totales',
           color: AppColors.success,
         ),
         _StatCard(
           key: const ValueKey('habit-stat-current-streak'),
           icon: Icons.local_fire_department,
-          value: '${habit.currentStreak}d',
+          value: '${currentStreak}d',
           label: 'Racha actual',
-          color: habit.color,
+          color: color,
         ),
         _StatCard(
           key: const ValueKey('habit-stat-best-streak'),
           icon: Icons.emoji_events_outlined,
-          value: '${habit.bestStreak}d',
+          value: '${bestStreak}d',
           label: 'Mejor racha',
           color: AppColors.warning,
         ),

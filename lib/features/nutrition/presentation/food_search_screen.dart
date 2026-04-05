@@ -1,137 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:life_os/core/constants/app_colors.dart';
-
-// ---------------------------------------------------------------------------
-// Modelos mock
-// ---------------------------------------------------------------------------
-
-class _MockFoodResult {
-  const _MockFoodResult({
-    required this.id,
-    required this.name,
-    required this.brand,
-    required this.caloriesPer100g,
-    required this.servingLabel,
-    required this.servingCalories,
-    this.isFavorite = false,
-  });
-
-  final int id;
-  final String name;
-  final String brand;
-  final double caloriesPer100g;
-  final String servingLabel;
-  final double servingCalories;
-  final bool isFavorite;
-}
-
-const _mockSearchResults = [
-  _MockFoodResult(
-    id: 1,
-    name: 'Avena en hojuelas',
-    brand: 'Quaker',
-    caloriesPer100g: 389,
-    servingLabel: '40 g',
-    servingCalories: 156,
-  ),
-  _MockFoodResult(
-    id: 2,
-    name: 'Pechuga de pollo',
-    brand: 'Generico',
-    caloriesPer100g: 165,
-    servingLabel: '100 g',
-    servingCalories: 165,
-  ),
-  _MockFoodResult(
-    id: 3,
-    name: 'Arroz blanco cocido',
-    brand: 'Generico',
-    caloriesPer100g: 130,
-    servingLabel: '180 g',
-    servingCalories: 234,
-  ),
-  _MockFoodResult(
-    id: 4,
-    name: 'Leche entera',
-    brand: 'Alpina',
-    caloriesPer100g: 61,
-    servingLabel: '200 ml',
-    servingCalories: 122,
-  ),
-  _MockFoodResult(
-    id: 5,
-    name: 'Platano maduro',
-    brand: 'Generico',
-    caloriesPer100g: 89,
-    servingLabel: '120 g',
-    servingCalories: 107,
-  ),
-];
-
-const _mockFavorites = [
-  _MockFoodResult(
-    id: 2,
-    name: 'Pechuga de pollo',
-    brand: 'Generico',
-    caloriesPer100g: 165,
-    servingLabel: '100 g',
-    servingCalories: 165,
-    isFavorite: true,
-  ),
-  _MockFoodResult(
-    id: 6,
-    name: 'Yogur griego natural',
-    brand: 'Alpina',
-    caloriesPer100g: 59,
-    servingLabel: '170 g',
-    servingCalories: 100,
-    isFavorite: true,
-  ),
-  _MockFoodResult(
-    id: 7,
-    name: 'Salmon atlantico',
-    brand: 'Generico',
-    caloriesPer100g: 208,
-    servingLabel: '180 g',
-    servingCalories: 374,
-    isFavorite: true,
-  ),
-];
-
-const _mockRecents = [
-  _MockFoodResult(
-    id: 1,
-    name: 'Avena en hojuelas',
-    brand: 'Quaker',
-    caloriesPer100g: 389,
-    servingLabel: '40 g',
-    servingCalories: 156,
-  ),
-  _MockFoodResult(
-    id: 8,
-    name: 'Brocoli',
-    brand: 'Generico',
-    caloriesPer100g: 34,
-    servingLabel: '150 g',
-    servingCalories: 51,
-  ),
-  _MockFoodResult(
-    id: 9,
-    name: 'Huevo entero cocido',
-    brand: 'Generico',
-    caloriesPer100g: 155,
-    servingLabel: '50 g',
-    servingCalories: 78,
-  ),
-  _MockFoodResult(
-    id: 5,
-    name: 'Platano maduro',
-    brand: 'Generico',
-    caloriesPer100g: 89,
-    servingLabel: '120 g',
-    servingCalories: 107,
-  ),
-];
+import 'package:life_os/core/database/app_database.dart';
+import 'package:life_os/core/providers/providers.dart';
+import 'package:life_os/core/router/app_router.dart';
+import 'package:life_os/features/nutrition/data/open_food_facts_client.dart';
 
 enum _SearchTab { buscar, favoritos, recientes }
 
@@ -147,7 +21,7 @@ enum _SearchTab { buscar, favoritos, recientes }
 ///
 /// Accesibilidad: A11Y-NUT-02 — barra de busqueda y resultados tienen
 /// etiquetas semanticas apropiadas.
-class FoodSearchScreen extends StatefulWidget {
+class FoodSearchScreen extends ConsumerStatefulWidget {
   const FoodSearchScreen({
     super.key,
     this.targetMealType,
@@ -157,14 +31,15 @@ class FoodSearchScreen extends StatefulWidget {
   final String? targetMealType;
 
   @override
-  State<FoodSearchScreen> createState() => _FoodSearchScreenState();
+  ConsumerState<FoodSearchScreen> createState() => _FoodSearchScreenState();
 }
 
-class _FoodSearchScreenState extends State<FoodSearchScreen>
+class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
-  final _searchController = SearchController();
+  final _searchController = TextEditingController();
   String _query = '';
+  List<FoodItem> _searchResults = [];
 
   @override
   void initState() {
@@ -180,20 +55,15 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
     super.dispose();
   }
 
-  List<_MockFoodResult> get _filteredResults {
-    if (_query.trim().isEmpty) return _mockSearchResults;
-    final q = _query.toLowerCase();
-    return _mockSearchResults
-        .where(
-          (f) =>
-              f.name.toLowerCase().contains(q) ||
-              f.brand.toLowerCase().contains(q),
-        )
-        .toList();
+  Future<void> _runSearch(String query) async {
+    final dao = ref.read(nutritionDaoProvider);
+    final results = await dao.searchFoodItems(query.trim());
+    if (mounted) {
+      setState(() => _searchResults = results);
+    }
   }
 
-  void _handleFoodTap(_MockFoodResult food) {
-    // TODO: agregar alimento a la comida seleccionada cuando se conecte
+  void _handleFoodTap(FoodItem food) {
     Navigator.of(context).pop(food);
   }
 
@@ -266,7 +136,10 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
                       ),
                       isDense: true,
                     ),
-                    onChanged: (v) => setState(() => _query = v),
+                    onChanged: (v) {
+                      setState(() => _query = v);
+                      _runSearch(v);
+                    },
                   ),
                 ),
               ),
@@ -289,25 +162,63 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
       ),
       body: Column(
         children: [
-          // Boton para crear alimento personalizado
+          // Action buttons row
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-            child: Semantics(
-              label: 'Crear alimento personalizado',
-              button: true,
-              child: OutlinedButton.icon(
-                key: const ValueKey('food-search-create-custom-button'),
-                onPressed: () {
-                  // TODO: abrir formulario de alimento personalizado cuando se conecte
-                },
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.nutrition,
-                  side: const BorderSide(color: AppColors.nutrition),
-                  minimumSize: const Size.fromHeight(40),
+            child: Row(
+              children: [
+                // Barcode scanner button
+                Semantics(
+                  label: 'Escanear codigo de barras',
+                  button: true,
+                  child: OutlinedButton.icon(
+                    key: const ValueKey('food-search-scan-button'),
+                    onPressed: () async {
+                      final result =
+                          await context.push<FoodItemDto>(AppRoutes.barcodeScanner);
+                      if (!mounted) return;
+                      if (result != null) {
+                        // Show the product that was scanned
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Encontrado: ${result.name} '
+                              '(${result.caloriesPer100g} kcal/100g)',
+                            ),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      }
+                    },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.nutrition,
+                      side: const BorderSide(color: AppColors.nutrition),
+                    ),
+                    icon: const Icon(Icons.qr_code_scanner_outlined, size: 18),
+                    label: const Text('Escanear'),
+                  ),
                 ),
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text('Crear alimento personalizado'),
-              ),
+                const SizedBox(width: 8),
+                // Create custom food button
+                Expanded(
+                  child: Semantics(
+                    label: 'Crear alimento personalizado',
+                    button: true,
+                    child: OutlinedButton.icon(
+                      key: const ValueKey('food-search-create-custom-button'),
+                      onPressed: () {
+                        // TODO: abrir formulario de alimento personalizado
+                      },
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.nutrition,
+                        side: const BorderSide(color: AppColors.nutrition),
+                      ),
+                      icon: const Icon(Icons.add, size: 18),
+                      label: const Text('Crear alimento'),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
 
@@ -319,7 +230,7 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
                 // Pestana Buscar
                 _FoodResultList(
                   key: const ValueKey('food-search-results-list'),
-                  items: _filteredResults,
+                  items: _searchResults,
                   emptyMessage: _query.isNotEmpty
                       ? 'Sin resultados para "$_query"'
                       : 'Escribe para buscar alimentos',
@@ -327,20 +238,28 @@ class _FoodSearchScreenState extends State<FoodSearchScreen>
                 ),
 
                 // Pestana Favoritos
-                _FoodResultList(
-                  key: const ValueKey('food-search-favorites-list'),
-                  items: _mockFavorites,
-                  emptyMessage: 'No tienes alimentos favoritos aun',
-                  onTap: _handleFoodTap,
-                  showFavoriteIcon: true,
+                StreamBuilder<List<FoodItem>>(
+                  stream: ref.watch(nutritionDaoProvider).watchFavorites(),
+                  builder: (context, snapshot) => _FoodResultList(
+                    key: const ValueKey('food-search-favorites-list'),
+                    items: snapshot.data ?? [],
+                    emptyMessage: 'No tienes alimentos favoritos aun',
+                    onTap: _handleFoodTap,
+                    showFavoriteIcon: true,
+                  ),
                 ),
 
                 // Pestana Recientes
-                _FoodResultList(
-                  key: const ValueKey('food-search-recents-list'),
-                  items: _mockRecents,
-                  emptyMessage: 'No hay alimentos recientes',
-                  onTap: _handleFoodTap,
+                StreamBuilder<List<FoodItem>>(
+                  stream: ref
+                      .watch(nutritionDaoProvider)
+                      .watchRecentFoodItems(count: 20),
+                  builder: (context, snapshot) => _FoodResultList(
+                    key: const ValueKey('food-search-recents-list'),
+                    items: snapshot.data ?? [],
+                    emptyMessage: 'No hay alimentos recientes',
+                    onTap: _handleFoodTap,
+                  ),
                 ),
               ],
             ),
@@ -364,9 +283,9 @@ class _FoodResultList extends StatelessWidget {
     this.showFavoriteIcon = false,
   });
 
-  final List<_MockFoodResult> items;
+  final List<FoodItem> items;
   final String emptyMessage;
-  final ValueChanged<_MockFoodResult> onTap;
+  final ValueChanged<FoodItem> onTap;
   final bool showFavoriteIcon;
 
   @override
@@ -403,9 +322,13 @@ class _FoodResultList extends StatelessWidget {
       separatorBuilder: (_, __) => const Divider(height: 1, indent: 16),
       itemBuilder: (context, index) {
         final food = items[index];
+        final servingCal =
+            food.caloriesPer100g * food.servingSizeG / 100;
+        final brand = food.brand ?? 'Generico';
+        final servingLabel = '${food.servingSizeG.toStringAsFixed(0)} g';
         return Semantics(
           label:
-              '${food.name}, ${food.brand}, ${food.servingCalories.toStringAsFixed(0)} kcal por ${food.servingLabel}. Toca para agregar.',
+              '${food.name}, $brand, ${servingCal.toStringAsFixed(0)} kcal por $servingLabel. Toca para agregar.',
           button: true,
           child: ListTile(
             key: ValueKey('food-result-item-${food.id}'),
@@ -425,7 +348,7 @@ class _FoodResultList extends StatelessWidget {
               ),
             ),
             subtitle: Text(
-              '${food.brand} · ${food.servingLabel}',
+              '$brand · $servingLabel',
               style: theme.textTheme.bodySmall,
             ),
             trailing: Row(
@@ -436,14 +359,14 @@ class _FoodResultList extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      '${food.servingCalories.toStringAsFixed(0)} kcal',
+                      '${servingCal.toStringAsFixed(0)} kcal',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: AppColors.nutrition,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                     Text(
-                      'por ${food.servingLabel}',
+                      'por $servingLabel',
                       style: theme.textTheme.labelSmall?.copyWith(
                         fontSize: 10,
                       ),

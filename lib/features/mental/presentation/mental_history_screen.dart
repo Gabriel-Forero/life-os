@@ -1,43 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_os/core/constants/app_colors.dart';
+import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
 
-// ---------------------------------------------------------------------------
-// Mock data (kept as fallback until real data stream is wired)
-// ---------------------------------------------------------------------------
+const _dayLabels = ['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa', 'Do'];
 
-class _MockMoodEntry {
-  const _MockMoodEntry({
-    required this.date,
-    required this.valence,
-    required this.energy,
-    this.tags = const [],
-  });
-
-  final DateTime date;
-  final int valence; // 1–5
-  final int energy; // 1–5
-  final List<String> tags;
-
-  int get moodScore {
-    final v = (valence - 1) / 4.0 * 50.0;
-    final e = (energy - 1) / 4.0 * 50.0;
-    return (v + e).round().clamp(0, 100);
-  }
+int _moodScore(MoodLog log) {
+  final v = (log.valence - 1) / 4.0 * 50.0;
+  final e = (log.energy - 1) / 4.0 * 50.0;
+  return (v + e).round().clamp(0, 100);
 }
 
-final _mockMoodData = [
-  _MockMoodEntry(date: DateTime(2024, 1, 10), valence: 4, energy: 3, tags: ['trabajo']),
-  _MockMoodEntry(date: DateTime(2024, 1, 11), valence: 5, energy: 5, tags: ['feliz', 'ejercicio']),
-  _MockMoodEntry(date: DateTime(2024, 1, 12), valence: 2, energy: 2, tags: ['estres']),
-  _MockMoodEntry(date: DateTime(2024, 1, 13), valence: 3, energy: 4, tags: ['familia']),
-  _MockMoodEntry(date: DateTime(2024, 1, 14), valence: 4, energy: 4, tags: ['gratitud']),
-  _MockMoodEntry(date: DateTime(2024, 1, 15), valence: 5, energy: 3, tags: ['calma']),
-  _MockMoodEntry(date: DateTime(2024, 1, 16), valence: 3, energy: 3, tags: []),
-];
-
-const _dayLabels = ['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa', 'Do'];
+List<String> _parseTags(String raw) =>
+    raw.isEmpty ? [] : raw.split(',').map((t) => t.trim()).toList();
 
 // ---------------------------------------------------------------------------
 // Screen
@@ -66,19 +42,15 @@ class _MentalHistoryScreenState extends ConsumerState<MentalHistoryScreen>
     super.dispose();
   }
 
-  double get _avgScore {
-    if (_mockMoodData.isEmpty) return 0;
-    return _mockMoodData.map((e) => e.moodScore).reduce((a, b) => a + b) /
-        _mockMoodData.length;
-  }
-
   @override
   Widget build(BuildContext context) {
-    // Read provider to ensure connection is established even if UI shows mock
-    ref.watch(mentalNotifierProvider);
-
+    final dao = ref.watch(mentalDaoProvider);
     final theme = Theme.of(context);
     final mentalColor = AppColors.mental;
+
+    final now = DateTime.now();
+    final monthStart = DateTime(now.year, now.month, 1);
+    final monthEnd = DateTime(now.year, now.month + 1, 0);
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -97,17 +69,32 @@ class _MentalHistoryScreenState extends ConsumerState<MentalHistoryScreen>
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _CalendarView(data: _mockMoodData, mentalColor: mentalColor, theme: theme),
-          _TrendsView(
-            data: _mockMoodData,
-            avgScore: _avgScore,
-            mentalColor: mentalColor,
-            theme: theme,
-          ),
-        ],
+      body: StreamBuilder<List<MoodLog>>(
+        stream: dao.watchMoodLogs(monthStart, monthEnd),
+        builder: (context, snapshot) {
+          final data = snapshot.data ?? [];
+          final avgScore = data.isEmpty
+              ? 0.0
+              : data.map(_moodScore).reduce((a, b) => a + b) / data.length;
+
+          return TabBarView(
+            controller: _tabController,
+            children: [
+              _CalendarView(
+                data: data,
+                monthStart: monthStart,
+                mentalColor: mentalColor,
+                theme: theme,
+              ),
+              _TrendsView(
+                data: data,
+                avgScore: avgScore,
+                mentalColor: mentalColor,
+                theme: theme,
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -120,11 +107,13 @@ class _MentalHistoryScreenState extends ConsumerState<MentalHistoryScreen>
 class _CalendarView extends StatelessWidget {
   const _CalendarView({
     required this.data,
+    required this.monthStart,
     required this.mentalColor,
     required this.theme,
   });
 
-  final List<_MockMoodEntry> data;
+  final List<MoodLog> data;
+  final DateTime monthStart;
   final Color mentalColor;
   final ThemeData theme;
 
@@ -134,6 +123,22 @@ class _CalendarView extends StatelessWidget {
     if (score >= 25) return AppColors.warning;
     return AppColors.error;
   }
+
+  String _monthName(int month) => const [
+        '',
+        'Enero',
+        'Febrero',
+        'Marzo',
+        'Abril',
+        'Mayo',
+        'Junio',
+        'Julio',
+        'Agosto',
+        'Septiembre',
+        'Octubre',
+        'Noviembre',
+        'Diciembre',
+      ][month];
 
   @override
   Widget build(BuildContext context) {
@@ -168,7 +173,7 @@ class _CalendarView extends StatelessWidget {
                       key: const ValueKey('avg-mood-stat'),
                       value: data.isEmpty
                           ? '--'
-                          : (data.map((e) => e.moodScore).reduce((a, b) => a + b) /
+                          : (data.map(_moodScore).reduce((a, b) => a + b) /
                                   data.length)
                               .round()
                               .toString(),
@@ -183,8 +188,8 @@ class _CalendarView extends StatelessWidget {
                       value: data.isEmpty
                           ? '--'
                           : data
-                              .reduce((a, b) => a.moodScore > b.moodScore ? a : b)
-                              .moodScore
+                              .map(_moodScore)
+                              .reduce((a, b) => a > b ? a : b)
                               .toString(),
                       label: 'Mejor\ndia',
                       color: AppColors.success,
@@ -199,7 +204,7 @@ class _CalendarView extends StatelessWidget {
 
           // Calendar grid
           Text(
-            'Enero 2024',
+            '${_monthName(monthStart.month)} ${monthStart.year}',
             style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             textAlign: TextAlign.center,
           ),
@@ -233,15 +238,18 @@ class _CalendarView extends StatelessWidget {
                   mainAxisSpacing: 4,
                   crossAxisSpacing: 4,
                 ),
-                itemCount: 31,
+                itemCount: DateUtils.getDaysInMonth(
+                    monthStart.year, monthStart.month),
                 itemBuilder: (context, index) {
                   final day = index + 1;
-                  final entry = data.where((e) => e.date.day == day).firstOrNull;
-                  final color = entry != null ? _scoreColor(entry.moodScore) : null;
+                  final entry =
+                      data.where((e) => e.date.day == day).firstOrNull;
+                  final score = entry != null ? _moodScore(entry) : null;
+                  final color = score != null ? _scoreColor(score) : null;
 
                   return Semantics(
-                    label: entry != null
-                        ? 'Dia $day: ${entry.moodScore} puntos'
+                    label: score != null
+                        ? 'Dia $day: $score puntos'
                         : 'Dia $day sin registro',
                     child: Container(
                       key: ValueKey('calendar-day-$day'),
@@ -258,7 +266,9 @@ class _CalendarView extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 11,
                             color: color ?? Colors.grey,
-                            fontWeight: entry != null ? FontWeight.bold : FontWeight.normal,
+                            fontWeight: entry != null
+                                ? FontWeight.bold
+                                : FontWeight.normal,
                           ),
                         ),
                       ),
@@ -280,46 +290,59 @@ class _CalendarView extends StatelessWidget {
           Card(
             key: const ValueKey('mood-log-list'),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: ListView.separated(
-              physics: const NeverScrollableScrollPhysics(),
-              shrinkWrap: true,
-              itemCount: data.length,
-              separatorBuilder: (_, __) => const Divider(height: 1),
-              itemBuilder: (context, i) {
-                final entry = data[i];
-                return Semantics(
-                  label: '${entry.date.day}/${entry.date.month}: animo ${entry.moodScore}',
-                  child: ListTile(
-                    key: ValueKey('mood-list-item-$i'),
-                    leading: CircleAvatar(
-                      backgroundColor: _scoreColor(entry.moodScore).withAlpha(40),
-                      child: Text(
-                        '${entry.moodScore}',
-                        style: TextStyle(
-                          color: _scoreColor(entry.moodScore),
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
+            child: data.isEmpty
+                ? Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text(
+                      'No hay registros este mes',
+                      style: theme.textTheme.bodyMedium,
+                      textAlign: TextAlign.center,
+                    ),
+                  )
+                : ListView.separated(
+                    physics: const NeverScrollableScrollPhysics(),
+                    shrinkWrap: true,
+                    itemCount: data.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (context, i) {
+                      final entry = data[i];
+                      final score = _moodScore(entry);
+                      final tags = _parseTags(entry.tags);
+                      return Semantics(
+                        label:
+                            '${entry.date.day}/${entry.date.month}: animo $score',
+                        child: ListTile(
+                          key: ValueKey('mood-list-item-$i'),
+                          leading: CircleAvatar(
+                            backgroundColor:
+                                _scoreColor(score).withAlpha(40),
+                            child: Text(
+                              '$score',
+                              style: TextStyle(
+                                color: _scoreColor(score),
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          title: Text(
+                            '${entry.date.day}/${entry.date.month}/${entry.date.year}',
+                          ),
+                          subtitle: tags.isEmpty
+                              ? const Text('Sin etiquetas')
+                              : Text(tags.join(', ')),
+                          trailing: Text(
+                            'V:${entry.valence} E:${entry.energy}',
+                            style: TextStyle(
+                              color: mentalColor,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                    title: Text(
-                      '${entry.date.day}/${entry.date.month}/${entry.date.year}',
-                    ),
-                    subtitle: entry.tags.isEmpty
-                        ? const Text('Sin etiquetas')
-                        : Text(entry.tags.join(', ')),
-                    trailing: Text(
-                      'V:${entry.valence} E:${entry.energy}',
-                      style: TextStyle(
-                        color: mentalColor,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12,
-                      ),
-                    ),
+                      );
+                    },
                   ),
-                );
-              },
-            ),
           ),
         ],
       ),
@@ -339,7 +362,7 @@ class _TrendsView extends StatelessWidget {
     required this.theme,
   });
 
-  final List<_MockMoodEntry> data;
+  final List<MoodLog> data;
   final double avgScore;
   final Color mentalColor;
   final ThemeData theme;
@@ -380,42 +403,57 @@ class _TrendsView extends StatelessWidget {
                   const SizedBox(height: 8),
                   SizedBox(
                     height: 140,
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: List.generate(data.length, (i) {
-                        final entry = data[i];
-                        final barHeight = (entry.moodScore / 100.0) * 120;
-                        final color = entry.moodScore >= 75
-                            ? AppColors.success
-                            : entry.moodScore >= 50
-                                ? mentalColor
-                                : AppColors.warning;
+                    child: data.isEmpty
+                        ? Center(
+                            child: Text(
+                              'Sin datos este mes',
+                              style: theme.textTheme.bodySmall,
+                            ),
+                          )
+                        : Row(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: List.generate(data.length, (i) {
+                              final entry = data[i];
+                              final score = _moodScore(entry);
+                              final barHeight = (score / 100.0) * 120;
+                              final color = score >= 75
+                                  ? AppColors.success
+                                  : score >= 50
+                                      ? mentalColor
+                                      : AppColors.warning;
+                              final dayLabel = _dayLabels[
+                                  (entry.date.weekday - 1) % 7];
 
-                        return Expanded(
-                          child: Semantics(
-                            label: '${_dayLabels[i]}: animo ${entry.moodScore}',
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                Text('${entry.moodScore}', style: const TextStyle(fontSize: 9)),
-                                const SizedBox(height: 2),
-                                Container(
-                                  key: ValueKey('mood-bar-$i'),
-                                  height: barHeight,
-                                  margin: const EdgeInsets.symmetric(horizontal: 3),
-                                  decoration: BoxDecoration(
-                                    color: color.withAlpha(200),
-                                    borderRadius: BorderRadius.circular(4),
+                              return Expanded(
+                                child: Semantics(
+                                  label: '$dayLabel: animo $score',
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
+                                      Text('$score',
+                                          style:
+                                              const TextStyle(fontSize: 9)),
+                                      const SizedBox(height: 2),
+                                      Container(
+                                        key: ValueKey('mood-bar-$i'),
+                                        height: barHeight,
+                                        margin: const EdgeInsets.symmetric(
+                                            horizontal: 3),
+                                        decoration: BoxDecoration(
+                                          color: color.withAlpha(200),
+                                          borderRadius:
+                                              BorderRadius.circular(4),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(dayLabel,
+                                          style: theme.textTheme.labelSmall),
+                                    ],
                                   ),
                                 ),
-                                const SizedBox(height: 4),
-                                Text(_dayLabels[i], style: theme.textTheme.labelSmall),
-                              ],
-                            ),
+                              );
+                            }),
                           ),
-                        );
-                      }),
-                    ),
                   ),
                 ],
               ),
@@ -438,76 +476,99 @@ class _TrendsView extends StatelessWidget {
                     style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 12),
-                  ...data.map((entry) {
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Semantics(
-                        label: 'Dia ${entry.date.day}: Valencia ${entry.valence}, Energia ${entry.energy}',
-                        child: Row(
-                          children: [
-                            SizedBox(
-                              width: 28,
-                              child: Text(
-                                '${entry.date.day}',
-                                style: theme.textTheme.labelSmall,
+                  if (data.isEmpty)
+                    Text('Sin datos', style: theme.textTheme.bodySmall)
+                  else
+                    ...data.map((entry) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Semantics(
+                          label:
+                              'Dia ${entry.date.day}: Valencia ${entry.valence}, Energia ${entry.energy}',
+                          child: Row(
+                            children: [
+                              SizedBox(
+                                width: 28,
+                                child: Text(
+                                  '${entry.date.day}',
+                                  style: theme.textTheme.labelSmall,
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      const SizedBox(
-                                        width: 52,
-                                        child: Text('Valencia', style: TextStyle(fontSize: 10)),
-                                      ),
-                                      Expanded(
-                                        child: ClipRRect(
-                                          borderRadius: BorderRadius.circular(3),
-                                          child: LinearProgressIndicator(
-                                            value: entry.valence / 5.0,
-                                            minHeight: 8,
-                                            backgroundColor: AppColors.mental.withAlpha(30),
-                                            valueColor: AlwaysStoppedAnimation(AppColors.mental),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        const SizedBox(
+                                          width: 52,
+                                          child: Text('Valencia',
+                                              style:
+                                                  TextStyle(fontSize: 10)),
+                                        ),
+                                        Expanded(
+                                          child: ClipRRect(
+                                            borderRadius:
+                                                BorderRadius.circular(3),
+                                            child: LinearProgressIndicator(
+                                              value: entry.valence / 5.0,
+                                              minHeight: 8,
+                                              backgroundColor: AppColors
+                                                  .mental
+                                                  .withAlpha(30),
+                                              valueColor:
+                                                  AlwaysStoppedAnimation(
+                                                      AppColors.mental),
+                                            ),
                                           ),
                                         ),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text('${entry.valence}', style: const TextStyle(fontSize: 10)),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Row(
-                                    children: [
-                                      const SizedBox(
-                                        width: 52,
-                                        child: Text('Energia', style: TextStyle(fontSize: 10)),
-                                      ),
-                                      Expanded(
-                                        child: ClipRRect(
-                                          borderRadius: BorderRadius.circular(3),
-                                          child: LinearProgressIndicator(
-                                            value: entry.energy / 5.0,
-                                            minHeight: 8,
-                                            backgroundColor: AppColors.sleep.withAlpha(30),
-                                            valueColor: AlwaysStoppedAnimation(AppColors.sleep),
+                                        const SizedBox(width: 4),
+                                        Text('${entry.valence}',
+                                            style: const TextStyle(
+                                                fontSize: 10)),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Row(
+                                      children: [
+                                        const SizedBox(
+                                          width: 52,
+                                          child: Text('Energia',
+                                              style:
+                                                  TextStyle(fontSize: 10)),
+                                        ),
+                                        Expanded(
+                                          child: ClipRRect(
+                                            borderRadius:
+                                                BorderRadius.circular(3),
+                                            child: LinearProgressIndicator(
+                                              value: entry.energy / 5.0,
+                                              minHeight: 8,
+                                              backgroundColor: AppColors
+                                                  .sleep
+                                                  .withAlpha(30),
+                                              valueColor:
+                                                  AlwaysStoppedAnimation(
+                                                      AppColors.sleep),
+                                            ),
                                           ),
                                         ),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text('${entry.energy}', style: const TextStyle(fontSize: 10)),
-                                    ],
-                                  ),
-                                ],
+                                        const SizedBox(width: 4),
+                                        Text('${entry.energy}',
+                                            style: const TextStyle(
+                                                fontSize: 10)),
+                                      ],
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                    );
-                  }),
+                      );
+                    }),
                 ],
               ),
             ),
@@ -556,7 +617,7 @@ class _TrendsView extends StatelessWidget {
   Map<String, int> _topTags() {
     final counts = <String, int>{};
     for (final entry in data) {
-      for (final tag in entry.tags) {
+      for (final tag in _parseTags(entry.tags)) {
         counts[tag] = (counts[tag] ?? 0) + 1;
       }
     }

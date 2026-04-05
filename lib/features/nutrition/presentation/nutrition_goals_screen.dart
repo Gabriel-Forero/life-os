@@ -1,41 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_os/core/constants/app_colors.dart';
+import 'package:life_os/core/providers/providers.dart';
+import 'package:life_os/features/nutrition/domain/nutrition_input.dart';
 
-// ---------------------------------------------------------------------------
-// Modelos mock
-// ---------------------------------------------------------------------------
-
-class _MockNutritionGoals {
-  const _MockNutritionGoals({
-    required this.caloriesTarget,
-    required this.proteinG,
-    required this.carbsG,
-    required this.fatG,
-    required this.waterMl,
-  });
-
-  final int caloriesTarget;
-  final double proteinG;
-  final double carbsG;
-  final double fatG;
-  final int waterMl;
-
-  /// Calorias calculadas desde macros: P*4 + C*4 + F*9
-  double get caloriesFromMacros =>
-      proteinG * 4 + carbsG * 4 + fatG * 9;
-
-  bool get macrosMismatch =>
-      (caloriesTarget - caloriesFromMacros).abs() > 50;
-}
-
-const _mockCurrentGoals = _MockNutritionGoals(
-  caloriesTarget: 2000,
-  proteinG: 150,
-  carbsG: 250,
-  fatG: 65,
-  waterMl: 2000,
-);
+// Default values when no goal is set
+const _defaultCalories = 2000;
+const _defaultProteinG = 150.0;
+const _defaultCarbsG = 250.0;
+const _defaultFatG = 65.0;
+const _defaultWaterMl = 2000;
 
 // ---------------------------------------------------------------------------
 // Pantalla: configuracion de metas nutricionales
@@ -49,14 +24,16 @@ const _mockCurrentGoals = _MockNutritionGoals(
 ///
 /// Accesibilidad: A11Y-NUT-04 — todos los campos y avisos tienen etiquetas
 /// semanticas.
-class NutritionGoalsScreen extends StatefulWidget {
+class NutritionGoalsScreen extends ConsumerStatefulWidget {
   const NutritionGoalsScreen({super.key});
 
   @override
-  State<NutritionGoalsScreen> createState() => _NutritionGoalsScreenState();
+  ConsumerState<NutritionGoalsScreen> createState() =>
+      _NutritionGoalsScreenState();
 }
 
-class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
+class _NutritionGoalsScreenState
+    extends ConsumerState<NutritionGoalsScreen> {
   final _formKey = GlobalKey<FormState>();
 
   late final TextEditingController _caloriesController;
@@ -66,30 +43,50 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
   late final TextEditingController _waterController;
 
   // Valores en tiempo real para la validacion de macros
-  int _calories = _mockCurrentGoals.caloriesTarget;
-  double _protein = _mockCurrentGoals.proteinG;
-  double _carbs = _mockCurrentGoals.carbsG;
-  double _fat = _mockCurrentGoals.fatG;
-  int _water = _mockCurrentGoals.waterMl;
+  int _calories = _defaultCalories;
+  double _protein = _defaultProteinG;
+  double _carbs = _defaultCarbsG;
+  double _fat = _defaultFatG;
+  int _water = _defaultWaterMl;
+  bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
     _caloriesController = TextEditingController(
-      text: _mockCurrentGoals.caloriesTarget.toString(),
+      text: _defaultCalories.toString(),
     );
     _proteinController = TextEditingController(
-      text: _mockCurrentGoals.proteinG.toStringAsFixed(1),
+      text: _defaultProteinG.toStringAsFixed(1),
     );
     _carbsController = TextEditingController(
-      text: _mockCurrentGoals.carbsG.toStringAsFixed(1),
+      text: _defaultCarbsG.toStringAsFixed(1),
     );
     _fatController = TextEditingController(
-      text: _mockCurrentGoals.fatG.toStringAsFixed(1),
+      text: _defaultFatG.toStringAsFixed(1),
     );
     _waterController = TextEditingController(
-      text: _mockCurrentGoals.waterMl.toString(),
+      text: _defaultWaterMl.toString(),
     );
+    _loadCurrentGoal();
+  }
+
+  Future<void> _loadCurrentGoal() async {
+    final dao = ref.read(nutritionDaoProvider);
+    final goal = await dao.getActiveGoal(DateTime.now());
+    if (goal == null || !mounted) return;
+    setState(() {
+      _calories = goal.caloriesKcal;
+      _protein = goal.proteinG;
+      _carbs = goal.carbsG;
+      _fat = goal.fatG;
+      _water = goal.waterMl;
+    });
+    _caloriesController.text = _calories.toString();
+    _proteinController.text = _protein.toStringAsFixed(1);
+    _carbsController.text = _carbs.toStringAsFixed(1);
+    _fatController.text = _fat.toStringAsFixed(1);
+    _waterController.text = _water.toString();
   }
 
   @override
@@ -127,16 +124,37 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
     setState(() => _water = int.tryParse(v) ?? _water);
   }
 
-  void _handleSave() {
+  Future<void> _handleSave() async {
     if (!_formKey.currentState!.validate()) return;
-    // TODO: llamar a NutritionNotifier.saveGoals cuando se conecte
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Metas guardadas correctamente'),
-        backgroundColor: AppColors.nutrition,
+    setState(() => _isSaving = true);
+
+    final notifier = ref.read(nutritionNotifierProvider);
+    final result = await notifier.setNutritionGoal(
+      NutritionGoalInput(
+        caloriesKcal: _calories,
+        proteinG: _protein,
+        carbsG: _carbs,
+        fatG: _fat,
+        waterMl: _water,
       ),
     );
-    Navigator.of(context).pop();
+
+    if (!mounted) return;
+    setState(() => _isSaving = false);
+
+    result.when(
+      success: (_) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Guardado!')),
+        );
+        Navigator.of(context).pop();
+      },
+      failure: (f) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(f.userMessage)),
+        );
+      },
+    );
   }
 
   @override
@@ -410,12 +428,21 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
               button: true,
               child: FilledButton.icon(
                 key: const ValueKey('nutrition-goals-save-button'),
-                onPressed: _handleSave,
+                onPressed: _isSaving ? null : _handleSave,
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.nutrition,
                   minimumSize: const Size.fromHeight(52),
                 ),
-                icon: const Icon(Icons.save_outlined),
+                icon: _isSaving
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.save_outlined),
                 label: const Text(
                   'Guardar metas',
                   style: TextStyle(

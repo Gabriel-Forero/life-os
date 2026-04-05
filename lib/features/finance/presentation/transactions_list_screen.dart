@@ -1,91 +1,39 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:life_os/core/constants/app_colors.dart';
+import 'package:life_os/core/database/app_database.dart';
+import 'package:life_os/core/providers/providers.dart';
 import 'package:life_os/core/widgets/empty_state_view.dart';
 import 'package:life_os/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 
-/// A mock transaction item used as a presentation shell until Riverpod is wired.
-class _MockTransaction {
-  const _MockTransaction({
-    required this.id,
-    required this.type,
-    required this.amountCents,
-    required this.categoryName,
-    required this.categoryIcon,
-    required this.note,
-    required this.date,
-  });
-
-  final int id;
-  final String type;
-  final int amountCents;
-  final String categoryName;
-  final String categoryIcon;
-  final String? note;
-  final DateTime date;
-}
-
-/// Presentation shell for the transactions list.
-///
-/// Groups transactions by date and provides swipe-to-delete / swipe-to-edit
-/// affordances. Full Riverpod integration (provider subscription, actual
-/// delete / edit calls via FinanceNotifier) is wired up in a subsequent pass.
+/// Transactions list screen wired to the Drift FinanceDao.
 ///
 /// Accessibility: A11Y-FIN-01 — every interactive element has a Semantics label.
-class TransactionsListScreen extends StatelessWidget {
+class TransactionsListScreen extends ConsumerStatefulWidget {
   const TransactionsListScreen({super.key});
 
-  // ---------------------------------------------------------------------------
-  // Mock data — replaced by real provider data when wired.
-  // ---------------------------------------------------------------------------
-  static final List<_MockTransaction> _mockTransactions = [
-    _MockTransaction(
-      id: 1,
-      type: 'expense',
-      amountCents: 1250000,
-      categoryName: 'Alimentacion',
-      categoryIcon: 'restaurant',
-      note: 'Almuerzo con el equipo',
-      date: DateTime.now(),
-    ),
-    _MockTransaction(
-      id: 2,
-      type: 'income',
-      amountCents: 300000000,
-      categoryName: 'Salario',
-      categoryIcon: 'payments',
-      note: null,
-      date: DateTime.now(),
-    ),
-    _MockTransaction(
-      id: 3,
-      type: 'expense',
-      amountCents: 8000000,
-      categoryName: 'Transporte',
-      categoryIcon: 'directions_car',
-      note: 'Uber al aeropuerto',
-      date: DateTime.now().subtract(const Duration(days: 1)),
-    ),
-    _MockTransaction(
-      id: 4,
-      type: 'expense',
-      amountCents: 5500000,
-      categoryName: 'Entretenimiento',
-      categoryIcon: 'movie',
-      note: 'Netflix',
-      date: DateTime.now().subtract(const Duration(days: 1)),
-    ),
-  ];
+  @override
+  ConsumerState<TransactionsListScreen> createState() =>
+      _TransactionsListScreenState();
+}
 
-  // ---------------------------------------------------------------------------
-  // Helpers
-  // ---------------------------------------------------------------------------
+class _TransactionsListScreenState
+    extends ConsumerState<TransactionsListScreen> {
+  // Default: show this month
+  DateTime get _from {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, 1);
+  }
 
-  Map<String, List<_MockTransaction>> _groupByDate(
-    List<_MockTransaction> transactions,
-  ) {
-    final grouped = <String, List<_MockTransaction>>{};
+  DateTime get _to {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month + 1, 0, 23, 59, 59);
+  }
+
+  Map<String, List<Transaction>> _groupByDate(List<Transaction> transactions) {
+    final grouped = <String, List<Transaction>>{};
     for (final tx in transactions) {
       final key = DateFormat('yyyy-MM-dd').format(tx.date);
       grouped.putIfAbsent(key, () => []).add(tx);
@@ -93,7 +41,7 @@ class TransactionsListScreen extends StatelessWidget {
     return grouped;
   }
 
-  String _formatDateHeader(String dateKey, BuildContext context) {
+  String _formatDateHeader(String dateKey) {
     final date = DateTime.parse(dateKey);
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -105,23 +53,50 @@ class TransactionsListScreen extends StatelessWidget {
     return DateFormat('EEEE, d MMM', 'es').format(date);
   }
 
-  String _formatAmount(_MockTransaction tx) {
-    // COP has no decimals — amount stored in cents equals the full integer.
+  String _formatAmount(Transaction tx) {
     final symbol = '\$';
     final formatter = NumberFormat('#,##0', 'es_CO');
     return '${tx.type == 'expense' ? '-' : '+'}$symbol${formatter.format(tx.amountCents)}';
   }
 
-  // ---------------------------------------------------------------------------
-  // Build
-  // ---------------------------------------------------------------------------
+  Future<void> _deleteTransaction(BuildContext context, Transaction tx) async {
+    final l10n = AppLocalizations.of(context)!;
+    final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Eliminar transaccion'),
+            content: const Text('Esta accion no se puede deshacer.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('Cancelar'),
+              ),
+              TextButton(
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFFEF4444),
+                ),
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: const Text('Eliminar'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+
+    if (confirmed && context.mounted) {
+      await ref.read(financeNotifierProvider).removeTransaction(tx.id);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l10n.commonDelete)),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final theme = Theme.of(context);
-    final grouped = _groupByDate(_mockTransactions);
-    final dateKeys = grouped.keys.toList()..sort((a, b) => b.compareTo(a));
+    final dao = ref.watch(financeDaoProvider);
 
     return Scaffold(
       key: const ValueKey('transactions-list-screen'),
@@ -140,9 +115,7 @@ class TransactionsListScreen extends StatelessWidget {
             child: IconButton(
               key: const ValueKey('transactions-filter-button'),
               icon: const Icon(Icons.filter_list_outlined),
-              onPressed: () {
-                // TODO: open filter bottom sheet when wired
-              },
+              onPressed: () {},
               tooltip: 'Filtrar',
             ),
           ),
@@ -152,54 +125,53 @@ class TransactionsListScreen extends StatelessWidget {
             child: IconButton(
               key: const ValueKey('transactions-search-button'),
               icon: const Icon(Icons.search_outlined),
-              onPressed: () {
-                // TODO: open search delegate when wired
-              },
+              onPressed: () {},
               tooltip: 'Buscar',
             ),
           ),
         ],
       ),
-      body: _mockTransactions.isEmpty
-          ? EmptyStateView(
+      body: StreamBuilder<List<Transaction>>(
+        stream: dao.watchTransactions(_from, _to),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final transactions = snapshot.data ?? [];
+          if (transactions.isEmpty) {
+            return EmptyStateView(
               key: const ValueKey('transactions-empty-state'),
               icon: Icons.receipt_long_outlined,
               title: 'Sin transacciones',
               message: 'Agrega tu primera transaccion tocando el boton +',
               actionLabel: 'Agregar transaccion',
-              onAction: () {
-                // TODO: navigate to add screen when wired
-              },
-            )
-          : ListView.builder(
-              key: const ValueKey('transactions-list'),
-              padding: const EdgeInsets.only(bottom: 88),
-              itemCount: dateKeys.length,
-              itemBuilder: (context, index) {
-                final dateKey = dateKeys[index];
-                final txs = grouped[dateKey]!;
-                return _DateGroup(
-                  dateHeader: _formatDateHeader(dateKey, context),
-                  transactions: txs,
-                  formatAmount: _formatAmount,
-                  onDelete: (tx) {
-                    // TODO: call notifier.removeTransaction(tx.id) when wired
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(l10n.commonDelete),
-                        action: SnackBarAction(
-                          label: 'Deshacer',
-                          onPressed: () {},
-                        ),
-                      ),
-                    );
-                  },
-                  onEdit: (tx) {
-                    // TODO: navigate to add/edit screen when wired
-                  },
-                );
-              },
-            ),
+              onAction: () => GoRouter.of(context).push('/finance/add'),
+            );
+          }
+
+          final grouped = _groupByDate(transactions);
+          final dateKeys = grouped.keys.toList()
+            ..sort((a, b) => b.compareTo(a));
+
+          return ListView.builder(
+            key: const ValueKey('transactions-list'),
+            padding: const EdgeInsets.only(bottom: 88),
+            itemCount: dateKeys.length,
+            itemBuilder: (context, index) {
+              final dateKey = dateKeys[index];
+              final txs = grouped[dateKey]!;
+              return _DateGroup(
+                dateHeader: _formatDateHeader(dateKey),
+                transactions: txs,
+                formatAmount: _formatAmount,
+                onDelete: (tx) => _deleteTransaction(context, tx),
+                onEdit: (tx) =>
+                    GoRouter.of(context).push('/finance/add?id=${tx.id}'),
+              );
+            },
+          );
+        },
+      ),
       floatingActionButton: Semantics(
         label: 'Agregar transaccion',
         button: true,
@@ -207,9 +179,7 @@ class TransactionsListScreen extends StatelessWidget {
           key: const ValueKey('transactions-fab-add'),
           backgroundColor: AppColors.finance,
           foregroundColor: Colors.white,
-          onPressed: () {
-            GoRouter.of(context).push('/finance/add');
-          },
+          onPressed: () => GoRouter.of(context).push('/finance/add'),
           tooltip: 'Agregar transaccion',
           child: const Icon(Icons.add),
         ),
@@ -232,10 +202,10 @@ class _DateGroup extends StatelessWidget {
   });
 
   final String dateHeader;
-  final List<_MockTransaction> transactions;
-  final String Function(_MockTransaction) formatAmount;
-  final void Function(_MockTransaction) onDelete;
-  final void Function(_MockTransaction) onEdit;
+  final List<Transaction> transactions;
+  final String Function(Transaction) formatAmount;
+  final void Function(Transaction) onDelete;
+  final void Function(Transaction) onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -278,7 +248,7 @@ class _TransactionTile extends StatelessWidget {
     required this.onEdit,
   });
 
-  final _MockTransaction transaction;
+  final Transaction transaction;
   final String formattedAmount;
   final VoidCallback onDelete;
   final VoidCallback onEdit;
@@ -291,8 +261,7 @@ class _TransactionTile extends StatelessWidget {
         isExpense ? const Color(0xFFEF4444) : AppColors.finance;
 
     return Semantics(
-      label:
-          '${transaction.categoryName}, $formattedAmount, ${transaction.note ?? ''}',
+      label: 'Transaccion: $formattedAmount',
       child: Dismissible(
         key: ValueKey('transaction-tile-${transaction.id}'),
         background: _SwipeBackground(
@@ -312,14 +281,11 @@ class _TransactionTile extends StatelessWidget {
             onEdit();
             return false;
           }
-          // Delete direction — show confirmation
           return await showDialog<bool>(
                 context: context,
                 builder: (ctx) => AlertDialog(
                   title: const Text('Eliminar transaccion'),
-                  content: const Text(
-                    'Esta accion no se puede deshacer.',
-                  ),
+                  content: const Text('Esta accion no se puede deshacer.'),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.of(ctx).pop(false),
@@ -340,32 +306,21 @@ class _TransactionTile extends StatelessWidget {
         onDismissed: (_) => onDelete(),
         child: ListTile(
           key: ValueKey('transaction-item-${transaction.id}'),
-          leading: Semantics(
-            label: 'Categoria: ${transaction.categoryName}',
-            child: CircleAvatar(
-              backgroundColor: (isExpense
-                      ? const Color(0xFFEF4444)
-                      : AppColors.finance)
-                  .withAlpha(25),
-              child: Icon(
-                _iconData(transaction.categoryIcon),
-                size: 20,
-                color: isExpense ? const Color(0xFFEF4444) : AppColors.finance,
-              ),
+          leading: CircleAvatar(
+            backgroundColor: (isExpense
+                    ? const Color(0xFFEF4444)
+                    : AppColors.finance)
+                .withAlpha(25),
+            child: Icon(
+              Icons.receipt_outlined,
+              size: 20,
+              color: isExpense ? const Color(0xFFEF4444) : AppColors.finance,
             ),
           ),
           title: Text(
-            transaction.categoryName,
+            transaction.note ?? (isExpense ? 'Gasto' : 'Ingreso'),
             style: theme.textTheme.bodyMedium,
           ),
-          subtitle: transaction.note != null
-              ? Text(
-                  transaction.note!,
-                  style: theme.textTheme.bodySmall,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                )
-              : null,
           trailing: Text(
             formattedAmount,
             style: theme.textTheme.titleSmall?.copyWith(
@@ -376,23 +331,6 @@ class _TransactionTile extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  IconData _iconData(String name) {
-    return switch (name) {
-      'restaurant' => Icons.restaurant,
-      'payments' => Icons.payments_outlined,
-      'directions_car' => Icons.directions_car_outlined,
-      'movie' => Icons.movie_outlined,
-      'local_hospital' => Icons.local_hospital_outlined,
-      'home' => Icons.home_outlined,
-      'school' => Icons.school_outlined,
-      'checkroom' => Icons.checkroom_outlined,
-      'receipt_long' => Icons.receipt_long_outlined,
-      'account_balance' => Icons.account_balance_outlined,
-      'work' => Icons.work_outline,
-      _ => Icons.category_outlined,
-    };
   }
 }
 

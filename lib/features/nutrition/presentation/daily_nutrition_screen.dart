@@ -1,13 +1,36 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:life_os/core/constants/app_colors.dart';
+import 'package:life_os/core/database/app_database.dart';
+import 'package:life_os/core/providers/providers.dart';
 
 // ---------------------------------------------------------------------------
-// Modelos mock
+// Helpers de tipo de comida
 // ---------------------------------------------------------------------------
 
-class _MockMacro {
-  const _MockMacro({
+const _mealTypes = ['breakfast', 'lunch', 'dinner', 'snack'];
+
+String _mealTypeLabel(String type) => switch (type) {
+      'breakfast' => 'Desayuno',
+      'lunch' => 'Almuerzo',
+      'dinner' => 'Cena',
+      'snack' => 'Snack',
+      _ => type,
+    };
+
+IconData _mealTypeIcon(String type) => switch (type) {
+      'breakfast' => Icons.wb_sunny_outlined,
+      'lunch' => Icons.restaurant_outlined,
+      'dinner' => Icons.nightlight_outlined,
+      'snack' => Icons.apple_outlined,
+      _ => Icons.restaurant_menu_outlined,
+    };
+
+// Macro data class
+class _Macro {
+  const _Macro({
     required this.label,
     required this.current,
     required this.goal,
@@ -24,183 +47,6 @@ class _MockMacro {
   double get progress => goal > 0 ? (current / goal).clamp(0.0, 1.0) : 0.0;
 }
 
-const _mockMacros = [
-  _MockMacro(
-    label: 'Calorias',
-    current: 1420,
-    goal: 2000,
-    unit: 'kcal',
-    color: AppColors.nutrition,
-  ),
-  _MockMacro(
-    label: 'Proteina',
-    current: 82,
-    goal: 150,
-    unit: 'g',
-    color: Color(0xFF3B82F6),
-  ),
-  _MockMacro(
-    label: 'Carbos',
-    current: 168,
-    goal: 250,
-    unit: 'g',
-    color: Color(0xFF10B981),
-  ),
-  _MockMacro(
-    label: 'Grasa',
-    current: 45,
-    goal: 65,
-    unit: 'g',
-    color: Color(0xFFEC4899),
-  ),
-];
-
-enum _MealType { desayuno, almuerzo, cena, snack }
-
-extension _MealTypeLabel on _MealType {
-  String get label => switch (this) {
-        _MealType.desayuno => 'Desayuno',
-        _MealType.almuerzo => 'Almuerzo',
-        _MealType.cena => 'Cena',
-        _MealType.snack => 'Snack',
-      };
-
-  IconData get icon => switch (this) {
-        _MealType.desayuno => Icons.wb_sunny_outlined,
-        _MealType.almuerzo => Icons.restaurant_outlined,
-        _MealType.cena => Icons.nightlight_outlined,
-        _MealType.snack => Icons.apple_outlined,
-      };
-}
-
-class _MockFoodItem {
-  const _MockFoodItem({
-    required this.id,
-    required this.name,
-    required this.calories,
-    required this.proteinG,
-    required this.carbsG,
-    required this.fatG,
-    required this.serving,
-  });
-
-  final int id;
-  final String name;
-  final double calories;
-  final double proteinG;
-  final double carbsG;
-  final double fatG;
-  final String serving;
-}
-
-class _MockMealEntry {
-  const _MockMealEntry({
-    required this.type,
-    required this.items,
-  });
-
-  final _MealType type;
-  final List<_MockFoodItem> items;
-
-  double get totalCalories =>
-      items.fold(0.0, (sum, i) => sum + i.calories);
-}
-
-const _mockMeals = [
-  _MockMealEntry(
-    type: _MealType.desayuno,
-    items: [
-      _MockFoodItem(
-        id: 1,
-        name: 'Avena con leche',
-        calories: 320,
-        proteinG: 12,
-        carbsG: 52,
-        fatG: 6,
-        serving: '1 taza (240 ml)',
-      ),
-      _MockFoodItem(
-        id: 2,
-        name: 'Platano',
-        calories: 105,
-        proteinG: 1.3,
-        carbsG: 27,
-        fatG: 0.4,
-        serving: '1 unidad (120 g)',
-      ),
-    ],
-  ),
-  _MockMealEntry(
-    type: _MealType.almuerzo,
-    items: [
-      _MockFoodItem(
-        id: 3,
-        name: 'Pechuga de pollo a la plancha',
-        calories: 280,
-        proteinG: 42,
-        carbsG: 0,
-        fatG: 10,
-        serving: '150 g',
-      ),
-      _MockFoodItem(
-        id: 4,
-        name: 'Arroz blanco cocido',
-        calories: 200,
-        proteinG: 4,
-        carbsG: 44,
-        fatG: 0.5,
-        serving: '1 taza (180 g)',
-      ),
-      _MockFoodItem(
-        id: 5,
-        name: 'Ensalada mixta',
-        calories: 45,
-        proteinG: 2,
-        carbsG: 8,
-        fatG: 1,
-        serving: '1 porcion (100 g)',
-      ),
-    ],
-  ),
-  _MockMealEntry(
-    type: _MealType.cena,
-    items: [
-      _MockFoodItem(
-        id: 6,
-        name: 'Salmon al horno',
-        calories: 350,
-        proteinG: 38,
-        carbsG: 0,
-        fatG: 21,
-        serving: '180 g',
-      ),
-      _MockFoodItem(
-        id: 7,
-        name: 'Brocoli al vapor',
-        calories: 55,
-        proteinG: 4,
-        carbsG: 11,
-        fatG: 0.6,
-        serving: '1 taza (156 g)',
-      ),
-    ],
-  ),
-  _MockMealEntry(
-    type: _MealType.snack,
-    items: [
-      _MockFoodItem(
-        id: 8,
-        name: 'Yogur griego natural',
-        calories: 100,
-        proteinG: 17,
-        carbsG: 6,
-        fatG: 0.7,
-        serving: '170 g',
-      ),
-    ],
-  ),
-];
-
 // ---------------------------------------------------------------------------
 // Pantalla principal de nutricion diaria
 // ---------------------------------------------------------------------------
@@ -208,39 +54,22 @@ const _mockMeals = [
 /// Pantalla de nutricion diaria con anillos de macros, lista de comidas por
 /// tipo y rastreador de agua.
 ///
-/// Shell de presentacion — la integracion con Riverpod se realizara en un
-/// paso posterior.
-///
 /// Accesibilidad: A11Y-NUT-01 — todos los controles e indicadores tienen
 /// etiquetas semanticas.
-class DailyNutritionScreen extends StatefulWidget {
+class DailyNutritionScreen extends ConsumerStatefulWidget {
   const DailyNutritionScreen({super.key});
 
   @override
-  State<DailyNutritionScreen> createState() => _DailyNutritionScreenState();
+  ConsumerState<DailyNutritionScreen> createState() =>
+      _DailyNutritionScreenState();
 }
 
-class _DailyNutritionScreenState extends State<DailyNutritionScreen> {
-  final Set<_MealType> _expandedMeals = {_MealType.desayuno, _MealType.almuerzo};
-
-  // Agua: vasos de 250 ml hacia meta de 8 vasos (2000 ml)
-  int _waterGlasses = 5;
-  static const int _waterGoalGlasses = 8;
+class _DailyNutritionScreenState
+    extends ConsumerState<DailyNutritionScreen> {
+  final Set<String> _expandedMeals = {'breakfast', 'lunch'};
   static const double _mlPerGlass = 250;
 
-  void _incrementWater() {
-    if (_waterGlasses < _waterGoalGlasses + 4) {
-      setState(() => _waterGlasses++);
-    }
-  }
-
-  void _decrementWater() {
-    if (_waterGlasses > 0) {
-      setState(() => _waterGlasses--);
-    }
-  }
-
-  void _toggleMeal(_MealType type) {
+  void _toggleMeal(String type) {
     setState(() {
       if (_expandedMeals.contains(type)) {
         _expandedMeals.remove(type);
@@ -250,9 +79,26 @@ class _DailyNutritionScreenState extends State<DailyNutritionScreen> {
     });
   }
 
+  Future<void> _addWater() async {
+    await ref
+        .read(nutritionNotifierProvider)
+        .logWater(_mlPerGlass.toInt());
+  }
+
+  Future<void> _removeWater(List<WaterLog> todayLogs) async {
+    if (todayLogs.isEmpty) return;
+    // Remove the most recent log
+    await ref
+        .read(nutritionNotifierProvider)
+        .removeWaterLog(todayLogs.first.id);
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final dao = ref.watch(nutritionDaoProvider);
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
 
     return Scaffold(
       key: const ValueKey('daily-nutrition-screen'),
@@ -270,9 +116,7 @@ class _DailyNutritionScreenState extends State<DailyNutritionScreen> {
             child: IconButton(
               key: const ValueKey('nutrition-history-button'),
               icon: const Icon(Icons.history_outlined),
-              onPressed: () {
-                // TODO: navegar a historial cuando se conecte
-              },
+              onPressed: () {},
               tooltip: 'Historial',
             ),
           ),
@@ -282,9 +126,8 @@ class _DailyNutritionScreenState extends State<DailyNutritionScreen> {
             child: IconButton(
               key: const ValueKey('nutrition-goals-nav-button'),
               icon: const Icon(Icons.tune_outlined),
-              onPressed: () {
-                // TODO: navegar a NutritionGoalsScreen cuando se conecte
-              },
+              onPressed: () =>
+                  GoRouter.of(context).push('/nutrition/goals'),
               tooltip: 'Metas',
             ),
           ),
@@ -295,74 +138,145 @@ class _DailyNutritionScreenState extends State<DailyNutritionScreen> {
         button: true,
         child: FloatingActionButton(
           key: const ValueKey('nutrition-add-meal-fab'),
-          onPressed: () {
-            // TODO: navegar a MealLogScreen cuando se conecte
-          },
+          onPressed: () => GoRouter.of(context).push('/nutrition/log'),
           backgroundColor: AppColors.nutrition,
           foregroundColor: Colors.white,
           tooltip: 'Agregar comida',
           child: const Icon(Icons.add),
         ),
       ),
-      body: RefreshIndicator(
-        color: AppColors.nutrition,
-        onRefresh: () async {
-          // TODO: llamar a provider.refresh() cuando se conecte
-          await Future<void>.delayed(const Duration(milliseconds: 600));
+      body: StreamBuilder<NutritionGoal?>(
+        stream: dao.watchActiveGoal(),
+        builder: (context, goalSnapshot) {
+          final goal = goalSnapshot.data;
+
+          return StreamBuilder<List<MealLog>>(
+            stream: dao.watchMealLogs(today),
+            builder: (context, mealsSnapshot) {
+              final mealLogs = mealsSnapshot.data ?? [];
+
+              return StreamBuilder<List<WaterLog>>(
+                stream: dao.watchWaterLogs(today),
+                builder: (context, waterSnapshot) {
+                  final waterLogs = waterSnapshot.data ?? [];
+                  final totalWaterMl = waterLogs.fold<int>(
+                    0,
+                    (sum, w) => sum + w.amountMl,
+                  );
+                  final waterGlasses =
+                      (totalWaterMl / _mlPerGlass).floor();
+                  final waterGoalGlasses = goal != null
+                      ? (goal.waterMl / _mlPerGlass).round()
+                      : 8;
+
+                  // Build macro data from meal logs + goal
+                  // For now, totals from meal logs require joining with food items
+                  // Use goal values as targets, current = 0 (no denormalized totals)
+                  final macros = [
+                    _Macro(
+                      label: 'Calorias',
+                      current: 0,
+                      goal: goal?.caloriesKcal.toDouble() ?? 2000,
+                      unit: 'kcal',
+                      color: AppColors.nutrition,
+                    ),
+                    _Macro(
+                      label: 'Proteina',
+                      current: 0,
+                      goal: goal?.proteinG ?? 150,
+                      unit: 'g',
+                      color: const Color(0xFF3B82F6),
+                    ),
+                    _Macro(
+                      label: 'Carbos',
+                      current: 0,
+                      goal: goal?.carbsG ?? 250,
+                      unit: 'g',
+                      color: const Color(0xFF10B981),
+                    ),
+                    _Macro(
+                      label: 'Grasa',
+                      current: 0,
+                      goal: goal?.fatG ?? 65,
+                      unit: 'g',
+                      color: const Color(0xFFEC4899),
+                    ),
+                  ];
+
+                  return RefreshIndicator(
+                    color: AppColors.nutrition,
+                    onRefresh: () async {},
+                    child: ListView(
+                      padding:
+                          const EdgeInsets.fromLTRB(16, 0, 16, 100),
+                      children: [
+                        // --- Anillos de macros ---
+                        Semantics(
+                          label: 'Resumen de macros diarios',
+                          child: _MacroRingsSection(
+                            key: const ValueKey(
+                                'nutrition-macro-rings'),
+                            macros: macros,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+
+                        // --- Lista de comidas agrupadas por tipo ---
+                        Semantics(
+                          header: true,
+                          child: Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Text(
+                              'Comidas de hoy',
+                              style:
+                                  theme.textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                          ),
+                        ),
+                        ..._mealTypes.map(
+                          (type) {
+                            final logsForType = mealLogs
+                                .where((m) => m.mealType == type)
+                                .toList();
+                            return _MealSection(
+                              key: ValueKey(
+                                  'nutrition-meal-section-$type'),
+                              mealType: type,
+                              logs: logsForType,
+                              isExpanded:
+                                  _expandedMeals.contains(type),
+                              onToggle: () => _toggleMeal(type),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 20),
+
+                        // --- Rastreador de agua ---
+                        Semantics(
+                          label:
+                              'Rastreador de agua: $waterGlasses de $waterGoalGlasses vasos consumidos',
+                          child: _WaterTrackerCard(
+                            key: const ValueKey(
+                                'nutrition-water-tracker'),
+                            glasses: waterGlasses,
+                            goalGlasses: waterGoalGlasses,
+                            mlPerGlass: _mlPerGlass,
+                            onIncrement: _addWater,
+                            onDecrement: () =>
+                                _removeWater(waterLogs),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              );
+            },
+          );
         },
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-          children: [
-            // --- Anillos de macros ---
-            Semantics(
-              label:
-                  'Resumen de macros: ${_mockMacros.map((m) => '${m.label} ${m.current.toStringAsFixed(0)} de ${m.goal.toStringAsFixed(0)} ${m.unit}').join(', ')}',
-              child: _MacroRingsSection(
-                key: const ValueKey('nutrition-macro-rings'),
-                macros: _mockMacros,
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // --- Lista de comidas agrupadas por tipo ---
-            Semantics(
-              header: true,
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Text(
-                  'Comidas de hoy',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.3,
-                  ),
-                ),
-              ),
-            ),
-            ..._mockMeals.map(
-              (meal) => _MealSection(
-                key: ValueKey('nutrition-meal-section-${meal.type.name}'),
-                meal: meal,
-                isExpanded: _expandedMeals.contains(meal.type),
-                onToggle: () => _toggleMeal(meal.type),
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // --- Rastreador de agua ---
-            Semantics(
-              label:
-                  'Rastreador de agua: $_waterGlasses de $_waterGoalGlasses vasos consumidos',
-              child: _WaterTrackerCard(
-                key: const ValueKey('nutrition-water-tracker'),
-                glasses: _waterGlasses,
-                goalGlasses: _waterGoalGlasses,
-                mlPerGlass: _mlPerGlass,
-                onIncrement: _incrementWater,
-                onDecrement: _decrementWater,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -378,7 +292,7 @@ class _MacroRingsSection extends StatelessWidget {
     required this.macros,
   });
 
-  final List<_MockMacro> macros;
+  final List<_Macro> macros;
 
   @override
   Widget build(BuildContext context) {
@@ -407,7 +321,7 @@ class _MacroRing extends StatelessWidget {
     required this.macro,
   });
 
-  final _MockMacro macro;
+  final _Macro macro;
 
   @override
   Widget build(BuildContext context) {
@@ -527,22 +441,26 @@ class _RingPainter extends CustomPainter {
 // Widget: seccion de comida expandible
 // ---------------------------------------------------------------------------
 
-class _MealSection extends StatelessWidget {
+class _MealSection extends ConsumerWidget {
   const _MealSection({
     super.key,
-    required this.meal,
+    required this.mealType,
+    required this.logs,
     required this.isExpanded,
     required this.onToggle,
   });
 
-  final _MockMealEntry meal;
+  final String mealType;
+  final List<MealLog> logs;
   final bool isExpanded;
   final VoidCallback onToggle;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final totalCal = meal.totalCalories;
+    final label = _mealTypeLabel(mealType);
+    final icon = _mealTypeIcon(mealType);
+    final count = logs.length;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -550,14 +468,11 @@ class _MealSection extends StatelessWidget {
         children: [
           // Encabezado de comida
           Semantics(
-            label:
-                '${meal.type.label}: ${meal.items.length} alimentos, ${totalCal.toStringAsFixed(0)} kcal. '
+            label: '$label: $count comidas. '
                 '${isExpanded ? 'Toca para colapsar' : 'Toca para expandir'}',
             button: true,
             child: InkWell(
-              key: ValueKey(
-                'nutrition-meal-header-${meal.type.name}',
-              ),
+              key: ValueKey('nutrition-meal-header-$mealType'),
               onTap: onToggle,
               borderRadius: BorderRadius.circular(12),
               child: Padding(
@@ -567,11 +482,7 @@ class _MealSection extends StatelessWidget {
                     CircleAvatar(
                       radius: 18,
                       backgroundColor: AppColors.nutrition.withAlpha(25),
-                      child: Icon(
-                        meal.type.icon,
-                        color: AppColors.nutrition,
-                        size: 18,
-                      ),
+                      child: Icon(icon, color: AppColors.nutrition, size: 18),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -579,14 +490,13 @@ class _MealSection extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            meal.type.label,
+                            label,
                             style: theme.textTheme.titleSmall?.copyWith(
                               fontWeight: FontWeight.w600,
                             ),
                           ),
                           Text(
-                            '${meal.items.length} alimento${meal.items.length != 1 ? 's' : ''} · '
-                            '${totalCal.toStringAsFixed(0)} kcal',
+                            '$count comida${count != 1 ? 's' : ''} registrada${count != 1 ? 's' : ''}',
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: AppColors.nutrition,
                             ),
@@ -595,18 +505,15 @@ class _MealSection extends StatelessWidget {
                       ),
                     ),
                     Semantics(
-                      label: 'Agregar alimento a ${meal.type.label}',
+                      label: 'Agregar alimento a $label',
                       button: true,
                       child: IconButton(
-                        key: ValueKey(
-                          'nutrition-add-to-meal-${meal.type.name}',
-                        ),
+                        key: ValueKey('nutrition-add-to-meal-$mealType'),
                         icon: const Icon(Icons.add_circle_outline, size: 20),
                         color: AppColors.nutrition,
-                        onPressed: () {
-                          // TODO: navegar a FoodSearchScreen cuando se conecte
-                        },
-                        tooltip: 'Agregar a ${meal.type.label}',
+                        onPressed: () =>
+                            GoRouter.of(context).push('/nutrition/log'),
+                        tooltip: 'Agregar a $label',
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(
                           minWidth: 36,
@@ -630,13 +537,15 @@ class _MealSection extends StatelessWidget {
             firstChild: const SizedBox.shrink(),
             secondChild: Column(
               children: [
-                const Divider(height: 1),
-                ...meal.items.map(
-                  (item) => _FoodItemTile(
-                    key: ValueKey('nutrition-food-item-${item.id}'),
-                    item: item,
+                if (logs.isNotEmpty) ...[
+                  const Divider(height: 1),
+                  ...logs.map(
+                    (log) => _MealLogTile(
+                      key: ValueKey('nutrition-meal-log-${log.id}'),
+                      log: log,
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
             crossFadeState: isExpanded
@@ -651,69 +560,57 @@ class _MealSection extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Widget: tile de alimento en la lista de comida
+// Widget: tile de log de comida
 // ---------------------------------------------------------------------------
 
-class _FoodItemTile extends StatelessWidget {
-  const _FoodItemTile({
-    super.key,
-    required this.item,
-  });
+class _MealLogTile extends ConsumerWidget {
+  const _MealLogTile({super.key, required this.log});
 
-  final _MockFoodItem item;
+  final MealLog log;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
 
     return Semantics(
-      label:
-          '${item.name}, ${item.serving}, ${item.calories.toStringAsFixed(0)} kcal, '
-          'proteina ${item.proteinG.toStringAsFixed(0)} g, '
-          'carbos ${item.carbsG.toStringAsFixed(0)} g, '
-          'grasa ${item.fatG.toStringAsFixed(0)} g',
+      label: 'Comida registrada el ${log.date.day}/${log.date.month}',
       child: ListTile(
-        key: ValueKey('nutrition-food-tile-${item.id}'),
+        key: ValueKey('nutrition-meal-log-tile-${log.id}'),
         dense: true,
         contentPadding: const EdgeInsets.fromLTRB(16, 4, 8, 4),
         title: Text(
-          item.name,
+          _mealTypeLabel(log.mealType),
           style: theme.textTheme.bodyMedium?.copyWith(
             fontWeight: FontWeight.w500,
           ),
         ),
-        subtitle: Text(
-          item.serving,
-          style: theme.textTheme.bodySmall,
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              '${item.calories.toStringAsFixed(0)} kcal',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: AppColors.nutrition,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            Semantics(
-              label: 'Eliminar ${item.name} de la comida',
-              button: true,
-              child: IconButton(
-                key: ValueKey('nutrition-remove-food-${item.id}'),
-                icon: const Icon(Icons.remove_circle_outline, size: 18),
-                color: Colors.grey,
-                onPressed: () {
-                  // TODO: llamar a NutritionNotifier.removeFoodItem cuando se conecte
-                },
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(
-                  minWidth: 36,
-                  minHeight: 36,
-                ),
-              ),
-            ),
-          ],
+        subtitle: log.note != null && log.note!.isNotEmpty
+            ? Text(log.note!, style: theme.textTheme.bodySmall)
+            : null,
+        trailing: Semantics(
+          label: 'Eliminar comida',
+          button: true,
+          child: IconButton(
+            key: ValueKey('nutrition-remove-meal-${log.id}'),
+            icon: const Icon(Icons.remove_circle_outline, size: 18),
+            color: Colors.grey,
+            onPressed: () async {
+              final result = await ref
+                  .read(nutritionNotifierProvider)
+                  .deleteMeal(log.id);
+              if (!context.mounted) return;
+              if (result.isFailure) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                      content:
+                          Text(result.failureOrNull!.userMessage)),
+                );
+              }
+            },
+            padding: EdgeInsets.zero,
+            constraints:
+                const BoxConstraints(minWidth: 36, minHeight: 36),
+          ),
         ),
       ),
     );
@@ -737,8 +634,8 @@ class _WaterTrackerCard extends StatelessWidget {
   final int glasses;
   final int goalGlasses;
   final double mlPerGlass;
-  final VoidCallback onIncrement;
-  final VoidCallback onDecrement;
+  final VoidCallback? onIncrement;
+  final VoidCallback? onDecrement;
 
   @override
   Widget build(BuildContext context) {

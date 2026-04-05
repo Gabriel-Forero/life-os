@@ -1,14 +1,17 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_os/core/constants/app_colors.dart';
+import 'package:life_os/core/providers/providers.dart';
+import 'package:life_os/features/gym/domain/gym_input.dart';
 
 // ---------------------------------------------------------------------------
-// Modelos mock
+// Local UI models (not DB models — used for pending sets before confirm)
 // ---------------------------------------------------------------------------
 
-class _MockSet {
-  _MockSet({
+class _PendingSet {
+  _PendingSet({
     required this.setNumber,
     this.weightKg,
     this.reps,
@@ -23,42 +26,19 @@ class _MockSet {
   bool isConfirmed;
 }
 
-class _MockWorkoutExercise {
-  _MockWorkoutExercise({
+class _WorkoutExercise {
+  _WorkoutExercise({
     required this.id,
     required this.name,
     required this.primaryMuscle,
-    required List<_MockSet> sets,
+    required List<_PendingSet> sets,
   }) : sets = sets;
 
   final int id;
   final String name;
   final String primaryMuscle;
-  final List<_MockSet> sets;
+  final List<_PendingSet> sets;
 }
-
-List<_MockWorkoutExercise> _buildMockWorkout() => [
-      _MockWorkoutExercise(
-        id: 1,
-        name: 'Press de banca',
-        primaryMuscle: 'Pecho',
-        sets: [
-          _MockSet(setNumber: 1, weightKg: 60, reps: 10, isWarmup: true),
-          _MockSet(setNumber: 2, weightKg: 80, reps: 8),
-          _MockSet(setNumber: 3, weightKg: 80, reps: 8),
-        ],
-      ),
-      _MockWorkoutExercise(
-        id: 2,
-        name: 'Dominadas',
-        primaryMuscle: 'Espalda',
-        sets: [
-          _MockSet(setNumber: 1, reps: 8),
-          _MockSet(setNumber: 2, reps: 8),
-          _MockSet(setNumber: 3, reps: 6),
-        ],
-      ),
-    ];
 
 // ---------------------------------------------------------------------------
 // Pantalla: entrenamiento activo
@@ -67,28 +47,30 @@ List<_MockWorkoutExercise> _buildMockWorkout() => [
 /// Pantalla de entrenamiento activo con temporizador, lista de ejercicios y
 /// series. Incluye overlay de descanso entre series.
 ///
-/// Shell de presentacion — la integracion con Riverpod se realizara en un
-/// paso posterior.
-///
 /// Accesibilidad: A11Y-GYM-03 — todos los inputs y controles tienen etiquetas
 /// semanticas.
-class ActiveWorkoutScreen extends StatefulWidget {
+class ActiveWorkoutScreen extends ConsumerStatefulWidget {
   const ActiveWorkoutScreen({
     super.key,
     this.routineName,
+    this.routineId,
   });
 
   /// Nombre de la rutina en curso. Nulo si es un entrenamiento libre.
   final String? routineName;
+  final int? routineId;
 
   @override
-  State<ActiveWorkoutScreen> createState() => _ActiveWorkoutScreenState();
+  ConsumerState<ActiveWorkoutScreen> createState() =>
+      _ActiveWorkoutScreenState();
 }
 
-class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
-  late final List<_MockWorkoutExercise> _exercises;
+class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
+  final List<_WorkoutExercise> _exercises = [];
   late final Stopwatch _stopwatch;
   late final Timer _elapsedTimer;
+
+  int? _workoutId;
 
   // Estado del temporizador de descanso
   bool _restTimerActive = false;
@@ -100,11 +82,20 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
   @override
   void initState() {
     super.initState();
-    _exercises = _buildMockWorkout();
     _stopwatch = Stopwatch()..start();
     _elapsedTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() => _elapsed = _stopwatch.elapsed);
     });
+    _startWorkout();
+  }
+
+  Future<void> _startWorkout() async {
+    final notifier = ref.read(gymNotifierProvider);
+    final result =
+        await notifier.startWorkout(routineId: widget.routineId);
+    if (result.isSuccess && mounted) {
+      setState(() => _workoutId = result.valueOrNull);
+    }
   }
 
   @override
@@ -115,9 +106,26 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     super.dispose();
   }
 
-  void _confirmSet(_MockSet set, {int restSeconds = 90}) {
-    setState(() => set.isConfirmed = true);
-    _startRestTimer(restSeconds);
+  Future<void> _confirmSet(_WorkoutExercise exercise, _PendingSet set,
+      {int restSeconds = 90}) async {
+    final wId = _workoutId;
+    if (wId == null || set.reps == null) return;
+
+    final notifier = ref.read(gymNotifierProvider);
+    await notifier.logSet(
+      wId,
+      exercise.id,
+      SetInput(
+        reps: set.reps!,
+        weightKg: set.weightKg,
+        isWarmup: set.isWarmup,
+      ),
+    );
+
+    if (mounted) {
+      setState(() => set.isConfirmed = true);
+      _startRestTimer(restSeconds);
+    }
   }
 
   void _startRestTimer(int seconds) {
@@ -156,7 +164,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     return h > 0 ? '$h:$m:$s' : '$m:$s';
   }
 
-  Future<bool> _onWillPop() async {
+  Future<bool> _confirmDiscard() async {
     final result = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -183,6 +191,28 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     return result ?? false;
   }
 
+  Future<void> _discardWorkout() async {
+    final confirmed = await _confirmDiscard();
+    if (!confirmed || !mounted) return;
+    final wId = _workoutId;
+    if (wId != null) {
+      await ref.read(gymNotifierProvider).discardWorkout(wId);
+    }
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  Future<void> _finishWorkout() async {
+    final wId = _workoutId;
+    if (wId != null) {
+      await ref.read(gymNotifierProvider).finishWorkout(wId);
+    }
+    if (mounted) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Guardado!')));
+      Navigator.of(context).pop();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -191,8 +221,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
-        final shouldPop = await _onWillPop();
-        if (shouldPop && mounted) Navigator.of(context).pop();
+        await _discardWorkout();
       },
       child: Scaffold(
         key: const ValueKey('active-workout-screen'),
@@ -246,9 +275,11 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
               children: [
                 ..._exercises.asMap().entries.map(
                   (entry) => _WorkoutExerciseSection(
-                    key: ValueKey('workout-exercise-section-${entry.value.id}'),
+                    key: ValueKey(
+                        'workout-exercise-section-${entry.value.id}'),
                     exercise: entry.value,
-                    onConfirmSet: (set) => _confirmSet(set),
+                    onConfirmSet: (set) =>
+                        _confirmSet(entry.value, set),
                     onWarmupToggled: (set, value) =>
                         setState(() => set.isWarmup = value),
                     onWeightChanged: (set, value) =>
@@ -257,7 +288,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                         setState(() => set.reps = value),
                     onAddSet: () => setState(
                       () => entry.value.sets.add(
-                        _MockSet(
+                        _PendingSet(
                           setNumber: entry.value.sets.length + 1,
                         ),
                       ),
@@ -272,10 +303,9 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                     label: 'Agregar ejercicio al entrenamiento',
                     button: true,
                     child: OutlinedButton.icon(
-                      key: const ValueKey('active-workout-add-exercise-button'),
-                      onPressed: () {
-                        // TODO: abrir picker de ejercicios cuando se conecte
-                      },
+                      key: const ValueKey(
+                          'active-workout-add-exercise-button'),
+                      onPressed: () {},
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.gym,
                         side: const BorderSide(color: AppColors.gym),
@@ -309,13 +339,9 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                         label: 'Descartar entrenamiento actual',
                         button: true,
                         child: OutlinedButton.icon(
-                          key: const ValueKey('active-workout-discard-button'),
-                          onPressed: () async {
-                            final shouldPop = await _onWillPop();
-                            if (shouldPop && mounted) {
-                              Navigator.of(context).pop();
-                            }
-                          },
+                          key: const ValueKey(
+                              'active-workout-discard-button'),
+                          onPressed: _discardWorkout,
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.error,
                             side: const BorderSide(color: AppColors.error),
@@ -333,11 +359,9 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                         label: 'Finalizar y guardar entrenamiento',
                         button: true,
                         child: FilledButton.icon(
-                          key: const ValueKey('active-workout-finish-button'),
-                          onPressed: () {
-                            // TODO: llamar a GymNotifier.finishWorkout cuando se conecte
-                            Navigator.of(context).pop();
-                          },
+                          key: const ValueKey(
+                              'active-workout-finish-button'),
+                          onPressed: _finishWorkout,
                           style: FilledButton.styleFrom(
                             backgroundColor: AppColors.gym,
                             minimumSize: const Size.fromHeight(48),
@@ -385,11 +409,11 @@ class _WorkoutExerciseSection extends StatelessWidget {
     required this.onAddSet,
   });
 
-  final _MockWorkoutExercise exercise;
-  final void Function(_MockSet) onConfirmSet;
-  final void Function(_MockSet, bool) onWarmupToggled;
-  final void Function(_MockSet, double?) onWeightChanged;
-  final void Function(_MockSet, int?) onRepsChanged;
+  final _WorkoutExercise exercise;
+  final void Function(_PendingSet) onConfirmSet;
+  final void Function(_PendingSet, bool) onWarmupToggled;
+  final void Function(_PendingSet, double?) onWeightChanged;
+  final void Function(_PendingSet, int?) onRepsChanged;
   final VoidCallback onAddSet;
 
   @override
@@ -468,9 +492,7 @@ class _WorkoutExerciseSection extends StatelessWidget {
         // Filas de series
         ...exercise.sets.map(
           (set) => _SetRow(
-            key: ValueKey(
-              'set-row-${exercise.id}-${set.setNumber}',
-            ),
+            key: ValueKey('set-row-${exercise.id}-${set.setNumber}'),
             exerciseId: exercise.id,
             set: set,
             onConfirm: () => onConfirmSet(set),
@@ -518,7 +540,7 @@ class _SetRow extends StatefulWidget {
   });
 
   final int exerciseId;
-  final _MockSet set;
+  final _PendingSet set;
   final VoidCallback onConfirm;
   final ValueChanged<bool> onWarmupToggled;
   final ValueChanged<double?> onWeightChanged;

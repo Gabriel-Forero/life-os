@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_os/core/constants/app_colors.dart';
+import 'package:life_os/core/providers/providers.dart';
+import 'package:life_os/features/sleep/domain/sleep_input.dart';
 
 // ---------------------------------------------------------------------------
 // Mock models
@@ -25,14 +28,15 @@ class _EnergySlot {
 // Screen
 // ---------------------------------------------------------------------------
 
-class EnergyTrackerScreen extends StatefulWidget {
+class EnergyTrackerScreen extends ConsumerStatefulWidget {
   const EnergyTrackerScreen({super.key});
 
   @override
-  State<EnergyTrackerScreen> createState() => _EnergyTrackerScreenState();
+  ConsumerState<EnergyTrackerScreen> createState() =>
+      _EnergyTrackerScreenState();
 }
 
-class _EnergyTrackerScreenState extends State<EnergyTrackerScreen> {
+class _EnergyTrackerScreenState extends ConsumerState<EnergyTrackerScreen> {
   final _slots = [
     _EnergySlot(
       timeOfDay: 'morning',
@@ -53,6 +57,8 @@ class _EnergyTrackerScreenState extends State<EnergyTrackerScreen> {
       timeRange: '18:00 — 00:00',
     ),
   ];
+
+  bool _isSaving = false;
 
   void _setLevel(_EnergySlot slot, int level) {
     setState(() => slot.level = level);
@@ -244,19 +250,58 @@ class _EnergyTrackerScreenState extends State<EnergyTrackerScreen> {
               label: 'Guardar registros de energia',
               child: FilledButton.icon(
                 key: const ValueKey('save-energy-button'),
-                onPressed: _slots.any((s) => s.level != null)
-                    ? () {
+                onPressed: (_slots.any((s) => s.level != null) && !_isSaving)
+                    ? () async {
+                        setState(() => _isSaving = true);
+                        final notifier = ref.read(sleepNotifierProvider);
+                        final now = DateTime.now();
+                        final date =
+                            DateTime(now.year, now.month, now.day);
+                        bool anyError = false;
+                        for (final slot in _slots) {
+                          if (slot.level == null) continue;
+                          final result = await notifier.logEnergy(
+                            EnergyInput(
+                              date: date,
+                              timeOfDay: slot.timeOfDay,
+                              level: slot.level!,
+                              note: slot.note.isNotEmpty ? slot.note : null,
+                            ),
+                          );
+                          if (result.isFailure) {
+                            anyError = true;
+                          }
+                        }
+                        if (!mounted) return;
+                        setState(() => _isSaving = false);
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Energia registrada')),
+                          SnackBar(
+                            content: Text(
+                              anyError
+                                  ? 'Error al guardar energia'
+                                  : 'Guardado!',
+                            ),
+                          ),
                         );
+                        if (!anyError) Navigator.of(context).pop();
                       }
                     : null,
                 style: FilledButton.styleFrom(
                   backgroundColor: sleepColor,
                   minimumSize: const Size.fromHeight(52),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
-                icon: const Icon(Icons.save_outlined),
+                icon: _isSaving
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.save_outlined),
                 label: const Text('Guardar Energia'),
               ),
             ),
