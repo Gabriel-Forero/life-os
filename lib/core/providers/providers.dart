@@ -13,9 +13,32 @@ import 'package:life_os/core/services/event_bus.dart';
 import 'package:life_os/core/services/haptic_service.dart';
 import 'package:life_os/core/services/notification_scheduler.dart';
 import 'package:life_os/core/services/secure_storage_service.dart';
+import 'package:life_os/features/dashboard/database/dashboard_dao.dart';
+import 'package:life_os/features/dashboard/providers/dashboard_notifier.dart';
+import 'package:life_os/features/dashboard/providers/day_score_notifier.dart';
+import 'package:life_os/features/finance/database/finance_dao.dart';
+import 'package:life_os/features/finance/providers/finance_notifier.dart';
+import 'package:life_os/features/goals/database/goals_dao.dart';
+import 'package:life_os/features/goals/providers/goals_notifier.dart';
+import 'package:life_os/features/gym/database/gym_dao.dart';
+import 'package:life_os/features/gym/providers/gym_notifier.dart';
+import 'package:life_os/features/habits/database/habits_dao.dart';
+import 'package:life_os/features/habits/providers/habits_notifier.dart';
+import 'package:life_os/features/intelligence/database/ai_dao.dart';
+import 'package:life_os/features/intelligence/domain/openai_provider.dart';
+import 'package:life_os/features/intelligence/providers/ai_notifier.dart';
+import 'package:life_os/features/mental/database/mental_dao.dart';
+import 'package:life_os/features/mental/providers/mental_notifier.dart';
+import 'package:life_os/features/nutrition/database/nutrition_dao.dart';
+import 'package:life_os/features/nutrition/providers/nutrition_notifier.dart';
+import 'package:life_os/features/sleep/database/sleep_dao.dart';
+import 'package:life_os/features/sleep/providers/sleep_notifier.dart';
 import 'package:path_provider/path_provider.dart';
 
-// Database
+// ============================================================
+// DATABASE
+// ============================================================
+
 final appDatabaseProvider = Provider<AppDatabase>((ref) {
   final db = AppDatabase(
     LazyDatabase(() async {
@@ -28,12 +51,54 @@ final appDatabaseProvider = Provider<AppDatabase>((ref) {
   return db;
 });
 
+// ============================================================
+// DAOs
+// ============================================================
+
 final appSettingsDaoProvider = Provider<AppSettingsDao>((ref) {
-  final db = ref.watch(appDatabaseProvider);
-  return db.appSettingsDao;
+  return ref.watch(appDatabaseProvider).appSettingsDao;
 });
 
-// Services
+final financeDaoProvider = Provider<FinanceDao>((ref) {
+  return ref.watch(appDatabaseProvider).financeDao;
+});
+
+final gymDaoProvider = Provider<GymDao>((ref) {
+  return ref.watch(appDatabaseProvider).gymDao;
+});
+
+final nutritionDaoProvider = Provider<NutritionDao>((ref) {
+  return ref.watch(appDatabaseProvider).nutritionDao;
+});
+
+final habitsDaoProvider = Provider<HabitsDao>((ref) {
+  return ref.watch(appDatabaseProvider).habitsDao;
+});
+
+final dashboardDaoProvider = Provider<DashboardDao>((ref) {
+  return ref.watch(appDatabaseProvider).dashboardDao;
+});
+
+final sleepDaoProvider = Provider<SleepDao>((ref) {
+  return ref.watch(appDatabaseProvider).sleepDao;
+});
+
+final mentalDaoProvider = Provider<MentalDao>((ref) {
+  return ref.watch(appDatabaseProvider).mentalDao;
+});
+
+final goalsDaoProvider = Provider<GoalsDao>((ref) {
+  return ref.watch(appDatabaseProvider).goalsDao;
+});
+
+final aiDaoProvider = Provider<AiDao>((ref) {
+  return ref.watch(appDatabaseProvider).aiDao;
+});
+
+// ============================================================
+// CORE SERVICES
+// ============================================================
+
 final eventBusProvider = Provider<EventBus>((ref) {
   final eventBus = EventBus();
   ref.onDispose(eventBus.dispose);
@@ -48,8 +113,7 @@ final biometricServiceProvider =
 final secureStorageServiceProvider =
     Provider<SecureStorageService>((ref) => SecureStorageService());
 
-final notificationSchedulerProvider =
-    Provider<NotificationScheduler>((ref) {
+final notificationSchedulerProvider = Provider<NotificationScheduler>((ref) {
   final logger = ref.watch(appLoggerProvider);
   return NotificationScheduler(logger: logger);
 });
@@ -63,4 +127,84 @@ final hapticServiceProvider =
 final backupEngineProvider = Provider<BackupEngine>((ref) {
   final logger = ref.watch(appLoggerProvider);
   return BackupEngine(logger: logger);
+});
+
+// ============================================================
+// FEATURE NOTIFIERS
+// ============================================================
+
+final financeNotifierProvider = Provider<FinanceNotifier>((ref) {
+  return FinanceNotifier(
+    dao: ref.watch(financeDaoProvider),
+    eventBus: ref.watch(eventBusProvider),
+  );
+});
+
+final gymNotifierProvider = Provider<GymNotifier>((ref) {
+  return GymNotifier(
+    dao: ref.watch(gymDaoProvider),
+    eventBus: ref.watch(eventBusProvider),
+  );
+});
+
+final nutritionNotifierProvider = Provider<NutritionNotifier>((ref) {
+  return NutritionNotifier(dao: ref.watch(nutritionDaoProvider));
+});
+
+final habitsNotifierProvider = Provider<HabitsNotifier>((ref) {
+  return HabitsNotifier(
+    dao: ref.watch(habitsDaoProvider),
+    eventBus: ref.watch(eventBusProvider),
+  );
+});
+
+final dayScoreNotifierProvider = Provider<DayScoreNotifier>((ref) {
+  return DayScoreNotifier(
+    dao: ref.watch(dashboardDaoProvider),
+    eventBus: ref.watch(eventBusProvider),
+    moduleScoreProvider: (moduleKey) {
+      // TODO: Wire real module scores
+      return 50.0;
+    },
+  );
+});
+
+final dashboardNotifierProvider = Provider<DashboardNotifier>((ref) {
+  return DashboardNotifier(
+    dao: ref.watch(dashboardDaoProvider),
+    dayScoreNotifier: ref.watch(dayScoreNotifierProvider),
+    moduleSubtitleProvider: (moduleKey) {
+      // TODO: Implement per-module subtitle
+      return '';
+    },
+  );
+});
+
+final sleepNotifierProvider = Provider<SleepNotifier>((ref) {
+  return SleepNotifier(
+    dao: ref.watch(sleepDaoProvider),
+    eventBus: ref.watch(eventBusProvider),
+  );
+});
+
+final mentalNotifierProvider = Provider<MentalNotifier>((ref) {
+  return MentalNotifier(
+    dao: ref.watch(mentalDaoProvider),
+    eventBus: ref.watch(eventBusProvider),
+  );
+});
+
+final goalsNotifierProvider = Provider<GoalsNotifier>((ref) {
+  return GoalsNotifier(
+    dao: ref.watch(goalsDaoProvider),
+    eventBus: ref.watch(eventBusProvider),
+  );
+});
+
+final aiNotifierProvider = Provider<AINotifier>((ref) {
+  return AINotifier(
+    dao: ref.watch(aiDaoProvider),
+    providerFactory: (providerKey) =>
+        OpenAIProvider(apiKey: '', model: 'gpt-4o-mini'),
+  );
 });
