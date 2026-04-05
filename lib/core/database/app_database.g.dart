@@ -4270,7 +4270,31 @@ class $RoutineExercisesTable extends RoutineExercises
     false,
     type: DriftSqlType.int,
     requiredDuringInsert: false,
-    defaultValue: const Constant(0),
+    defaultValue: const Constant(1000),
+  );
+  static const VerificationMeta _dayNumberMeta = const VerificationMeta(
+    'dayNumber',
+  );
+  @override
+  late final GeneratedColumn<int> dayNumber = GeneratedColumn<int>(
+    'day_number',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
+  static const VerificationMeta _dayNameMeta = const VerificationMeta(
+    'dayName',
+  );
+  @override
+  late final GeneratedColumn<String> dayName = GeneratedColumn<String>(
+    'day_name',
+    aliasedName,
+    true,
+    additionalChecks: GeneratedColumn.checkTextLength(maxTextLength: 30),
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
   );
   static const VerificationMeta _defaultSetsMeta = const VerificationMeta(
     'defaultSets',
@@ -4336,6 +4360,8 @@ class $RoutineExercisesTable extends RoutineExercises
     routineId,
     exerciseId,
     sortOrder,
+    dayNumber,
+    dayName,
     defaultSets,
     defaultReps,
     defaultWeightKg,
@@ -4377,6 +4403,18 @@ class $RoutineExercisesTable extends RoutineExercises
       context.handle(
         _sortOrderMeta,
         sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
+      );
+    }
+    if (data.containsKey('day_number')) {
+      context.handle(
+        _dayNumberMeta,
+        dayNumber.isAcceptableOrUnknown(data['day_number']!, _dayNumberMeta),
+      );
+    }
+    if (data.containsKey('day_name')) {
+      context.handle(
+        _dayNameMeta,
+        dayName.isAcceptableOrUnknown(data['day_name']!, _dayNameMeta),
       );
     }
     if (data.containsKey('default_sets')) {
@@ -4448,6 +4486,14 @@ class $RoutineExercisesTable extends RoutineExercises
         DriftSqlType.int,
         data['${effectivePrefix}sort_order'],
       )!,
+      dayNumber: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}day_number'],
+      )!,
+      dayName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}day_name'],
+      ),
       defaultSets: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}default_sets'],
@@ -4481,7 +4527,16 @@ class RoutineExercise extends DataClass implements Insertable<RoutineExercise> {
   final int id;
   final int routineId;
   final int exerciseId;
+
+  /// Encodes day and position: dayNumber * 1000 + positionWithinDay.
+  /// Single-day routines use dayNumber=1, so sortOrder starts at 1000.
   final int sortOrder;
+
+  /// 1-based day number within the program (1 for single-day routines).
+  final int dayNumber;
+
+  /// Optional label for the day, e.g. "Push", "Pull", "Piernas".
+  final String? dayName;
   final int defaultSets;
   final int defaultReps;
   final double? defaultWeightKg;
@@ -4492,6 +4547,8 @@ class RoutineExercise extends DataClass implements Insertable<RoutineExercise> {
     required this.routineId,
     required this.exerciseId,
     required this.sortOrder,
+    required this.dayNumber,
+    this.dayName,
     required this.defaultSets,
     required this.defaultReps,
     this.defaultWeightKg,
@@ -4505,6 +4562,10 @@ class RoutineExercise extends DataClass implements Insertable<RoutineExercise> {
     map['routine_id'] = Variable<int>(routineId);
     map['exercise_id'] = Variable<int>(exerciseId);
     map['sort_order'] = Variable<int>(sortOrder);
+    map['day_number'] = Variable<int>(dayNumber);
+    if (!nullToAbsent || dayName != null) {
+      map['day_name'] = Variable<String>(dayName);
+    }
     map['default_sets'] = Variable<int>(defaultSets);
     map['default_reps'] = Variable<int>(defaultReps);
     if (!nullToAbsent || defaultWeightKg != null) {
@@ -4521,6 +4582,10 @@ class RoutineExercise extends DataClass implements Insertable<RoutineExercise> {
       routineId: Value(routineId),
       exerciseId: Value(exerciseId),
       sortOrder: Value(sortOrder),
+      dayNumber: Value(dayNumber),
+      dayName: dayName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(dayName),
       defaultSets: Value(defaultSets),
       defaultReps: Value(defaultReps),
       defaultWeightKg: defaultWeightKg == null && nullToAbsent
@@ -4541,6 +4606,8 @@ class RoutineExercise extends DataClass implements Insertable<RoutineExercise> {
       routineId: serializer.fromJson<int>(json['routineId']),
       exerciseId: serializer.fromJson<int>(json['exerciseId']),
       sortOrder: serializer.fromJson<int>(json['sortOrder']),
+      dayNumber: serializer.fromJson<int>(json['dayNumber']),
+      dayName: serializer.fromJson<String?>(json['dayName']),
       defaultSets: serializer.fromJson<int>(json['defaultSets']),
       defaultReps: serializer.fromJson<int>(json['defaultReps']),
       defaultWeightKg: serializer.fromJson<double?>(json['defaultWeightKg']),
@@ -4556,6 +4623,8 @@ class RoutineExercise extends DataClass implements Insertable<RoutineExercise> {
       'routineId': serializer.toJson<int>(routineId),
       'exerciseId': serializer.toJson<int>(exerciseId),
       'sortOrder': serializer.toJson<int>(sortOrder),
+      'dayNumber': serializer.toJson<int>(dayNumber),
+      'dayName': serializer.toJson<String?>(dayName),
       'defaultSets': serializer.toJson<int>(defaultSets),
       'defaultReps': serializer.toJson<int>(defaultReps),
       'defaultWeightKg': serializer.toJson<double?>(defaultWeightKg),
@@ -4569,6 +4638,8 @@ class RoutineExercise extends DataClass implements Insertable<RoutineExercise> {
     int? routineId,
     int? exerciseId,
     int? sortOrder,
+    int? dayNumber,
+    Value<String?> dayName = const Value.absent(),
     int? defaultSets,
     int? defaultReps,
     Value<double?> defaultWeightKg = const Value.absent(),
@@ -4579,6 +4650,8 @@ class RoutineExercise extends DataClass implements Insertable<RoutineExercise> {
     routineId: routineId ?? this.routineId,
     exerciseId: exerciseId ?? this.exerciseId,
     sortOrder: sortOrder ?? this.sortOrder,
+    dayNumber: dayNumber ?? this.dayNumber,
+    dayName: dayName.present ? dayName.value : this.dayName,
     defaultSets: defaultSets ?? this.defaultSets,
     defaultReps: defaultReps ?? this.defaultReps,
     defaultWeightKg: defaultWeightKg.present
@@ -4595,6 +4668,8 @@ class RoutineExercise extends DataClass implements Insertable<RoutineExercise> {
           ? data.exerciseId.value
           : this.exerciseId,
       sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
+      dayNumber: data.dayNumber.present ? data.dayNumber.value : this.dayNumber,
+      dayName: data.dayName.present ? data.dayName.value : this.dayName,
       defaultSets: data.defaultSets.present
           ? data.defaultSets.value
           : this.defaultSets,
@@ -4618,6 +4693,8 @@ class RoutineExercise extends DataClass implements Insertable<RoutineExercise> {
           ..write('routineId: $routineId, ')
           ..write('exerciseId: $exerciseId, ')
           ..write('sortOrder: $sortOrder, ')
+          ..write('dayNumber: $dayNumber, ')
+          ..write('dayName: $dayName, ')
           ..write('defaultSets: $defaultSets, ')
           ..write('defaultReps: $defaultReps, ')
           ..write('defaultWeightKg: $defaultWeightKg, ')
@@ -4633,6 +4710,8 @@ class RoutineExercise extends DataClass implements Insertable<RoutineExercise> {
     routineId,
     exerciseId,
     sortOrder,
+    dayNumber,
+    dayName,
     defaultSets,
     defaultReps,
     defaultWeightKg,
@@ -4647,6 +4726,8 @@ class RoutineExercise extends DataClass implements Insertable<RoutineExercise> {
           other.routineId == this.routineId &&
           other.exerciseId == this.exerciseId &&
           other.sortOrder == this.sortOrder &&
+          other.dayNumber == this.dayNumber &&
+          other.dayName == this.dayName &&
           other.defaultSets == this.defaultSets &&
           other.defaultReps == this.defaultReps &&
           other.defaultWeightKg == this.defaultWeightKg &&
@@ -4659,6 +4740,8 @@ class RoutineExercisesCompanion extends UpdateCompanion<RoutineExercise> {
   final Value<int> routineId;
   final Value<int> exerciseId;
   final Value<int> sortOrder;
+  final Value<int> dayNumber;
+  final Value<String?> dayName;
   final Value<int> defaultSets;
   final Value<int> defaultReps;
   final Value<double?> defaultWeightKg;
@@ -4669,6 +4752,8 @@ class RoutineExercisesCompanion extends UpdateCompanion<RoutineExercise> {
     this.routineId = const Value.absent(),
     this.exerciseId = const Value.absent(),
     this.sortOrder = const Value.absent(),
+    this.dayNumber = const Value.absent(),
+    this.dayName = const Value.absent(),
     this.defaultSets = const Value.absent(),
     this.defaultReps = const Value.absent(),
     this.defaultWeightKg = const Value.absent(),
@@ -4680,6 +4765,8 @@ class RoutineExercisesCompanion extends UpdateCompanion<RoutineExercise> {
     required int routineId,
     required int exerciseId,
     this.sortOrder = const Value.absent(),
+    this.dayNumber = const Value.absent(),
+    this.dayName = const Value.absent(),
     this.defaultSets = const Value.absent(),
     this.defaultReps = const Value.absent(),
     this.defaultWeightKg = const Value.absent(),
@@ -4693,6 +4780,8 @@ class RoutineExercisesCompanion extends UpdateCompanion<RoutineExercise> {
     Expression<int>? routineId,
     Expression<int>? exerciseId,
     Expression<int>? sortOrder,
+    Expression<int>? dayNumber,
+    Expression<String>? dayName,
     Expression<int>? defaultSets,
     Expression<int>? defaultReps,
     Expression<double>? defaultWeightKg,
@@ -4704,6 +4793,8 @@ class RoutineExercisesCompanion extends UpdateCompanion<RoutineExercise> {
       if (routineId != null) 'routine_id': routineId,
       if (exerciseId != null) 'exercise_id': exerciseId,
       if (sortOrder != null) 'sort_order': sortOrder,
+      if (dayNumber != null) 'day_number': dayNumber,
+      if (dayName != null) 'day_name': dayName,
       if (defaultSets != null) 'default_sets': defaultSets,
       if (defaultReps != null) 'default_reps': defaultReps,
       if (defaultWeightKg != null) 'default_weight_kg': defaultWeightKg,
@@ -4717,6 +4808,8 @@ class RoutineExercisesCompanion extends UpdateCompanion<RoutineExercise> {
     Value<int>? routineId,
     Value<int>? exerciseId,
     Value<int>? sortOrder,
+    Value<int>? dayNumber,
+    Value<String?>? dayName,
     Value<int>? defaultSets,
     Value<int>? defaultReps,
     Value<double?>? defaultWeightKg,
@@ -4728,6 +4821,8 @@ class RoutineExercisesCompanion extends UpdateCompanion<RoutineExercise> {
       routineId: routineId ?? this.routineId,
       exerciseId: exerciseId ?? this.exerciseId,
       sortOrder: sortOrder ?? this.sortOrder,
+      dayNumber: dayNumber ?? this.dayNumber,
+      dayName: dayName ?? this.dayName,
       defaultSets: defaultSets ?? this.defaultSets,
       defaultReps: defaultReps ?? this.defaultReps,
       defaultWeightKg: defaultWeightKg ?? this.defaultWeightKg,
@@ -4750,6 +4845,12 @@ class RoutineExercisesCompanion extends UpdateCompanion<RoutineExercise> {
     }
     if (sortOrder.present) {
       map['sort_order'] = Variable<int>(sortOrder.value);
+    }
+    if (dayNumber.present) {
+      map['day_number'] = Variable<int>(dayNumber.value);
+    }
+    if (dayName.present) {
+      map['day_name'] = Variable<String>(dayName.value);
     }
     if (defaultSets.present) {
       map['default_sets'] = Variable<int>(defaultSets.value);
@@ -4776,6 +4877,8 @@ class RoutineExercisesCompanion extends UpdateCompanion<RoutineExercise> {
           ..write('routineId: $routineId, ')
           ..write('exerciseId: $exerciseId, ')
           ..write('sortOrder: $sortOrder, ')
+          ..write('dayNumber: $dayNumber, ')
+          ..write('dayName: $dayName, ')
           ..write('defaultSets: $defaultSets, ')
           ..write('defaultReps: $defaultReps, ')
           ..write('defaultWeightKg: $defaultWeightKg, ')
@@ -20383,6 +20486,8 @@ typedef $$RoutineExercisesTableCreateCompanionBuilder =
       required int routineId,
       required int exerciseId,
       Value<int> sortOrder,
+      Value<int> dayNumber,
+      Value<String?> dayName,
       Value<int> defaultSets,
       Value<int> defaultReps,
       Value<double?> defaultWeightKg,
@@ -20395,6 +20500,8 @@ typedef $$RoutineExercisesTableUpdateCompanionBuilder =
       Value<int> routineId,
       Value<int> exerciseId,
       Value<int> sortOrder,
+      Value<int> dayNumber,
+      Value<String?> dayName,
       Value<int> defaultSets,
       Value<int> defaultReps,
       Value<double?> defaultWeightKg,
@@ -20466,6 +20573,16 @@ class $$RoutineExercisesTableFilterComposer
 
   ColumnFilters<int> get sortOrder => $composableBuilder(
     column: $table.sortOrder,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get dayNumber => $composableBuilder(
+    column: $table.dayNumber,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get dayName => $composableBuilder(
+    column: $table.dayName,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -20560,6 +20677,16 @@ class $$RoutineExercisesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get dayNumber => $composableBuilder(
+    column: $table.dayNumber,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get dayName => $composableBuilder(
+    column: $table.dayName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get defaultSets => $composableBuilder(
     column: $table.defaultSets,
     builder: (column) => ColumnOrderings(column),
@@ -20646,6 +20773,12 @@ class $$RoutineExercisesTableAnnotationComposer
 
   GeneratedColumn<int> get sortOrder =>
       $composableBuilder(column: $table.sortOrder, builder: (column) => column);
+
+  GeneratedColumn<int> get dayNumber =>
+      $composableBuilder(column: $table.dayNumber, builder: (column) => column);
+
+  GeneratedColumn<String> get dayName =>
+      $composableBuilder(column: $table.dayName, builder: (column) => column);
 
   GeneratedColumn<int> get defaultSets => $composableBuilder(
     column: $table.defaultSets,
@@ -20751,6 +20884,8 @@ class $$RoutineExercisesTableTableManager
                 Value<int> routineId = const Value.absent(),
                 Value<int> exerciseId = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
+                Value<int> dayNumber = const Value.absent(),
+                Value<String?> dayName = const Value.absent(),
                 Value<int> defaultSets = const Value.absent(),
                 Value<int> defaultReps = const Value.absent(),
                 Value<double?> defaultWeightKg = const Value.absent(),
@@ -20761,6 +20896,8 @@ class $$RoutineExercisesTableTableManager
                 routineId: routineId,
                 exerciseId: exerciseId,
                 sortOrder: sortOrder,
+                dayNumber: dayNumber,
+                dayName: dayName,
                 defaultSets: defaultSets,
                 defaultReps: defaultReps,
                 defaultWeightKg: defaultWeightKg,
@@ -20773,6 +20910,8 @@ class $$RoutineExercisesTableTableManager
                 required int routineId,
                 required int exerciseId,
                 Value<int> sortOrder = const Value.absent(),
+                Value<int> dayNumber = const Value.absent(),
+                Value<String?> dayName = const Value.absent(),
                 Value<int> defaultSets = const Value.absent(),
                 Value<int> defaultReps = const Value.absent(),
                 Value<double?> defaultWeightKg = const Value.absent(),
@@ -20783,6 +20922,8 @@ class $$RoutineExercisesTableTableManager
                 routineId: routineId,
                 exerciseId: exerciseId,
                 sortOrder: sortOrder,
+                dayNumber: dayNumber,
+                dayName: dayName,
                 defaultSets: defaultSets,
                 defaultReps: defaultReps,
                 defaultWeightKg: defaultWeightKg,

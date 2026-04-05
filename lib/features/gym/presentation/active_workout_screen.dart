@@ -59,11 +59,16 @@ class ActiveWorkoutScreen extends ConsumerStatefulWidget {
     super.key,
     this.routineName,
     this.routineId,
+    this.dayNumber,
   });
 
   /// Nombre de la rutina en curso. Nulo si es un entrenamiento libre.
   final String? routineName;
   final int? routineId;
+
+  /// If set, only exercises belonging to this day of the multi-day program are
+  /// loaded. When null, all exercises of the routine are loaded (single-day).
+  final int? dayNumber;
 
   @override
   ConsumerState<ActiveWorkoutScreen> createState() =>
@@ -104,8 +109,12 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
 
   Future<void> _loadRoutineExercises(int routineId) async {
     final dao = ref.read(gymDaoProvider);
-    final routineExercises =
-        await dao.watchRoutineExercises(routineId).first;
+    // If a specific day is requested, load only that day's exercises.
+    final routineExercises = widget.dayNumber != null
+        ? await dao
+            .watchRoutineExercisesForDay(routineId, widget.dayNumber!)
+            .first
+        : await dao.watchRoutineExercises(routineId).first;
     if (!mounted) return;
     final List<_WorkoutExercise> loaded = [];
     for (final re in routineExercises) {

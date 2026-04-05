@@ -105,6 +105,47 @@ class GymDao extends DatabaseAccessor<AppDatabase> with _$GymDaoMixin {
             ..orderBy([(re) => OrderingTerm.asc(re.sortOrder)]))
           .watch();
 
+  /// Returns only the exercises belonging to a specific day of a routine.
+  Stream<List<RoutineExercise>> watchRoutineExercisesForDay(
+    int routineId,
+    int dayNumber,
+  ) =>
+      (select(routineExercises)
+            ..where(
+              (re) =>
+                  re.routineId.equals(routineId) &
+                  re.dayNumber.equals(dayNumber),
+            )
+            ..orderBy([(re) => OrderingTerm.asc(re.sortOrder)]))
+          .watch();
+
+  /// Returns distinct day numbers (sorted) for a routine.
+  Future<List<int>> getDayNumbers(int routineId) async {
+    final rows = await (select(routineExercises)
+          ..where((re) => re.routineId.equals(routineId))
+          ..orderBy([(re) => OrderingTerm.asc(re.dayNumber)]))
+        .get();
+    final seen = <int>{};
+    return rows
+        .map((r) => r.dayNumber)
+        .where((d) => seen.add(d))
+        .toList();
+  }
+
+  /// Returns a map of dayNumber -> dayName for the given routine.
+  /// dayName may be null if the user did not label the day.
+  Future<Map<int, String?>> getDayNames(int routineId) async {
+    final rows = await (select(routineExercises)
+          ..where((re) => re.routineId.equals(routineId))
+          ..orderBy([(re) => OrderingTerm.asc(re.dayNumber)]))
+        .get();
+    final result = <int, String?>{};
+    for (final r in rows) {
+      result.putIfAbsent(r.dayNumber, () => r.dayName);
+    }
+    return result;
+  }
+
   // --- Workouts ---
 
   Future<int> insertWorkout(WorkoutsCompanion entry) =>

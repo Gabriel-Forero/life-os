@@ -34,7 +34,13 @@ class RoutineExercises extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get routineId => integer().references(Routines, #id)();
   IntColumn get exerciseId => integer().references(Exercises, #id)();
-  IntColumn get sortOrder => integer().withDefault(const Constant(0))();
+  /// Encodes day and position: dayNumber * 1000 + positionWithinDay.
+  /// Single-day routines use dayNumber=1, so sortOrder starts at 1000.
+  IntColumn get sortOrder => integer().withDefault(const Constant(1000))();
+  /// 1-based day number within the program (1 for single-day routines).
+  IntColumn get dayNumber => integer().withDefault(const Constant(1))();
+  /// Optional label for the day, e.g. "Push", "Pull", "Piernas".
+  TextColumn get dayName => text().nullable().withLength(max: 30)();
   IntColumn get defaultSets => integer().withDefault(const Constant(3))();
   IntColumn get defaultReps => integer().withDefault(const Constant(10))();
   RealColumn get defaultWeightKg => real().nullable()();

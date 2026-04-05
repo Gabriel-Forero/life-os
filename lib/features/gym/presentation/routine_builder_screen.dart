@@ -6,7 +6,7 @@ import 'package:life_os/core/providers/providers.dart';
 import 'package:life_os/features/gym/domain/gym_input.dart';
 
 // ---------------------------------------------------------------------------
-// Modelo local de ejercicio en construccion de rutina
+// Modelo local: ejercicio dentro de un dia del programa
 // ---------------------------------------------------------------------------
 
 class _ExerciseRef {
@@ -28,11 +28,27 @@ class _ExerciseRef {
 }
 
 // ---------------------------------------------------------------------------
-// Pantalla: constructor de rutina
+// Modelo local: un dia del programa
 // ---------------------------------------------------------------------------
 
-/// Constructor de rutinas con nombre, descripcion, lista reordenable de
-/// ejercicios y configuracion de series/repeticiones/descanso por ejercicio.
+class _DayState {
+  _DayState({
+    required this.dayNumber,
+    this.dayLabel = '',
+    List<_ExerciseRef>? exercises,
+  }) : exercises = exercises ?? [];
+
+  final int dayNumber;
+  String dayLabel; // "Push", "Pull", etc. — optional
+  final List<_ExerciseRef> exercises;
+}
+
+// ---------------------------------------------------------------------------
+// Pantalla: constructor de programa/rutina multi-dia
+// ---------------------------------------------------------------------------
+
+/// Constructor de programas con nombre, descripcion, dias configurables (1-7)
+/// y lista reordenable de ejercicios por dia.
 ///
 /// Accesibilidad: A11Y-GYM-02 — todos los campos y botones tienen etiquetas
 /// semanticas.
@@ -50,35 +66,118 @@ class RoutineBuilderScreen extends ConsumerStatefulWidget {
       _RoutineBuilderScreenState();
 }
 
-class _RoutineBuilderScreenState extends ConsumerState<RoutineBuilderScreen> {
+class _RoutineBuilderScreenState extends ConsumerState<RoutineBuilderScreen>
+    with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
-  final List<_ExerciseRef> _exercises = [];
+
+  int _numDays = 1;
+  late List<_DayState> _days;
+  late TabController _tabController;
+
   bool _isSaving = false;
 
   bool get _isEditing => widget.routineId != null;
 
   @override
+  void initState() {
+    super.initState();
+    _days = [_DayState(dayNumber: 1)];
+    _tabController = TabController(length: _numDays, vsync: this);
+  }
+
+  @override
   void dispose() {
     _nameController.dispose();
     _descriptionController.dispose();
+    _tabController.dispose();
     super.dispose();
   }
 
+  // --- Day count management ------------------------------------------------
+
+  void _setNumDays(int newCount) {
+    if (newCount < 1 || newCount > 7 || newCount == _numDays) return;
+    setState(() {
+      if (newCount > _numDays) {
+        for (int i = _numDays + 1; i <= newCount; i++) {
+          _days.add(_DayState(dayNumber: i));
+        }
+      } else {
+        _days = _days.sublist(0, newCount);
+      }
+      _numDays = newCount;
+      final prevIndex = _tabController.index.clamp(0, newCount - 1);
+      _tabController.dispose();
+      _tabController = TabController(
+        length: _numDays,
+        vsync: this,
+        initialIndex: prevIndex,
+      );
+    });
+  }
+
+  // --- Save ----------------------------------------------------------------
+
   Future<void> _handleSave() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_exercises.isEmpty) {
+
+    // Check that every day has at least one exercise
+    final allExercises = _days.expand((d) => d.exercises).toList();
+    if (allExercises.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Agrega al menos un ejercicio para guardar la rutina'),
+          content: Text('Agrega al menos un ejercicio para guardar el programa'),
           backgroundColor: AppColors.error,
         ),
       );
       return;
     }
 
+    // Check if any day is empty (warn but allow saving)
+    final emptyDays =
+        _days.where((d) => d.exercises.isEmpty).map((d) => d.dayNumber).toList();
+    if (emptyDays.isNotEmpty) {
+      final proceed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Dias sin ejercicios'),
+          content: Text(
+            'Los dias ${emptyDays.join(', ')} no tienen ejercicios. '
+            '¿Deseas guardar de todas formas?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Guardar'),
+            ),
+          ],
+        ),
+      );
+      if (proceed != true) return;
+    }
+
     setState(() => _isSaving = true);
+
+    // Build list of RoutineExerciseInput across all days
+    final exerciseInputs = <RoutineExerciseInput>[];
+    for (final day in _days) {
+      for (final ex in day.exercises) {
+        exerciseInputs.add(RoutineExerciseInput(
+          exerciseId: ex.id,
+          dayNumber: day.dayNumber,
+          dayName: day.dayLabel.trim().isEmpty ? null : day.dayLabel.trim(),
+          defaultSets: ex.sets,
+          defaultReps: ex.reps,
+          restSeconds: ex.restSeconds,
+        ));
+      }
+    }
 
     final notifier = ref.read(gymNotifierProvider);
     await notifier.createRoutine(RoutineInput(
@@ -86,40 +185,22 @@ class _RoutineBuilderScreenState extends ConsumerState<RoutineBuilderScreen> {
       description: _descriptionController.text.trim().isEmpty
           ? null
           : _descriptionController.text.trim(),
-      exercises: _exercises
-          .map(
-            (e) => RoutineExerciseInput(
-              exerciseId: e.id,
-              defaultSets: e.sets,
-              defaultReps: e.reps,
-              restSeconds: e.restSeconds,
-            ),
-          )
-          .toList(),
+      exercises: exerciseInputs,
     ));
 
     if (mounted) {
       setState(() => _isSaving = false);
       ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Guardado!')));
+          .showSnackBar(const SnackBar(content: Text('Programa guardado!')));
       Navigator.of(context).pop();
     }
   }
 
-  void _removeExercise(int index) {
-    setState(() => _exercises.removeAt(index));
-  }
+  // --- Exercise picker for the current active day tab ----------------------
 
-  void _onReorder(int oldIndex, int newIndex) {
-    setState(() {
-      if (newIndex > oldIndex) newIndex -= 1;
-      final item = _exercises.removeAt(oldIndex);
-      _exercises.insert(newIndex, item);
-    });
-  }
-
-  Future<void> _openExercisePicker() async {
-    final result = await showModalBottomSheet<({int id, String name, String muscle})>(
+  Future<void> _openExercisePickerForDay(_DayState day) async {
+    final result =
+        await showModalBottomSheet<({int id, String name, String muscle})>(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
@@ -129,31 +210,29 @@ class _RoutineBuilderScreenState extends ConsumerState<RoutineBuilderScreen> {
     );
 
     if (result != null) {
-      final alreadyAdded = _exercises.any((e) => e.id == result.id);
+      final alreadyAdded = day.exercises.any((e) => e.id == result.id);
       if (alreadyAdded) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('${result.name} ya esta en la rutina'),
-            ),
+            SnackBar(content: Text('${result.name} ya esta en este dia')),
           );
         }
         return;
       }
       setState(() {
-        _exercises.add(
-          _ExerciseRef(
-            id: result.id,
-            name: result.name,
-            primaryMuscle: result.muscle,
-            sets: 3,
-            reps: 10,
-            restSeconds: 90,
-          ),
-        );
+        day.exercises.add(_ExerciseRef(
+          id: result.id,
+          name: result.name,
+          primaryMuscle: result.muscle,
+          sets: 3,
+          reps: 10,
+          restSeconds: 90,
+        ));
       });
     }
   }
+
+  // --- Build ---------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -166,7 +245,7 @@ class _RoutineBuilderScreenState extends ConsumerState<RoutineBuilderScreen> {
         elevation: 0,
         title: Semantics(
           header: true,
-          child: Text(_isEditing ? 'Editar rutina' : 'Nueva rutina'),
+          child: Text(_isEditing ? 'Editar programa' : 'Nuevo programa'),
         ),
         leading: Semantics(
           label: 'Volver',
@@ -180,7 +259,7 @@ class _RoutineBuilderScreenState extends ConsumerState<RoutineBuilderScreen> {
         ),
         actions: [
           Semantics(
-            label: 'Guardar rutina',
+            label: 'Guardar programa',
             button: true,
             child: TextButton.icon(
               key: const ValueKey('routine-builder-save-button'),
@@ -194,26 +273,44 @@ class _RoutineBuilderScreenState extends ConsumerState<RoutineBuilderScreen> {
             ),
           ),
         ],
+        bottom: _numDays > 1
+            ? TabBar(
+                controller: _tabController,
+                isScrollable: true,
+                labelColor: AppColors.gym,
+                indicatorColor: AppColors.gym,
+                tabs: _days
+                    .map(
+                      (d) => Tab(
+                        text: d.dayLabel.trim().isNotEmpty
+                            ? 'Dia ${d.dayNumber}: ${d.dayLabel.trim()}'
+                            : 'Dia ${d.dayNumber}',
+                      ),
+                    )
+                    .toList(),
+              )
+            : null,
       ),
       body: Form(
         key: _formKey,
         child: Column(
           children: [
-            // --- Campos de nombre y descripcion ---
+            // --- Nombre y descripcion del programa ---
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
               child: Column(
                 children: [
                   Semantics(
-                    label: 'Nombre de la rutina',
+                    label: 'Nombre del programa',
                     textField: true,
                     child: TextFormField(
                       key: const ValueKey('routine-builder-name-field'),
                       controller: _nameController,
                       decoration: InputDecoration(
-                        labelText: 'Nombre de la rutina',
-                        hintText: 'Ej. Empuje — Día A',
-                        prefixIcon: const Icon(Icons.drive_file_rename_outline),
+                        labelText: 'Nombre del programa',
+                        hintText: 'Ej. Push Pull Legs',
+                        prefixIcon:
+                            const Icon(Icons.drive_file_rename_outline),
                         border: const OutlineInputBorder(),
                         focusedBorder: const OutlineInputBorder(
                           borderSide:
@@ -229,87 +326,78 @@ class _RoutineBuilderScreenState extends ConsumerState<RoutineBuilderScreen> {
                           : null,
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   Semantics(
-                    label: 'Descripcion de la rutina (opcional)',
+                    label: 'Descripcion del programa (opcional)',
                     textField: true,
                     child: TextFormField(
                       key: const ValueKey('routine-builder-description-field'),
                       controller: _descriptionController,
                       decoration: const InputDecoration(
                         labelText: 'Descripcion (opcional)',
-                        hintText: 'Ej. Fuerza + hipertrofia de pecho y hombros',
+                        hintText: 'Ej. Hipertrofia 4 dias por semana',
                         prefixIcon: Icon(Icons.notes_outlined),
                         border: OutlineInputBorder(),
                       ),
                       textCapitalization: TextCapitalization.sentences,
-                      maxLines: 2,
+                      maxLines: 1,
                       maxLength: 200,
                     ),
                   ),
-                ],
-              ),
-            ),
-
-            // --- Encabezado de ejercicios ---
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-              child: Row(
-                children: [
-                  Semantics(
-                    header: true,
-                    child: Text(
-                      'Ejercicios (${_exercises.length})',
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
+                  // --- Numero de dias ---
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Semantics(
+                        header: true,
+                        child: Text(
+                          'Numero de dias:',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                  const Spacer(),
-                  Semantics(
-                    label: 'Agregar ejercicio a la rutina',
-                    button: true,
-                    child: TextButton.icon(
-                      key: const ValueKey('routine-builder-add-exercise-button'),
-                      onPressed: _openExercisePicker,
-                      style:
-                          TextButton.styleFrom(foregroundColor: AppColors.gym),
-                      icon: const Icon(Icons.add, size: 18),
-                      label: const Text('Agregar'),
-                    ),
+                      const SizedBox(width: 12),
+                      _DayCountSpinner(
+                        key: const ValueKey('routine-builder-day-count'),
+                        value: _numDays,
+                        onChanged: _setNumDays,
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
 
-            // --- Lista reordenable de ejercicios ---
+            const SizedBox(height: 4),
+            const Divider(height: 1),
+
+            // --- Contenido por dia ---
             Expanded(
-              child: _exercises.isEmpty
-                  ? _EmptyExerciseList(
-                      key: const ValueKey('routine-builder-empty'),
-                      onAddExercise: _openExercisePicker,
+              child: _numDays == 1
+                  ? _DayExerciseList(
+                      key: const ValueKey('routine-builder-day-1'),
+                      day: _days[0],
+                      showDayLabelField: false,
+                      onAddExercise: () =>
+                          _openExercisePickerForDay(_days[0]),
+                      onChanged: () => setState(() {}),
                     )
-                  : ReorderableListView.builder(
-                      key: const ValueKey('routine-builder-exercise-list'),
-                      padding: const EdgeInsets.fromLTRB(0, 0, 0, 100),
-                      itemCount: _exercises.length,
-                      onReorder: _onReorder,
-                      buildDefaultDragHandles: false,
-                      itemBuilder: (context, index) {
-                        final exercise = _exercises[index];
-                        return _ExerciseRow(
-                          key: ValueKey('routine-exercise-row-${exercise.id}'),
-                          exercise: exercise,
-                          index: index,
-                          onRemove: () => _removeExercise(index),
-                          onSetsChanged: (v) =>
-                              setState(() => exercise.sets = v),
-                          onRepsChanged: (v) =>
-                              setState(() => exercise.reps = v),
-                          onRestChanged: (v) =>
-                              setState(() => exercise.restSeconds = v),
-                        );
-                      },
+                  : TabBarView(
+                      controller: _tabController,
+                      children: _days
+                          .map(
+                            (day) => _DayExerciseList(
+                              key: ValueKey(
+                                  'routine-builder-day-${day.dayNumber}'),
+                              day: day,
+                              showDayLabelField: true,
+                              onAddExercise: () =>
+                                  _openExercisePickerForDay(day),
+                              onChanged: () => setState(() {}),
+                            ),
+                          )
+                          .toList(),
                     ),
             ),
           ],
@@ -320,8 +408,239 @@ class _RoutineBuilderScreenState extends ConsumerState<RoutineBuilderScreen> {
 }
 
 // ---------------------------------------------------------------------------
+// Widget: spinner para el numero de dias
+// ---------------------------------------------------------------------------
+
+class _DayCountSpinner extends StatelessWidget {
+  const _DayCountSpinner({
+    super.key,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final int value;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: theme.dividerColor),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Semantics(
+            label: 'Disminuir dias',
+            button: true,
+            child: InkWell(
+              onTap: value > 1 ? () => onChanged(value - 1) : null,
+              borderRadius:
+                  const BorderRadius.horizontal(left: Radius.circular(8)),
+              child: Padding(
+                padding: const EdgeInsets.all(6),
+                child: Icon(
+                  Icons.remove,
+                  size: 16,
+                  color: value > 1 ? AppColors.gym : Colors.grey,
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Text(
+              '$value',
+              style: theme.textTheme.bodyMedium
+                  ?.copyWith(fontWeight: FontWeight.w700),
+            ),
+          ),
+          Semantics(
+            label: 'Aumentar dias',
+            button: true,
+            child: InkWell(
+              onTap: value < 7 ? () => onChanged(value + 1) : null,
+              borderRadius:
+                  const BorderRadius.horizontal(right: Radius.circular(8)),
+              child: Padding(
+                padding: const EdgeInsets.all(6),
+                child: Icon(
+                  Icons.add,
+                  size: 16,
+                  color: value < 7 ? AppColors.gym : Colors.grey,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Widget: lista de ejercicios de un dia especifico
+// ---------------------------------------------------------------------------
+
+class _DayExerciseList extends StatefulWidget {
+  const _DayExerciseList({
+    super.key,
+    required this.day,
+    required this.showDayLabelField,
+    required this.onAddExercise,
+    required this.onChanged,
+  });
+
+  final _DayState day;
+  final bool showDayLabelField;
+  final VoidCallback onAddExercise;
+  final VoidCallback onChanged;
+
+  @override
+  State<_DayExerciseList> createState() => _DayExerciseListState();
+}
+
+class _DayExerciseListState extends State<_DayExerciseList> {
+  late final TextEditingController _labelController;
+
+  @override
+  void initState() {
+    super.initState();
+    _labelController =
+        TextEditingController(text: widget.day.dayLabel);
+  }
+
+  @override
+  void dispose() {
+    _labelController.dispose();
+    super.dispose();
+  }
+
+  void _removeExercise(int index) {
+    setState(() => widget.day.exercises.removeAt(index));
+    widget.onChanged();
+  }
+
+  void _onReorder(int oldIndex, int newIndex) {
+    setState(() {
+      if (newIndex > oldIndex) newIndex -= 1;
+      final item = widget.day.exercises.removeAt(oldIndex);
+      widget.day.exercises.insert(newIndex, item);
+    });
+    widget.onChanged();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final day = widget.day;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // --- Campo etiqueta del dia (solo en modo multi-dia) ---
+        if (widget.showDayLabelField)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+            child: Semantics(
+              label: 'Nombre del dia ${day.dayNumber} (opcional)',
+              textField: true,
+              child: TextField(
+                key: ValueKey('routine-day-label-${day.dayNumber}'),
+                controller: _labelController,
+                decoration: InputDecoration(
+                  labelText: 'Nombre del dia (opcional)',
+                  hintText: 'Ej. Push, Pull, Piernas, Hombros',
+                  prefixIcon: const Icon(Icons.label_outline),
+                  border: const OutlineInputBorder(),
+                  isDense: true,
+                ),
+                textCapitalization: TextCapitalization.words,
+                onChanged: (v) {
+                  day.dayLabel = v;
+                  widget.onChanged();
+                },
+              ),
+            ),
+          ),
+
+        // --- Encabezado de ejercicios ---
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+          child: Row(
+            children: [
+              Semantics(
+                header: true,
+                child: Text(
+                  'Ejercicios (${day.exercises.length})',
+                  style: theme.textTheme.titleSmall
+                      ?.copyWith(fontWeight: FontWeight.w600),
+                ),
+              ),
+              const Spacer(),
+              Semantics(
+                label: 'Agregar ejercicio al dia ${day.dayNumber}',
+                button: true,
+                child: TextButton.icon(
+                  key: ValueKey(
+                      'routine-builder-add-exercise-day-${day.dayNumber}'),
+                  onPressed: widget.onAddExercise,
+                  style:
+                      TextButton.styleFrom(foregroundColor: AppColors.gym),
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Agregar'),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // --- Lista reordenable ---
+        Expanded(
+          child: day.exercises.isEmpty
+              ? _EmptyExerciseList(
+                  key: ValueKey('routine-empty-day-${day.dayNumber}'),
+                  onAddExercise: widget.onAddExercise,
+                )
+              : ReorderableListView.builder(
+                  key: ValueKey('routine-exercise-list-day-${day.dayNumber}'),
+                  padding: const EdgeInsets.fromLTRB(0, 0, 0, 100),
+                  itemCount: day.exercises.length,
+                  onReorder: _onReorder,
+                  buildDefaultDragHandles: false,
+                  itemBuilder: (context, index) {
+                    final exercise = day.exercises[index];
+                    return _ExerciseRow(
+                      key: ValueKey(
+                          'routine-exercise-row-d${day.dayNumber}-${exercise.id}'),
+                      exercise: exercise,
+                      index: index,
+                      onRemove: () => _removeExercise(index),
+                      onSetsChanged: (v) {
+                        setState(() => exercise.sets = v);
+                        widget.onChanged();
+                      },
+                      onRepsChanged: (v) {
+                        setState(() => exercise.reps = v);
+                        widget.onChanged();
+                      },
+                      onRestChanged: (v) {
+                        setState(() => exercise.restSeconds = v);
+                        widget.onChanged();
+                      },
+                    );
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Widget: fila de ejercicio con series/reps/descanso
-// TODO: Extract to separate widget file
 // ---------------------------------------------------------------------------
 
 class _ExerciseRow extends StatelessWidget {
@@ -353,7 +672,6 @@ class _ExerciseRow extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Encabezado de ejercicio
             Row(
               children: [
                 ReorderableDragStartListener(
@@ -391,7 +709,7 @@ class _ExerciseRow extends StatelessWidget {
                   ),
                 ),
                 Semantics(
-                  label: 'Eliminar ${exercise.name} de la rutina',
+                  label: 'Eliminar ${exercise.name}',
                   button: true,
                   child: IconButton(
                     key: ValueKey('routine-remove-exercise-${exercise.id}'),
@@ -404,8 +722,6 @@ class _ExerciseRow extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
-
-            // Controles de series/reps/descanso
             Row(
               children: [
                 Expanded(
@@ -579,7 +895,7 @@ class _EmptyExerciseList extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Agrega al menos un ejercicio para poder guardar la rutina.',
+              'Agrega ejercicios a este dia.',
               style: theme.textTheme.bodySmall,
               textAlign: TextAlign.center,
             ),
@@ -637,7 +953,6 @@ class _ExercisePickerSheetState extends ConsumerState<_ExercisePickerSheet> {
       builder: (context, scrollController) {
         return Column(
           children: [
-            // Handle
             Container(
               width: 36,
               height: 4,
@@ -675,8 +990,8 @@ class _ExercisePickerSheetState extends ConsumerState<_ExercisePickerSheet> {
             const SizedBox(height: 8),
             Expanded(
               child: StreamBuilder(
-                stream: dao.watchExercises(
-                    query: _query.isEmpty ? null : _query),
+                stream:
+                    dao.watchExercises(query: _query.isEmpty ? null : _query),
                 builder: (context, snapshot) {
                   final exercises = snapshot.data ?? [];
                   return ListView.separated(
@@ -687,8 +1002,7 @@ class _ExercisePickerSheetState extends ConsumerState<_ExercisePickerSheet> {
                     itemBuilder: (context, index) {
                       final ex = exercises[index];
                       return Semantics(
-                        label:
-                            '${ex.name}, ${ex.primaryMuscle}',
+                        label: '${ex.name}, ${ex.primaryMuscle}',
                         button: true,
                         child: ListTile(
                           key: ValueKey('exercise-picker-item-${ex.id}'),

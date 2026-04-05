@@ -27,6 +27,8 @@ class RoutineInput {
 class RoutineExerciseInput {
   const RoutineExerciseInput({
     required this.exerciseId,
+    this.dayNumber = 1,
+    this.dayName,
     this.defaultSets = 3,
     this.defaultReps = 10,
     this.defaultWeightKg,
@@ -34,6 +36,10 @@ class RoutineExerciseInput {
   });
 
   final int exerciseId;
+  /// 1-based day number. Single-day routines always use 1.
+  final int dayNumber;
+  /// Optional label for the day, e.g. "Push", "Pull".
+  final String? dayName;
   final int defaultSets;
   final int defaultReps;
   final double? defaultWeightKg;

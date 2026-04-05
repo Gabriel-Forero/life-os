@@ -162,22 +162,29 @@ class GymNotifier {
         updatedAt: now,
       ));
 
-      final companions = input.exercises
-          .asMap()
-          .entries
-          .map(
-            (e) => RoutineExercisesCompanion.insert(
-              routineId: routineId,
-              exerciseId: e.value.exerciseId,
-              sortOrder: Value(e.key),
-              defaultSets: Value(e.value.defaultSets),
-              defaultReps: Value(e.value.defaultReps),
-              defaultWeightKg: Value(e.value.defaultWeightKg),
-              restSeconds: Value(e.value.restSeconds),
-              createdAt: now,
-            ),
-          )
-          .toList();
+      // Compute per-day position counters so sortOrder encodes
+      // dayNumber * 1000 + positionWithinDay.
+      final Map<int, int> dayPositions = {};
+      final companions = input.exercises.map((ex) {
+        final pos = dayPositions.update(
+          ex.dayNumber,
+          (v) => v + 1,
+          ifAbsent: () => 0,
+        );
+        final sort = ex.dayNumber * 1000 + pos;
+        return RoutineExercisesCompanion.insert(
+          routineId: routineId,
+          exerciseId: ex.exerciseId,
+          sortOrder: Value(sort),
+          dayNumber: Value(ex.dayNumber),
+          dayName: Value(ex.dayName),
+          defaultSets: Value(ex.defaultSets),
+          defaultReps: Value(ex.defaultReps),
+          defaultWeightKg: Value(ex.defaultWeightKg),
+          restSeconds: Value(ex.restSeconds),
+          createdAt: now,
+        );
+      }).toList();
 
       await dao.setRoutineExercises(routineId, companions);
       return Success(routineId);
