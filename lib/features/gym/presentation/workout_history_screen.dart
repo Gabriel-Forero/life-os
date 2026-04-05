@@ -1,3 +1,4 @@
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,6 +7,7 @@ import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
 import 'package:life_os/core/router/app_router.dart';
 import 'package:life_os/core/widgets/animated_list_item.dart';
+import 'package:life_os/core/widgets/chart_card.dart';
 import 'package:life_os/core/widgets/pressable_card.dart';
 
 // ---------------------------------------------------------------------------
@@ -70,22 +72,44 @@ class WorkoutHistoryScreen extends ConsumerWidget {
                 key: const ValueKey('workout-history-empty'));
           }
 
-          return ListView.separated(
-            key: const ValueKey('workout-history-list'),
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-            itemCount: workouts.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 8),
-            itemBuilder: (context, index) {
-              final workout = workouts[index];
-              return AnimatedListItem(
-                index: index,
-                child: _WorkoutSessionCard(
-                  key: ValueKey('workout-session-card-${workout.id}'),
-                  workout: workout,
-                  onTap: () => _openDetail(context, workout),
+          return CustomScrollView(
+            key: const ValueKey('workout-history-scroll'),
+            slivers: [
+              // Charts section
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                  child: _WorkoutChartsSection(
+                    key: const ValueKey('workout-charts-section'),
+                    workouts: workouts,
+                    dao: dao,
+                  ),
                 ),
-              );
-            },
+              ),
+              // History list
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final workout = workouts[index];
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: AnimatedListItem(
+                          index: index,
+                          child: _WorkoutSessionCard(
+                            key: ValueKey('workout-session-card-${workout.id}'),
+                            workout: workout,
+                            onTap: () => _openDetail(context, workout),
+                          ),
+                        ),
+                      );
+                    },
+                    childCount: workouts.length,
+                  ),
+                ),
+              ),
+            ],
           );
         },
       ),
@@ -634,6 +658,148 @@ class _EmptyHistory extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Charts section: weekly volume + workouts per week
+// ---------------------------------------------------------------------------
+
+class _WorkoutChartsSection extends ConsumerWidget {
+  const _WorkoutChartsSection({
+    super.key,
+    required this.workouts,
+    required this.dao,
+  });
+
+  final List<Workout> workouts;
+  final dynamic dao;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final gymDao = ref.watch(gymDaoProvider);
+
+    return StreamBuilder<List<Workout>>(
+      stream: gymDao.watchWorkouts(),
+      builder: (context, snapshot) {
+        final allWorkouts = snapshot.data ?? [];
+
+        // Build weekly data — last 12 weeks
+        final now = DateTime.now();
+        final weekData = <({String label, int count, double volumeKg})>[];
+
+        for (int w = 11; w >= 0; w--) {
+          final weekEnd = now.subtract(Duration(days: now.weekday - 1 + w * 7));
+          final weekStart = weekEnd.subtract(const Duration(days: 6));
+          final label = '${weekStart.day}/${weekStart.month}';
+
+          final weekWorkouts = allWorkouts.where((wo) {
+            if (wo.finishedAt == null) return false;
+            final d = wo.finishedAt!;
+            return d.isAfter(weekStart.subtract(const Duration(seconds: 1))) &&
+                d.isBefore(weekEnd.add(const Duration(days: 1)));
+          }).toList();
+
+          weekData.add((
+            label: label,
+            count: weekWorkouts.length,
+            volumeKg: 0, // Volume computed per-workout below
+          ));
+        }
+
+        // Workouts per week bar chart
+        final hasWorkoutData = weekData.any((w) => w.count > 0);
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ChartCard(
+              key: const ValueKey('workouts-per-week-chart'),
+              title: 'Entrenamientos por semana',
+              child: hasWorkoutData
+                  ? _WeeklyWorkoutsBarChart(weekData: weekData)
+                  : const Center(child: Text('Sin datos suficientes')),
+            ),
+            const SizedBox(height: 16),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _WeeklyWorkoutsBarChart extends StatelessWidget {
+  const _WeeklyWorkoutsBarChart({required this.weekData});
+
+  final List<({String label, int count, double volumeKg})> weekData;
+
+  @override
+  Widget build(BuildContext context) {
+    final maxY = weekData.map((w) => w.count.toDouble()).reduce((a, b) => a > b ? a : b);
+
+    return SizedBox(
+      height: 160,
+      child: BarChart(
+        BarChartData(
+          maxY: maxY < 1 ? 5 : maxY * 1.3,
+          barTouchData: BarTouchData(enabled: false),
+          titlesData: FlTitlesData(
+            leftTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            rightTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 20,
+                interval: 2,
+                getTitlesWidget: (value, meta) {
+                  final idx = value.toInt();
+                  if (idx < 0 || idx >= weekData.length) {
+                    return const SizedBox.shrink();
+                  }
+                  return Text(
+                    weekData[idx].label,
+                    style: const TextStyle(fontSize: 8),
+                  );
+                },
+              ),
+            ),
+          ),
+          gridData: FlGridData(
+            show: true,
+            drawVerticalLine: false,
+            getDrawingHorizontalLine: (_) => const FlLine(
+              color: Color(0x1A9E9E9E),
+              strokeWidth: 1,
+            ),
+          ),
+          borderData: FlBorderData(show: false),
+          barGroups: weekData.asMap().entries.map((e) {
+            return BarChartGroupData(
+              x: e.key,
+              barRods: [
+                BarChartRodData(
+                  toY: e.value.count.toDouble(),
+                  color: e.value.count > 0
+                      ? AppColors.gym
+                      : AppColors.gym.withAlpha(30),
+                  width: 14,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(4),
+                  ),
+                ),
+              ],
+            );
+          }).toList(),
         ),
       ),
     );

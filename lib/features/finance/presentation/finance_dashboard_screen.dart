@@ -2,6 +2,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_os/core/constants/app_colors.dart';
+import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
 import 'package:life_os/core/widgets/chart_card.dart';
 import 'package:life_os/core/widgets/stat_card.dart';
@@ -23,28 +24,21 @@ extension _DateRangeLabel on _DateRange {
       };
 }
 
-class _MockPieSlice {
-  const _MockPieSlice({
+// Real data models
+class _PieSlice {
+  const _PieSlice({
     required this.label,
     required this.color,
-    required this.percentage,
+    required this.amountCents,
   });
 
   final String label;
   final Color color;
-  final double percentage;
+  final int amountCents;
 }
 
-const _mockPieSlices = [
-  _MockPieSlice(label: 'Alimentacion', color: Color(0xFF10B981), percentage: 0.35),
-  _MockPieSlice(label: 'Transporte', color: Color(0xFFF59E0B), percentage: 0.20),
-  _MockPieSlice(label: 'Entretenimiento', color: Color(0xFF8B5CF6), percentage: 0.15),
-  _MockPieSlice(label: 'Salud', color: Color(0xFFEC4899), percentage: 0.10),
-  _MockPieSlice(label: 'Otros', color: Color(0xFF6366F1), percentage: 0.20),
-];
-
-class _MockBarDay {
-  const _MockBarDay({
+class _BarDay {
+  const _BarDay({
     required this.label,
     required this.incomeCents,
     required this.expenseCents,
@@ -54,18 +48,6 @@ class _MockBarDay {
   final int incomeCents;
   final int expenseCents;
 }
-
-const _mockBarDays = [
-  _MockBarDay(label: 'Lun', incomeCents: 0, expenseCents: 8000000),
-  _MockBarDay(label: 'Mar', incomeCents: 300000000, expenseCents: 12000000),
-  _MockBarDay(label: 'Mie', incomeCents: 0, expenseCents: 5500000),
-  _MockBarDay(label: 'Jue', incomeCents: 0, expenseCents: 18000000),
-  _MockBarDay(label: 'Vie', incomeCents: 0, expenseCents: 9000000),
-  _MockBarDay(label: 'Sab', incomeCents: 0, expenseCents: 22000000),
-  _MockBarDay(label: 'Dom', incomeCents: 0, expenseCents: 11000000),
-];
-
-const _mockLinePoints = [0.0, 2.8, 2.6, 2.7, 2.5, 2.6, 2.15];
 
 // ---------------------------------------------------------------------------
 // Pantalla principal del dashboard de finanzas
@@ -206,50 +188,175 @@ class _FinanceDashboardScreenState
                 ),
                 const SizedBox(height: 16),
 
-                // --- Grafico de pastel: gastos por categoria ---
-                ChartCard(
-                  key: const ValueKey('dashboard-pie-chart-card'),
-                  title: 'Gastos por categoria',
-                  height: 220,
-                  testId: 'dashboard-pie-chart',
-                  child: Semantics(
-                    label: 'Grafico de pastel: distribucion de gastos. '
-                        '${_mockPieSlices.map((s) => '${s.label} ${(s.percentage * 100).round()}%').join(', ')}',
-                    child: _PieChartSection(
-                      slices: _mockPieSlices,
-                      touchedIndex: _touchedPieIndex,
-                      onTouch: (index) =>
-                          setState(() => _touchedPieIndex = index),
-                    ),
-                  ),
+                // --- Grafico de pastel: gastos reales por categoria ---
+                StreamBuilder<List<Transaction>>(
+                  stream: dao.watchTransactions(from, to),
+                  builder: (context, txSnapshot) {
+                    final txList = txSnapshot.data ?? [];
+                    final expenses = txList.where((t) => t.type == 'expense').toList();
+
+                    return StreamBuilder<List<Category>>(
+                      stream: dao.watchCategories(),
+                      builder: (context, catSnapshot) {
+                        final categories = catSnapshot.data ?? [];
+
+                        // Group expenses by category
+                        final Map<int, int> byCategory = {};
+                        for (final tx in expenses) {
+                          byCategory[tx.categoryId] =
+                              (byCategory[tx.categoryId] ?? 0) + tx.amountCents;
+                        }
+
+                        final totalExpenses = byCategory.values
+                            .fold<int>(0, (sum, v) => sum + v);
+
+                        final List<_PieSlice> slices = [];
+                        final catColors = [
+                          AppColors.finance,
+                          AppColors.gym,
+                          AppColors.nutrition,
+                          AppColors.habits,
+                          AppColors.sleep,
+                          AppColors.mental,
+                          AppColors.goals,
+                          AppColors.info,
+                        ];
+
+                        int colorIdx = 0;
+                        for (final entry in byCategory.entries) {
+                          final cat = categories.where((c) => c.id == entry.key).firstOrNull;
+                          final label = cat?.name ?? 'Cat. ${entry.key}';
+                          final color = cat != null
+                              ? Color(cat.color)
+                              : catColors[colorIdx % catColors.length];
+                          colorIdx++;
+                          slices.add(_PieSlice(
+                            label: label,
+                            color: color,
+                            amountCents: entry.value,
+                          ));
+                        }
+
+                        // Sort by amount descending, keep top 5 + Others
+                        slices.sort((a, b) => b.amountCents.compareTo(a.amountCents));
+                        List<_PieSlice> displaySlices = slices;
+                        if (slices.length > 5) {
+                          final top5 = slices.take(5).toList();
+                          final othersCents = slices
+                              .skip(5)
+                              .fold<int>(0, (s, e) => s + e.amountCents);
+                          top5.add(_PieSlice(
+                            label: 'Otros',
+                            color: Colors.grey,
+                            amountCents: othersCents,
+                          ));
+                          displaySlices = top5;
+                        }
+
+                        return ChartCard(
+                          key: const ValueKey('dashboard-pie-chart-card'),
+                          title: 'Gastos por categoria',
+                          height: 220,
+                          testId: 'dashboard-pie-chart',
+                          child: displaySlices.isEmpty
+                              ? const Center(child: Text('Sin datos suficientes'))
+                              : Semantics(
+                                  label: 'Grafico de pastel: distribucion de gastos. '
+                                      '${displaySlices.map((s) => '${s.label} ${totalExpenses > 0 ? (s.amountCents / totalExpenses * 100).round() : 0}%').join(', ')}',
+                                  child: _RealPieChart(
+                                    slices: displaySlices,
+                                    total: totalExpenses,
+                                    touchedIndex: _touchedPieIndex,
+                                    onTouch: (index) =>
+                                        setState(() => _touchedPieIndex = index),
+                                  ),
+                                ),
+                        );
+                      },
+                    );
+                  },
                 ),
                 const SizedBox(height: 16),
 
-                // --- Grafico de barras: ingresos vs gastos diarios ---
-                ChartCard(
-                  key: const ValueKey('dashboard-bar-chart-card'),
-                  title: 'Ingresos vs Gastos',
-                  height: 200,
-                  testId: 'dashboard-bar-chart',
-                  child: Semantics(
-                    label: 'Grafico de barras: ingresos y gastos por dia. '
-                        '${_mockBarDays.map((d) => '${d.label}: gastos \$${formatter.format(d.expenseCents)}').join(', ')}',
-                    child: const _BarChartSection(days: _mockBarDays),
-                  ),
+                // --- Grafico de barras: ingresos vs gastos por dia ---
+                StreamBuilder<List<Transaction>>(
+                  stream: dao.watchTransactions(from, to),
+                  builder: (context, txSnapshot) {
+                    final txList = txSnapshot.data ?? [];
+
+                    // Group by day (up to 14 days in range)
+                    final Map<String, _BarDay> byDay = {};
+                    for (final tx in txList) {
+                      final key = '${tx.date.year}-${tx.date.month.toString().padLeft(2,'0')}-${tx.date.day.toString().padLeft(2,'0')}';
+                      final label = '${tx.date.day}/${tx.date.month}';
+                      final existing = byDay[key];
+                      if (existing == null) {
+                        byDay[key] = _BarDay(
+                          label: label,
+                          incomeCents: tx.type == 'income' ? tx.amountCents : 0,
+                          expenseCents: tx.type == 'expense' ? tx.amountCents : 0,
+                        );
+                      } else {
+                        byDay[key] = _BarDay(
+                          label: existing.label,
+                          incomeCents: existing.incomeCents + (tx.type == 'income' ? tx.amountCents : 0),
+                          expenseCents: existing.expenseCents + (tx.type == 'expense' ? tx.amountCents : 0),
+                        );
+                      }
+                    }
+
+                    final sortedDays = byDay.entries.toList()
+                      ..sort((a, b) => a.key.compareTo(b.key));
+                    final days = sortedDays.map((e) => e.value).toList();
+
+                    return ChartCard(
+                      key: const ValueKey('dashboard-bar-chart-card'),
+                      title: 'Ingresos vs Gastos',
+                      height: 200,
+                      testId: 'dashboard-bar-chart',
+                      child: days.length < 2
+                          ? const Center(child: Text('Sin datos suficientes'))
+                          : Semantics(
+                              label: 'Grafico de barras: ingresos y gastos por dia.',
+                              child: _RealBarChart(days: days),
+                            ),
+                    );
+                  },
                 ),
                 const SizedBox(height: 16),
 
-                // --- Grafico de linea: saldo acumulado ---
-                ChartCard(
-                  key: const ValueKey('dashboard-line-chart-card'),
-                  title: 'Saldo acumulado',
-                  height: 180,
-                  testId: 'dashboard-line-chart',
-                  child: Semantics(
-                    label:
-                        'Grafico de linea: evolucion del saldo acumulado en el tiempo.',
-                    child: const _LineChartSection(points: _mockLinePoints),
-                  ),
+                // --- Grafico de linea: saldo acumulado real ---
+                StreamBuilder<List<Transaction>>(
+                  stream: dao.watchTransactions(from, to),
+                  builder: (context, txSnapshot) {
+                    final txList = txSnapshot.data ?? [];
+
+                    // Sort ascending by date
+                    final sorted = [...txList]..sort((a, b) => a.date.compareTo(b.date));
+
+                    // Build cumulative balance list
+                    final List<({DateTime date, double balance})> balancePoints = [];
+                    double running = 0;
+                    for (final tx in sorted) {
+                      running += tx.type == 'income'
+                          ? tx.amountCents / 100.0
+                          : -(tx.amountCents / 100.0);
+                      balancePoints.add((date: tx.date, balance: running));
+                    }
+
+                    return ChartCard(
+                      key: const ValueKey('dashboard-line-chart-card'),
+                      title: 'Saldo acumulado',
+                      height: 180,
+                      testId: 'dashboard-line-chart',
+                      child: balancePoints.length < 2
+                          ? const Center(child: Text('Sin datos suficientes'))
+                          : Semantics(
+                              label: 'Grafico de linea: evolucion del saldo acumulado en el tiempo.',
+                              child: _RealLineChart(points: balancePoints),
+                            ),
+                    );
+                  },
                 ),
               ],
             ),
@@ -298,17 +405,19 @@ class _DateRangeSelector extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Widget: grafico de pastel
+// Widget: grafico de pastel real
 // ---------------------------------------------------------------------------
 
-class _PieChartSection extends StatelessWidget {
-  const _PieChartSection({
+class _RealPieChart extends StatelessWidget {
+  const _RealPieChart({
     required this.slices,
+    required this.total,
     required this.touchedIndex,
     required this.onTouch,
   });
 
-  final List<_MockPieSlice> slices;
+  final List<_PieSlice> slices;
+  final int total;
   final int? touchedIndex;
   final ValueChanged<int?> onTouch;
 
@@ -335,12 +444,13 @@ class _PieChartSection extends StatelessWidget {
               sections: List.generate(slices.length, (i) {
                 final slice = slices[i];
                 final isTouched = i == touchedIndex;
+                final pct = total > 0
+                    ? (slice.amountCents / total * 100).round()
+                    : 0;
                 return PieChartSectionData(
                   color: slice.color,
-                  value: slice.percentage,
-                  title: isTouched
-                      ? '${(slice.percentage * 100).round()}%'
-                      : '',
+                  value: slice.amountCents.toDouble(),
+                  title: isTouched ? '$pct%' : '',
                   radius: isTouched ? 72 : 60,
                   titleStyle: const TextStyle(
                     fontSize: 12,
@@ -395,23 +505,26 @@ class _PieChartSection extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Widget: grafico de barras
+// Widget: grafico de barras real
 // ---------------------------------------------------------------------------
 
-class _BarChartSection extends StatelessWidget {
-  const _BarChartSection({required this.days});
+class _RealBarChart extends StatelessWidget {
+  const _RealBarChart({required this.days});
 
-  final List<_MockBarDay> days;
+  final List<_BarDay> days;
 
   @override
   Widget build(BuildContext context) {
-    final maxVal = days.fold<int>(
+    // Show at most 14 days to keep labels readable
+    final displayDays = days.length > 14 ? days.sublist(days.length - 14) : days;
+
+    final maxVal = displayDays.fold<int>(
       0,
       (m, d) => m > d.expenseCents + d.incomeCents
           ? m
           : d.expenseCents + d.incomeCents,
     );
-    final maxY = maxVal > 0 ? (maxVal / 1000000.0) : 10.0;
+    final maxY = maxVal > 0 ? (maxVal / 100.0) : 100.0;
 
     return BarChart(
       BarChartData(
@@ -432,12 +545,12 @@ class _BarChartSection extends StatelessWidget {
               showTitles: true,
               getTitlesWidget: (value, meta) {
                 final index = value.toInt();
-                if (index < 0 || index >= days.length) {
+                if (index < 0 || index >= displayDays.length) {
                   return const SizedBox.shrink();
                 }
                 return Text(
-                  days[index].label,
-                  style: const TextStyle(fontSize: 10),
+                  displayDays[index].label,
+                  style: const TextStyle(fontSize: 9),
                 );
               },
               reservedSize: 20,
@@ -454,13 +567,13 @@ class _BarChartSection extends StatelessWidget {
         ),
         borderData: FlBorderData(show: false),
         barGroups: List.generate(
-          days.length,
+          displayDays.length,
           (i) => BarChartGroupData(
             x: i,
             barRods: [
-              if (days[i].incomeCents > 0)
+              if (displayDays[i].incomeCents > 0)
                 BarChartRodData(
-                  toY: days[i].incomeCents / 1000000.0,
+                  toY: displayDays[i].incomeCents / 100.0,
                   color: AppColors.finance,
                   width: 8,
                   borderRadius: const BorderRadius.vertical(
@@ -468,7 +581,7 @@ class _BarChartSection extends StatelessWidget {
                   ),
                 ),
               BarChartRodData(
-                toY: days[i].expenseCents / 1000000.0,
+                toY: displayDays[i].expenseCents / 100.0,
                 color: AppColors.error,
                 width: 8,
                 borderRadius: const BorderRadius.vertical(
@@ -485,16 +598,24 @@ class _BarChartSection extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Widget: grafico de linea
+// Widget: grafico de linea real (saldo acumulado)
 // ---------------------------------------------------------------------------
 
-class _LineChartSection extends StatelessWidget {
-  const _LineChartSection({required this.points});
+class _RealLineChart extends StatelessWidget {
+  const _RealLineChart({required this.points});
 
-  final List<double> points;
+  final List<({DateTime date, double balance})> points;
 
   @override
   Widget build(BuildContext context) {
+    final spots = points.asMap().entries.map((e) {
+      return FlSpot(e.key.toDouble(), e.value.balance);
+    }).toList();
+
+    final minY = spots.map((s) => s.y).reduce((a, b) => a < b ? a : b);
+    final maxY = spots.map((s) => s.y).reduce((a, b) => a > b ? a : b);
+    final padding = (maxY - minY).abs() * 0.1 + 1;
+
     return LineChart(
       LineChartData(
         lineTouchData: const LineTouchData(enabled: false),
@@ -506,19 +627,35 @@ class _LineChartSection extends StatelessWidget {
             strokeWidth: 1,
           ),
         ),
-        titlesData: const FlTitlesData(
-          leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        titlesData: FlTitlesData(
+          leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 22,
+              interval: (points.length / 4).ceilToDouble(),
+              getTitlesWidget: (value, meta) {
+                final idx = value.toInt();
+                if (idx < 0 || idx >= points.length) {
+                  return const SizedBox.shrink();
+                }
+                final d = points[idx].date;
+                return Text(
+                  '${d.day}/${d.month}',
+                  style: const TextStyle(fontSize: 9),
+                );
+              },
+            ),
+          ),
         ),
+        minY: minY - padding,
+        maxY: maxY + padding,
         borderData: FlBorderData(show: false),
         lineBarsData: [
           LineChartBarData(
-            spots: List.generate(
-              points.length,
-              (i) => FlSpot(i.toDouble(), points[i]),
-            ),
+            spots: spots,
             isCurved: true,
             color: AppColors.finance,
             barWidth: 2.5,
@@ -534,4 +671,3 @@ class _LineChartSection extends StatelessWidget {
     );
   }
 }
-

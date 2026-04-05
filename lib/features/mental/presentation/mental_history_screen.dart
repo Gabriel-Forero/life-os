@@ -1,3 +1,4 @@
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -5,6 +6,7 @@ import 'package:life_os/core/constants/app_colors.dart';
 import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
 import 'package:life_os/core/router/app_router.dart';
+import 'package:life_os/core/widgets/chart_card.dart';
 
 const _dayLabels = ['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa', 'Do'];
 
@@ -545,7 +547,7 @@ class _CalendarView extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Trends View
+// Trends View — fl_chart LineCharts with real data
 // ---------------------------------------------------------------------------
 
 class _TrendsView extends StatelessWidget {
@@ -561,249 +563,85 @@ class _TrendsView extends StatelessWidget {
   final Color mentalColor;
   final ThemeData theme;
 
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      key: const ValueKey('trends-scroll'),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Score chart (bar)
-          Card(
-            key: const ValueKey('mood-trend-chart'),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Puntuacion de Animo — Ultima semana',
-                    style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 12),
-                  // Average line indicator
-                  Row(
-                    children: [
-                      Container(width: 20, height: 2, color: mentalColor.withAlpha(100)),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Promedio: ${avgScore.round()}',
-                        style: TextStyle(fontSize: 11, color: mentalColor),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    height: 140,
-                    child: data.isEmpty
-                        ? Center(
-                            child: Text(
-                              'Sin datos este mes',
-                              style: theme.textTheme.bodySmall,
-                            ),
-                          )
-                        : Row(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: List.generate(data.length, (i) {
-                              final entry = data[i];
-                              final score = _moodScore(entry);
-                              final barHeight = (score / 100.0) * 120;
-                              final color = score >= 75
-                                  ? AppColors.success
-                                  : score >= 50
-                                      ? mentalColor
-                                      : AppColors.warning;
-                              final dayLabel = _dayLabels[
-                                  (entry.date.weekday - 1) % 7];
+  Widget _buildLineChart({
+    required List<MoodLog> sorted,
+    required double Function(MoodLog) getValue,
+    required Color color,
+    double? minY,
+    double? maxY,
+  }) {
+    if (sorted.length < 2) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: Text('Sin datos suficientes'),
+        ),
+      );
+    }
+    final spots = sorted.asMap().entries.map((e) {
+      return FlSpot(e.key.toDouble(), getValue(e.value));
+    }).toList();
 
-                              return Expanded(
-                                child: Semantics(
-                                  label: '$dayLabel: animo $score',
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.end,
-                                    children: [
-                                      Text('$score',
-                                          style:
-                                              const TextStyle(fontSize: 9)),
-                                      const SizedBox(height: 2),
-                                      Container(
-                                        key: ValueKey('mood-bar-$i'),
-                                        height: barHeight,
-                                        margin: const EdgeInsets.symmetric(
-                                            horizontal: 3),
-                                        decoration: BoxDecoration(
-                                          color: color.withAlpha(200),
-                                          borderRadius:
-                                              BorderRadius.circular(4),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(dayLabel,
-                                          style: theme.textTheme.labelSmall),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            }),
-                          ),
-                  ),
-                ],
+    return SizedBox(
+      height: 160,
+      child: LineChart(
+        LineChartData(
+          minY: minY,
+          maxY: maxY,
+          lineTouchData: const LineTouchData(enabled: false),
+          gridData: FlGridData(
+            show: true,
+            drawVerticalLine: false,
+            getDrawingHorizontalLine: (_) => const FlLine(
+              color: Color(0x1A9E9E9E),
+              strokeWidth: 1,
+            ),
+          ),
+          titlesData: FlTitlesData(
+            leftTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            rightTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 22,
+                interval: (sorted.length / 5).ceilToDouble(),
+                getTitlesWidget: (value, meta) {
+                  final idx = value.toInt();
+                  if (idx < 0 || idx >= sorted.length) {
+                    return const SizedBox.shrink();
+                  }
+                  final d = sorted[idx].date;
+                  return Text(
+                    '${d.day}/${d.month}',
+                    style: const TextStyle(fontSize: 9),
+                  );
+                },
               ),
             ),
           ),
-
-          const SizedBox(height: 12),
-
-          // Valence & Energy breakdown
-          Card(
-            key: const ValueKey('valence-energy-card'),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Valencia vs Energia',
-                    style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 12),
-                  if (data.isEmpty)
-                    Text('Sin datos', style: theme.textTheme.bodySmall)
-                  else
-                    ...data.map((entry) {
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: Semantics(
-                          label:
-                              'Dia ${entry.date.day}: Valencia ${entry.valence}, Energia ${entry.energy}',
-                          child: Row(
-                            children: [
-                              SizedBox(
-                                width: 28,
-                                child: Text(
-                                  '${entry.date.day}',
-                                  style: theme.textTheme.labelSmall,
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        const SizedBox(
-                                          width: 52,
-                                          child: Text('Valencia',
-                                              style:
-                                                  TextStyle(fontSize: 10)),
-                                        ),
-                                        Expanded(
-                                          child: ClipRRect(
-                                            borderRadius:
-                                                BorderRadius.circular(3),
-                                            child: LinearProgressIndicator(
-                                              value: entry.valence / 5.0,
-                                              minHeight: 8,
-                                              backgroundColor: AppColors
-                                                  .mental
-                                                  .withAlpha(30),
-                                              valueColor:
-                                                  AlwaysStoppedAnimation(
-                                                      AppColors.mental),
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text('${entry.valence}',
-                                            style: const TextStyle(
-                                                fontSize: 10)),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Row(
-                                      children: [
-                                        const SizedBox(
-                                          width: 52,
-                                          child: Text('Energia',
-                                              style:
-                                                  TextStyle(fontSize: 10)),
-                                        ),
-                                        Expanded(
-                                          child: ClipRRect(
-                                            borderRadius:
-                                                BorderRadius.circular(3),
-                                            child: LinearProgressIndicator(
-                                              value: entry.energy / 5.0,
-                                              minHeight: 8,
-                                              backgroundColor: AppColors
-                                                  .sleep
-                                                  .withAlpha(30),
-                                              valueColor:
-                                                  AlwaysStoppedAnimation(
-                                                      AppColors.sleep),
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text('${entry.energy}',
-                                            style: const TextStyle(
-                                                fontSize: 10)),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }),
-                ],
+          borderData: FlBorderData(show: false),
+          lineBarsData: [
+            LineChartBarData(
+              spots: spots,
+              isCurved: true,
+              color: color,
+              barWidth: 2.5,
+              isStrokeCapRound: true,
+              dotData: const FlDotData(show: false),
+              belowBarData: BarAreaData(
+                show: true,
+                color: color.withAlpha(40),
               ),
             ),
-          ),
-
-          const SizedBox(height: 12),
-
-          // Top tags
-          Card(
-            key: const ValueKey('top-tags-card'),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Etiquetas frecuentes',
-                    style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 4,
-                    children: _topTags().entries.map((e) {
-                      return Semantics(
-                        label: '${e.key}: ${e.value} veces',
-                        child: Chip(
-                          key: ValueKey('top-tag-${e.key}'),
-                          label: Text('${e.key} (${e.value})'),
-                          backgroundColor: mentalColor.withAlpha(30),
-                          labelStyle: TextStyle(color: mentalColor, fontSize: 12),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -819,6 +657,89 @@ class _TrendsView extends StatelessWidget {
       counts.entries.toList()..sort((a, b) => b.value.compareTo(a.value)),
     );
     return Map.fromEntries(sorted.entries.take(5));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Sort ascending for charts
+    final sorted = [...data]..sort((a, b) => a.date.compareTo(b.date));
+
+    return SingleChildScrollView(
+      key: const ValueKey('trends-scroll'),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Mood Score trend (valence*50/4 + energy*50/4)
+          ChartCard(
+            key: const ValueKey('mood-trend-chart'),
+            title: 'Puntuacion de Animo',
+            child: _buildLineChart(
+              sorted: sorted,
+              getValue: (m) => _moodScore(m).toDouble(),
+              color: mentalColor,
+              minY: 0,
+              maxY: 100,
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          // Valence trend
+          ChartCard(
+            key: const ValueKey('valence-trend-chart'),
+            title: 'Valencia (1-5)',
+            child: _buildLineChart(
+              sorted: sorted,
+              getValue: (m) => m.valence.toDouble(),
+              color: mentalColor,
+              minY: 1,
+              maxY: 5,
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          // Energy trend
+          ChartCard(
+            key: const ValueKey('energy-trend-chart'),
+            title: 'Energia (1-5)',
+            child: _buildLineChart(
+              sorted: sorted,
+              getValue: (m) => m.energy.toDouble(),
+              color: AppColors.sleep,
+              minY: 1,
+              maxY: 5,
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          // Top tags (chips, kept as-is)
+          ChartCard(
+            key: const ValueKey('top-tags-card'),
+            title: 'Etiquetas frecuentes',
+            child: _topTags().isEmpty
+                ? const Center(child: Text('Sin etiquetas registradas'))
+                : Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: _topTags().entries.map((e) {
+                      return Semantics(
+                        label: '${e.key}: ${e.value} veces',
+                        child: Chip(
+                          key: ValueKey('top-tag-${e.key}'),
+                          label: Text('${e.key} (${e.value})'),
+                          backgroundColor: mentalColor.withAlpha(30),
+                          labelStyle: TextStyle(color: mentalColor, fontSize: 12),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

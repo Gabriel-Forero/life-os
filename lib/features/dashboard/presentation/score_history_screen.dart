@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:life_os/core/constants/app_colors.dart';
 import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
+import 'package:life_os/features/dashboard/database/dashboard_dao.dart';
 
 // ---------------------------------------------------------------------------
 // Score History Screen
@@ -94,6 +95,13 @@ class _ScoreHistoryScreenState extends ConsumerState<ScoreHistoryScreen> {
                         key: const ValueKey('score-history-heatmap-card'),
                         scores: history,
                       ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // --- Desglose por modulo ---
+                    _ModuleScoreBreakdownCard(
+                      key: const ValueKey('score-module-breakdown-card'),
+                      scores: history,
                     ),
                   ],
                 ),
@@ -498,6 +506,227 @@ class _HeatmapLegend extends StatelessWidget {
           Text('Mas', style: Theme.of(context).textTheme.labelSmall),
         ],
       ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Widget: Desglose por modulo
+// ---------------------------------------------------------------------------
+
+/// Muestra una linea por modulo (finance, gym, nutrition, habits)
+/// con la puntuacion raw de cada DayScore, cargada desde ScoreComponent.
+class _ModuleScoreBreakdownCard extends ConsumerWidget {
+  const _ModuleScoreBreakdownCard({super.key, required this.scores});
+
+  final List<DayScore> scores;
+
+  static const _modules = ['finance', 'gym', 'nutrition', 'habits'];
+  static const _moduleLabels = {
+    'finance': 'Finanzas',
+    'gym': 'Gym',
+    'nutrition': 'Nutricion',
+    'habits': 'Habitos',
+  };
+  static const _moduleColors = {
+    'finance': AppColors.finance,
+    'gym': AppColors.gym,
+    'nutrition': AppColors.nutrition,
+    'habits': AppColors.habits,
+  };
+
+  Future<Map<String, List<FlSpot>>> _buildSpots(DashboardDao dao) async {
+    final sorted = [...scores]..sort((a, b) => a.date.compareTo(b.date));
+    final spotsMap = <String, List<FlSpot>>{
+      for (final m in _modules) m: [],
+    };
+    for (var i = 0; i < sorted.length; i++) {
+      final comps = await dao.getComponentsForDayScore(sorted[i].id);
+      for (final comp in comps) {
+        if (spotsMap.containsKey(comp.moduleKey)) {
+          spotsMap[comp.moduleKey]!
+              .add(FlSpot(i.toDouble(), comp.rawValue.clamp(0.0, 100.0)));
+        }
+      }
+    }
+    return spotsMap;
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final dao = ref.watch(dashboardDaoProvider);
+    final sorted = [...scores]..sort((a, b) => a.date.compareTo(b.date));
+
+    if (scores.length < 2) {
+      return const SizedBox.shrink();
+    }
+
+    return FutureBuilder<Map<String, List<FlSpot>>>(
+      future: _buildSpots(dao),
+      builder: (context, snap) {
+        if (!snap.hasData) {
+          return const SizedBox(
+            height: 200,
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+        final spotsMap = snap.data!;
+        // Only include modules that have at least 2 data points
+        final activeBars = _modules
+            .where((m) => (spotsMap[m]?.length ?? 0) >= 2)
+            .toList();
+
+        if (activeBars.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        final bars = activeBars.map((m) {
+          final color = _moduleColors[m]!;
+          return LineChartBarData(
+            spots: spotsMap[m]!,
+            isCurved: true,
+            color: color,
+            barWidth: 2,
+            isStrokeCapRound: true,
+            dotData: const FlDotData(show: false),
+            belowBarData: BarAreaData(show: false),
+          );
+        }).toList();
+
+        return Card(
+          key: const ValueKey('module-breakdown-chart-card'),
+          elevation: 0,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 16, 12, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Desglose por modulo',
+                  key: const ValueKey('module-breakdown-title'),
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleSmall
+                      ?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 4),
+                // Legend chips
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: activeBars.map((m) {
+                    final color = _moduleColors[m]!;
+                    return Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 12,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: color,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          _moduleLabels[m] ?? m,
+                          style: Theme.of(context).textTheme.labelSmall,
+                        ),
+                      ],
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 12),
+                Semantics(
+                  label: 'Grafico de desglose por modulo con ${sorted.length} puntos de datos',
+                  child: SizedBox(
+                    height: 180,
+                    child: LineChart(
+                      LineChartData(
+                        minX: 0,
+                        maxX: (sorted.length - 1).toDouble(),
+                        minY: 0,
+                        maxY: 100,
+                        lineTouchData: LineTouchData(
+                          touchTooltipData: LineTouchTooltipData(
+                            getTooltipItems: (touchSpots) =>
+                                touchSpots.map((s) {
+                              final idx = s.x.toInt();
+                              final dateStr = idx < sorted.length
+                                  ? DateFormat('d MMM', 'es')
+                                      .format(sorted[idx].date)
+                                  : '';
+                              final moduleKey = activeBars[s.barIndex];
+                              final label =
+                                  _moduleLabels[moduleKey] ?? moduleKey;
+                              return LineTooltipItem(
+                                '$label\n$dateStr: ${s.y.toInt()}',
+                                TextStyle(
+                                  fontSize: 10,
+                                  color: _moduleColors[moduleKey],
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                        gridData: FlGridData(
+                          show: true,
+                          drawVerticalLine: false,
+                          horizontalInterval: 25,
+                          getDrawingHorizontalLine: (_) => const FlLine(
+                            color: Color(0x1A9E9E9E),
+                            strokeWidth: 1,
+                          ),
+                        ),
+                        titlesData: FlTitlesData(
+                          leftTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                              showTitles: true,
+                              interval: 25,
+                              reservedSize: 32,
+                              getTitlesWidget: (val, meta) => Text(
+                                '${val.toInt()}',
+                                style: const TextStyle(fontSize: 10),
+                              ),
+                            ),
+                          ),
+                          rightTitles: const AxisTitles(
+                              sideTitles: SideTitles(showTitles: false)),
+                          topTitles: const AxisTitles(
+                              sideTitles: SideTitles(showTitles: false)),
+                          bottomTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                              showTitles: true,
+                              interval:
+                                  (sorted.length / 5).ceilToDouble(),
+                              reservedSize: 22,
+                              getTitlesWidget: (val, meta) {
+                                final idx = val.toInt();
+                                if (idx < 0 || idx >= sorted.length) {
+                                  return const SizedBox.shrink();
+                                }
+                                return Text(
+                                  DateFormat('d/M')
+                                      .format(sorted[idx].date),
+                                  style: const TextStyle(fontSize: 9),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                        borderData: FlBorderData(show: false),
+                        lineBarsData: bars,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

@@ -1,9 +1,12 @@
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:life_os/core/constants/app_colors.dart';
 import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
+import 'package:life_os/core/widgets/chart_card.dart';
+import 'package:life_os/features/habits/database/habits_dao.dart';
 
 // ---------------------------------------------------------------------------
 // Estado de un dia en el calendario del habito.
@@ -359,6 +362,14 @@ class _HabitDetailBody extends ConsumerWidget {
                     totalCheckIns: totalCheckIns,
                     completionRate: completionRate,
                   ),
+                ),
+                const SizedBox(height: 16),
+
+                // --- Grafica de tasa de cumplimiento semanal ---
+                _HabitCompletionTrendChart(
+                  key: const ValueKey('habit-completion-trend-chart'),
+                  habitId: habit.id,
+                  habitColor: Color(habit.color),
                 ),
               ],
             );
@@ -879,6 +890,139 @@ class _StatCard extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Habit Completion Trend Chart — weekly completion rate over 12 weeks
+// ---------------------------------------------------------------------------
+
+class _HabitCompletionTrendChart extends ConsumerWidget {
+  const _HabitCompletionTrendChart({
+    super.key,
+    required this.habitId,
+    required this.habitColor,
+  });
+
+  final int habitId;
+  final Color habitColor;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final dao = ref.watch(habitsDaoProvider);
+    final now = DateTime.now();
+
+    return FutureBuilder<List<({String label, double rate})>>(
+      future: _buildWeeklyRates(dao, now),
+      builder: (context, snapshot) {
+        final weekData = snapshot.data ?? [];
+        final hasData = weekData.any((w) => w.rate > 0);
+
+        return ChartCard(
+          title: 'Cumplimiento semanal (12 semanas)',
+          child: !hasData
+              ? const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Text('Sin datos suficientes'),
+                  ),
+                )
+              : _buildChart(weekData),
+        );
+      },
+    );
+  }
+
+  Future<List<({String label, double rate})>> _buildWeeklyRates(
+    HabitsDao dao,
+    DateTime now,
+  ) async {
+    final result = <({String label, double rate})>[];
+
+    for (int w = 11; w >= 0; w--) {
+      final weekEnd = now.subtract(Duration(days: w * 7));
+      final weekStart = weekEnd.subtract(const Duration(days: 6));
+      final label = '${weekStart.day}/${weekStart.month}';
+      final rate = await dao.completionRate(habitId, weekStart, weekEnd);
+      result.add((label: label, rate: rate));
+    }
+
+    return result;
+  }
+
+  Widget _buildChart(List<({String label, double rate})> weekData) {
+    final spots = weekData.asMap().entries.map((e) {
+      return FlSpot(e.key.toDouble(), e.value.rate * 100);
+    }).toList();
+
+    return SizedBox(
+      height: 160,
+      child: LineChart(
+        LineChartData(
+          minY: 0,
+          maxY: 100,
+          lineTouchData: const LineTouchData(enabled: false),
+          gridData: FlGridData(
+            show: true,
+            drawVerticalLine: false,
+            getDrawingHorizontalLine: (_) => const FlLine(
+              color: Color(0x1A9E9E9E),
+              strokeWidth: 1,
+            ),
+          ),
+          titlesData: FlTitlesData(
+            leftTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            rightTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 22,
+                interval: 2,
+                getTitlesWidget: (value, meta) {
+                  final idx = value.toInt();
+                  if (idx < 0 || idx >= weekData.length) {
+                    return const SizedBox.shrink();
+                  }
+                  return Text(
+                    weekData[idx].label,
+                    style: const TextStyle(fontSize: 8),
+                  );
+                },
+              ),
+            ),
+          ),
+          borderData: FlBorderData(show: false),
+          lineBarsData: [
+            LineChartBarData(
+              spots: spots,
+              isCurved: true,
+              color: habitColor,
+              barWidth: 2.5,
+              isStrokeCapRound: true,
+              dotData: FlDotData(
+                show: true,
+                getDotPainter: (spot, pct, bar, idx) => FlDotCirclePainter(
+                  radius: 3,
+                  color: habitColor,
+                  strokeWidth: 0,
+                ),
+              ),
+              belowBarData: BarAreaData(
+                show: true,
+                color: habitColor.withAlpha(40),
+              ),
+            ),
+          ],
         ),
       ),
     );

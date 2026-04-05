@@ -1,3 +1,4 @@
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -5,6 +6,7 @@ import 'package:life_os/core/constants/app_colors.dart';
 import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
 import 'package:life_os/core/router/app_router.dart';
+import 'package:life_os/core/widgets/chart_card.dart';
 
 const _dayLabels = ['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa', 'Do'];
 
@@ -159,8 +161,88 @@ class _WeeklyView extends StatelessWidget {
   final Color sleepColor;
   final ThemeData theme;
 
+  Widget _buildLineChart({
+    required List<SleepLog> sorted,
+    required double Function(SleepLog) getValue,
+    required Color color,
+    double? minY,
+    double? maxY,
+  }) {
+    if (sorted.length < 2) {
+      return const Center(child: Text('Sin datos suficientes'));
+    }
+    final spots = sorted.asMap().entries.map((e) {
+      return FlSpot(e.key.toDouble(), getValue(e.value));
+    }).toList();
+
+    return SizedBox(
+      height: 160,
+      child: LineChart(
+        LineChartData(
+          minY: minY,
+          maxY: maxY,
+          lineTouchData: const LineTouchData(enabled: false),
+          gridData: FlGridData(
+            show: true,
+            drawVerticalLine: false,
+            getDrawingHorizontalLine: (_) => const FlLine(
+              color: Color(0x1A9E9E9E),
+              strokeWidth: 1,
+            ),
+          ),
+          titlesData: FlTitlesData(
+            leftTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            rightTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 22,
+                getTitlesWidget: (value, meta) {
+                  final idx = value.toInt();
+                  if (idx < 0 || idx >= sorted.length) {
+                    return const SizedBox.shrink();
+                  }
+                  final d = sorted[idx].date;
+                  return Text(
+                    '${d.day}/${d.month}',
+                    style: const TextStyle(fontSize: 9),
+                  );
+                },
+              ),
+            ),
+          ),
+          borderData: FlBorderData(show: false),
+          lineBarsData: [
+            LineChartBarData(
+              spots: spots,
+              isCurved: true,
+              color: color,
+              barWidth: 2.5,
+              isStrokeCapRound: true,
+              dotData: const FlDotData(show: false),
+              belowBarData: BarAreaData(
+                show: true,
+                color: color.withAlpha(40),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Sort ascending for charts
+    final sorted = [...data]..sort((a, b) => a.date.compareTo(b.date));
+
     return SingleChildScrollView(
       key: const ValueKey('weekly-scroll'),
       padding: const EdgeInsets.all(16),
@@ -199,141 +281,45 @@ class _WeeklyView extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
-          // Bar Chart — Sleep Score
-          Card(
+          // Sleep Score LineChart
+          ChartCard(
             key: const ValueKey('score-chart-card'),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Puntuacion de Sueno — Ultima semana',
-                    style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    height: 140,
-                    child: data.isEmpty
-                        ? Center(
-                            child: Text(
-                              'Sin datos esta semana',
-                              style: theme.textTheme.bodySmall,
-                            ),
-                          )
-                        : Row(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: List.generate(data.length, (i) {
-                              final entry = data[i];
-                              final barHeight =
-                                  (entry.sleepScore / 100.0) * 120;
-                              final dayLabel =
-                                  _dayLabels[(entry.date.weekday - 1) % 7];
-                              return Expanded(
-                                child: Semantics(
-                                  label: '$dayLabel: ${entry.sleepScore} puntos',
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.end,
-                                    children: [
-                                      Text(
-                                        '${entry.sleepScore}',
-                                        style: const TextStyle(fontSize: 9),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Container(
-                                        key: ValueKey('bar-$i'),
-                                        height: barHeight,
-                                        margin: const EdgeInsets.symmetric(
-                                            horizontal: 3),
-                                        decoration: BoxDecoration(
-                                          color: sleepColor.withAlpha(200),
-                                          borderRadius:
-                                              BorderRadius.circular(4),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        dayLabel,
-                                        style: theme.textTheme.labelSmall,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            }),
-                          ),
-                  ),
-                ],
-              ),
+            title: 'Puntuacion de Sueno',
+            child: _buildLineChart(
+              sorted: sorted,
+              getValue: (s) => s.sleepScore.toDouble(),
+              color: sleepColor,
+              minY: 0,
+              maxY: 100,
             ),
           ),
-
           const SizedBox(height: 12),
 
-          // Hours Slept Line (simple bars)
-          Card(
+          // Sleep Duration LineChart
+          ChartCard(
             key: const ValueKey('hours-chart-card'),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Horas de Sueno — Ultima semana',
-                    style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 12),
-                  if (data.isEmpty)
-                    Text('Sin datos', style: theme.textTheme.bodySmall)
-                  else
-                    ...data.map((entry) {
-                      final hours =
-                          entry.wakeTime.difference(entry.bedTime).inMinutes /
-                              60.0;
-                      final pct = (hours / 10.0).clamp(0.0, 1.0);
-                      final dayLabel =
-                          _dayLabels[(entry.date.weekday - 1) % 7];
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: Semantics(
-                          label: '$dayLabel: ${hours.toStringAsFixed(1)} horas',
-                          child: Row(
-                            children: [
-                              SizedBox(
-                                width: 28,
-                                child: Text(
-                                  dayLabel,
-                                  style: theme.textTheme.labelSmall,
-                                ),
-                              ),
-                              Expanded(
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(4),
-                                  child: LinearProgressIndicator(
-                                    value: pct,
-                                    minHeight: 16,
-                                    backgroundColor: sleepColor.withAlpha(30),
-                                    valueColor:
-                                        AlwaysStoppedAnimation(sleepColor),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                '${hours.toStringAsFixed(1)}h',
-                                style: theme.textTheme.labelSmall,
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }),
-                ],
-              ),
+            title: 'Horas de Sueno',
+            child: _buildLineChart(
+              sorted: sorted,
+              getValue: (s) =>
+                  s.wakeTime.difference(s.bedTime).inMinutes / 60.0,
+              color: sleepColor.withAlpha(180),
             ),
           ),
+          const SizedBox(height: 12),
+
+          // Bed time consistency — hour of day when going to bed
+          ChartCard(
+            key: const ValueKey('bedtime-chart-card'),
+            title: 'Hora de dormir',
+            child: _buildLineChart(
+              sorted: sorted,
+              getValue: (s) =>
+                  s.bedTime.hour + s.bedTime.minute / 60.0,
+              color: AppColors.info,
+            ),
+          ),
+
 
           const SizedBox(height: 12),
 

@@ -1,8 +1,10 @@
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_os/core/constants/app_colors.dart';
 import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
+import 'package:life_os/core/widgets/chart_card.dart';
 import 'package:life_os/features/goals/domain/goals_input.dart';
 
 // ---------------------------------------------------------------------------
@@ -119,6 +121,13 @@ class GoalDetailScreen extends ConsumerWidget {
 
                       // Progress section
                       _GoalProgressSection(goal: goal),
+                      const SizedBox(height: 12),
+
+                      // Sub-goals progress chart
+                      _SubGoalProgressChart(
+                        goalId: goalId,
+                        goalColor: Color(goal.color),
+                      ),
                       const SizedBox(height: 12),
 
                       // AI deadline prediction card
@@ -1186,6 +1195,147 @@ class _SubGoalItemState extends State<_SubGoalItem> {
               ],
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Sub-Goal Progress Chart — bar chart showing each sub-goal's progress
+// ---------------------------------------------------------------------------
+
+class _SubGoalProgressChart extends ConsumerWidget {
+  const _SubGoalProgressChart({
+    required this.goalId,
+    required this.goalColor,
+  });
+
+  final int goalId;
+  final Color goalColor;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final dao = ref.watch(goalsDaoProvider);
+
+    return StreamBuilder<List<SubGoal>>(
+      stream: dao.watchSubGoals(goalId),
+      builder: (context, snapshot) {
+        final subGoals = snapshot.data ?? [];
+
+        if (subGoals.length < 1) {
+          return ChartCard(
+            title: 'Progreso de sub-objetivos',
+            child: const Center(
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: Text('Sin sub-objetivos aun'),
+              ),
+            ),
+          );
+        }
+
+        final spots = subGoals.asMap().entries.map((e) {
+          return FlSpot(e.key.toDouble(), e.value.progress.toDouble());
+        }).toList();
+
+        return ChartCard(
+          key: const ValueKey('goal_subgoal_progress_chart'),
+          title: 'Progreso de sub-objetivos',
+          child: subGoals.length < 2
+              ? _buildSingleSubGoalBar(subGoals.first, goalColor)
+              : _buildBarChart(subGoals, goalColor),
+        );
+      },
+    );
+  }
+
+  Widget _buildSingleSubGoalBar(SubGoal sub, Color color) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(sub.name, style: const TextStyle(fontSize: 12)),
+          const SizedBox(height: 4),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: sub.progress / 100.0,
+              minHeight: 10,
+              backgroundColor: color.withAlpha(30),
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+            ),
+          ),
+          Text('${sub.progress}%', style: const TextStyle(fontSize: 11)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBarChart(List<SubGoal> subGoals, Color color) {
+    return SizedBox(
+      height: 160,
+      child: BarChart(
+        BarChartData(
+          maxY: 100,
+          barTouchData: BarTouchData(enabled: false),
+          titlesData: FlTitlesData(
+            leftTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            rightTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 32,
+                getTitlesWidget: (value, meta) {
+                  final idx = value.toInt();
+                  if (idx < 0 || idx >= subGoals.length) {
+                    return const SizedBox.shrink();
+                  }
+                  final name = subGoals[idx].name;
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      name.length > 6 ? '${name.substring(0, 6)}…' : name,
+                      style: const TextStyle(fontSize: 9),
+                      textAlign: TextAlign.center,
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+          gridData: FlGridData(
+            show: true,
+            drawVerticalLine: false,
+            getDrawingHorizontalLine: (_) => const FlLine(
+              color: Color(0x1A9E9E9E),
+              strokeWidth: 1,
+            ),
+          ),
+          borderData: FlBorderData(show: false),
+          barGroups: subGoals.asMap().entries.map((e) {
+            return BarChartGroupData(
+              x: e.key,
+              barRods: [
+                BarChartRodData(
+                  toY: e.value.progress.toDouble(),
+                  color: color,
+                  width: 16,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(4),
+                  ),
+                ),
+              ],
+            );
+          }).toList(),
         ),
       ),
     );

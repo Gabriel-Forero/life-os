@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:math' as math;
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,6 +8,8 @@ import 'package:life_os/core/constants/app_colors.dart';
 import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
 import 'package:life_os/core/router/app_router.dart';
+import 'package:life_os/core/widgets/chart_card.dart';
+import 'package:life_os/features/nutrition/database/nutrition_dao.dart';
 import 'package:life_os/features/nutrition/domain/nutrition_input.dart';
 
 // ---------------------------------------------------------------------------
@@ -494,6 +497,26 @@ class _MacroStreamBodyState extends ConsumerState<_MacroStreamBody> {
                 onDecrement: widget.onRemoveWater,
               ),
             ),
+          ),
+          const SizedBox(height: 20),
+
+          // --- Tendencias nutricionales (ultimos 30 dias) ---
+          Semantics(
+            header: true,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                'Tendencias (30 dias)',
+                style: widget.theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ),
+          ),
+          _NutritionTrendsSection(
+            key: const ValueKey('nutrition-trends-section'),
+            dao: ref.watch(nutritionDaoProvider),
           ),
         ],
       ),
@@ -1202,6 +1225,210 @@ class _WaterTrackerCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Nutrition Trends Section — real data from NutritionDao
+// ---------------------------------------------------------------------------
+
+class _DailyNutritionPoint {
+  const _DailyNutritionPoint({
+    required this.date,
+    required this.calories,
+    required this.protein,
+    required this.waterMl,
+  });
+
+  final DateTime date;
+  final double calories;
+  final double protein;
+  final double waterMl;
+}
+
+class _NutritionTrendsSection extends ConsumerWidget {
+  const _NutritionTrendsSection({super.key, required this.dao});
+
+  final NutritionDao dao;
+
+  Future<List<_DailyNutritionPoint>> _buildDailyPoints(
+    NutritionDao nutritionDao,
+    DateTime from,
+    DateTime now,
+  ) async {
+    final points = <_DailyNutritionPoint>[];
+
+    for (int i = 0; i <= 30; i++) {
+      final day = from.add(Duration(days: i));
+      final dayStart = DateTime(day.year, day.month, day.day);
+      if (dayStart.isAfter(now)) break;
+
+      int waterMl = 0;
+      try {
+        waterMl = await nutritionDao.totalWater(dayStart);
+      } catch (_) {}
+
+      double calories = 0;
+      double protein = 0;
+      try {
+        final mealLogs = await nutritionDao.watchMealLogs(dayStart).first;
+        for (final meal in mealLogs) {
+          final items = await nutritionDao.watchMealLogItems(meal.id).first;
+          for (final item in items) {
+            final food = await nutritionDao.getFoodItemById(item.foodItemId);
+            if (food != null) {
+              final factor = item.quantityG / 100;
+              calories += food.caloriesPer100g * factor;
+              protein += food.proteinPer100g * factor;
+            }
+          }
+        }
+      } catch (_) {}
+
+      if (calories > 0 || waterMl > 0) {
+        points.add(_DailyNutritionPoint(
+          date: dayStart,
+          calories: calories,
+          protein: protein,
+          waterMl: waterMl.toDouble(),
+        ));
+      }
+    }
+
+    return points;
+  }
+
+  Widget _buildLineChart({
+    required List<_DailyNutritionPoint> points,
+    required double Function(_DailyNutritionPoint) getValue,
+    required Color color,
+  }) {
+    final filtered = points.where((p) => getValue(p) > 0).toList();
+    if (filtered.length < 2) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Text('Sin datos suficientes'),
+        ),
+      );
+    }
+
+    final spots = filtered.asMap().entries.map((e) {
+      return FlSpot(e.key.toDouble(), getValue(e.value));
+    }).toList();
+
+    return SizedBox(
+      height: 160,
+      child: LineChart(
+        LineChartData(
+          lineTouchData: const LineTouchData(enabled: false),
+          gridData: FlGridData(
+            show: true,
+            drawVerticalLine: false,
+            getDrawingHorizontalLine: (_) => const FlLine(
+              color: Color(0x1A9E9E9E),
+              strokeWidth: 1,
+            ),
+          ),
+          titlesData: FlTitlesData(
+            leftTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            rightTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 22,
+                interval: (filtered.length / 5).ceilToDouble(),
+                getTitlesWidget: (value, meta) {
+                  final idx = value.toInt();
+                  if (idx < 0 || idx >= filtered.length) {
+                    return const SizedBox.shrink();
+                  }
+                  final d = filtered[idx].date;
+                  return Text(
+                    '${d.day}/${d.month}',
+                    style: const TextStyle(fontSize: 9),
+                  );
+                },
+              ),
+            ),
+          ),
+          borderData: FlBorderData(show: false),
+          lineBarsData: [
+            LineChartBarData(
+              spots: spots,
+              isCurved: true,
+              color: color,
+              barWidth: 2.5,
+              isStrokeCapRound: true,
+              dotData: const FlDotData(show: false),
+              belowBarData: BarAreaData(
+                show: true,
+                color: color.withAlpha(40),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final nutritionDao = ref.watch(nutritionDaoProvider);
+    final now = DateTime.now();
+    final from = now.subtract(const Duration(days: 30));
+
+    return FutureBuilder<List<_DailyNutritionPoint>>(
+      future: _buildDailyPoints(nutritionDao, from, now),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final points = snapshot.data ?? [];
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ChartCard(
+              key: const ValueKey('calorie-trend-chart'),
+              title: 'Calorias diarias (kcal)',
+              child: _buildLineChart(
+                points: points,
+                getValue: (p) => p.calories,
+                color: AppColors.nutrition,
+              ),
+            ),
+            const SizedBox(height: 12),
+            ChartCard(
+              key: const ValueKey('protein-trend-chart'),
+              title: 'Proteina diaria (g)',
+              child: _buildLineChart(
+                points: points,
+                getValue: (p) => p.protein,
+                color: const Color(0xFF3B82F6),
+              ),
+            ),
+            const SizedBox(height: 12),
+            ChartCard(
+              key: const ValueKey('water-trend-chart'),
+              title: 'Agua diaria (ml)',
+              child: _buildLineChart(
+                points: points,
+                getValue: (p) => p.waterMl,
+                color: const Color(0xFF06B6D4),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

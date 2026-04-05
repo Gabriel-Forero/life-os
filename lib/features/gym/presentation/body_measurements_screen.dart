@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:life_os/core/constants/app_colors.dart';
 import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
+import 'package:life_os/core/widgets/chart_card.dart';
 import 'package:life_os/features/gym/domain/gym_input.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -103,7 +105,7 @@ class _BodyMeasurementsScreenState
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -168,6 +170,7 @@ class _BodyMeasurementsScreenState
           tabs: const [
             Tab(key: ValueKey('tab-overview'), text: 'Resumen'),
             Tab(key: ValueKey('tab-history'), text: 'Historial'),
+            Tab(key: ValueKey('tab-trends'), text: 'Tendencias'),
           ],
         ),
       ),
@@ -190,6 +193,11 @@ class _BodyMeasurementsScreenState
               // History tab
               _HistoryTab(
                 key: const ValueKey('history-tab-content'),
+                measurements: measurements,
+              ),
+              // Trends tab
+              _MeasurementTrendsTab(
+                key: const ValueKey('trends-tab-content'),
                 measurements: measurements,
               ),
             ],
@@ -1993,6 +2001,260 @@ class _EmptyState extends StatelessWidget {
               'Toca el boton + para registrar tu primera medicion.',
               style: theme.textTheme.bodySmall,
               textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Trends Tab — fl_chart LineCharts para tendencias reales
+// ---------------------------------------------------------------------------
+
+enum _CircumferenceField {
+  waist,
+  chest,
+  arm,
+  neck,
+  shoulders,
+  forearm,
+  thigh,
+  calf,
+  hip,
+}
+
+extension _CircumferenceFieldLabel on _CircumferenceField {
+  String get label => switch (this) {
+        _CircumferenceField.waist => 'Cintura',
+        _CircumferenceField.chest => 'Pecho',
+        _CircumferenceField.arm => 'Brazo',
+        _CircumferenceField.neck => 'Cuello',
+        _CircumferenceField.shoulders => 'Hombros',
+        _CircumferenceField.forearm => 'Antebrazo',
+        _CircumferenceField.thigh => 'Muslo',
+        _CircumferenceField.calf => 'Pantorrilla',
+        _CircumferenceField.hip => 'Cadera',
+      };
+
+  double? valueFrom(BodyMeasurement m) => switch (this) {
+        _CircumferenceField.waist => m.waistCm,
+        _CircumferenceField.chest => m.chestCm,
+        _CircumferenceField.arm => m.armCm,
+        _CircumferenceField.neck => m.neckCm,
+        _CircumferenceField.shoulders => m.shouldersCm,
+        _CircumferenceField.forearm => m.forearmCm,
+        _CircumferenceField.thigh => m.thighCm,
+        _CircumferenceField.calf => m.calfCm,
+        _CircumferenceField.hip => m.hipCm,
+      };
+}
+
+class _MeasurementTrendsTab extends StatefulWidget {
+  const _MeasurementTrendsTab({
+    super.key,
+    required this.measurements,
+  });
+
+  final List<BodyMeasurement> measurements;
+
+  @override
+  State<_MeasurementTrendsTab> createState() => _MeasurementTrendsTabState();
+}
+
+class _MeasurementTrendsTabState extends State<_MeasurementTrendsTab> {
+  _CircumferenceField _selectedCircumference = _CircumferenceField.waist;
+
+  // measurements come in descending order — reverse for charts (oldest → newest)
+  List<BodyMeasurement> get _sorted =>
+      widget.measurements.reversed.take(30).toList();
+
+  @override
+  Widget build(BuildContext context) {
+    final data = _sorted;
+
+    return ListView(
+      key: const ValueKey('trends-list'),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+      children: [
+        // Weight trend
+        _buildLineChart(
+          key: 'weight-trend-chart',
+          title: 'Peso (kg)',
+          data: data,
+          getValue: (m) => m.weightKg,
+          color: AppColors.gym,
+        ),
+        const SizedBox(height: 16),
+
+        // Body fat trend
+        _buildLineChart(
+          key: 'bodyfat-trend-chart',
+          title: 'Grasa corporal (%)',
+          data: data,
+          getValue: (m) => m.bodyFatPercent,
+          color: AppColors.warning,
+        ),
+        const SizedBox(height: 16),
+
+        // BMI trend (computed)
+        _buildLineChart(
+          key: 'bmi-trend-chart',
+          title: 'IMC',
+          data: data,
+          getValue: (m) => _calculateBMI(m.weightKg, m.heightCm),
+          color: AppColors.info,
+        ),
+        const SizedBox(height: 16),
+
+        // Circumference selector + chart
+        ChartCard(
+          key: const ValueKey('circumference-trend-chart'),
+          title: 'Circunferencia',
+          child: Column(
+            children: [
+              // Dropdown to pick field
+              DropdownButton<_CircumferenceField>(
+                value: _selectedCircumference,
+                isExpanded: true,
+                onChanged: (v) {
+                  if (v != null) setState(() => _selectedCircumference = v);
+                },
+                items: _CircumferenceField.values
+                    .map(
+                      (f) => DropdownMenuItem(
+                        value: f,
+                        child: Text(f.label),
+                      ),
+                    )
+                    .toList(),
+              ),
+              const SizedBox(height: 8),
+              _buildInlineChart(
+                data: data,
+                getValue: (m) => _selectedCircumference.valueFrom(m),
+                color: AppColors.gym,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLineChart({
+    required String key,
+    required String title,
+    required List<BodyMeasurement> data,
+    required double? Function(BodyMeasurement) getValue,
+    required Color color,
+  }) {
+    final filtered = data
+        .where((m) => getValue(m) != null)
+        .toList();
+
+    return ChartCard(
+      key: ValueKey(key),
+      title: title,
+      child: filtered.length < 2
+          ? const Center(
+              child: Padding(
+                padding: EdgeInsets.all(24),
+                child: Text('Sin datos suficientes'),
+              ),
+            )
+          : _buildInlineChart(data: filtered, getValue: getValue, color: color),
+    );
+  }
+
+  Widget _buildInlineChart({
+    required List<BodyMeasurement> data,
+    required double? Function(BodyMeasurement) getValue,
+    required Color color,
+  }) {
+    final filtered = data.where((m) => getValue(m) != null).toList();
+
+    if (filtered.length < 2) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Text('Sin datos suficientes'),
+        ),
+      );
+    }
+
+    final spots = filtered.asMap().entries.map((e) {
+      return FlSpot(e.key.toDouble(), getValue(e.value)!);
+    }).toList();
+
+    return SizedBox(
+      height: 180,
+      child: LineChart(
+        LineChartData(
+          lineTouchData: LineTouchData(
+            touchTooltipData: LineTouchTooltipData(
+              getTooltipItems: (spots) => spots.map((s) {
+                final idx = s.x.toInt();
+                final d = idx < filtered.length ? filtered[idx].date : null;
+                final label = d != null ? '${d.day}/${d.month}' : '';
+                return LineTooltipItem(
+                  '$label\n${s.y.toStringAsFixed(1)}',
+                  const TextStyle(fontSize: 11),
+                );
+              }).toList(),
+            ),
+          ),
+          gridData: FlGridData(
+            show: true,
+            drawVerticalLine: false,
+            getDrawingHorizontalLine: (_) => const FlLine(
+              color: Color(0x1A9E9E9E),
+              strokeWidth: 1,
+            ),
+          ),
+          titlesData: FlTitlesData(
+            leftTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            rightTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 22,
+                interval: (filtered.length / 5).ceilToDouble(),
+                getTitlesWidget: (value, meta) {
+                  final idx = value.toInt();
+                  if (idx < 0 || idx >= filtered.length) {
+                    return const SizedBox.shrink();
+                  }
+                  final d = filtered[idx].date;
+                  return Text(
+                    '${d.day}/${d.month}',
+                    style: const TextStyle(fontSize: 9),
+                  );
+                },
+              ),
+            ),
+          ),
+          borderData: FlBorderData(show: false),
+          lineBarsData: [
+            LineChartBarData(
+              spots: spots,
+              isCurved: true,
+              color: color,
+              barWidth: 2.5,
+              isStrokeCapRound: true,
+              dotData: const FlDotData(show: false),
+              belowBarData: BarAreaData(
+                show: true,
+                color: color.withAlpha(40),
+              ),
             ),
           ],
         ),
