@@ -6,6 +6,7 @@ import 'package:life_os/app.dart';
 import 'package:life_os/core/services/app_logger.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   final logger = AppLogger(tag: 'Main');
 
   FlutterError.onError = (details) {
