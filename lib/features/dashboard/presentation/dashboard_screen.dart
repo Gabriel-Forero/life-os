@@ -36,10 +36,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   Future<void> _init() async {
-    await ref.read(dashboardNotifierProvider).initialize();
-    await ref.read(dayScoreNotifierProvider).initialize();
-    // Show one-shot snackbar if recurring transactions were processed at startup.
-    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShowRecurringSnackbar());
+    try {
+      await ref.read(dashboardNotifierProvider).initialize();
+      await ref.read(dayScoreNotifierProvider).initialize();
+      WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShowRecurringSnackbar());
+    } catch (e) {
+      // Ensure dashboard shows content even if init partially fails
+      debugPrint('Dashboard init error: $e');
+    }
   }
 
   void _maybeShowRecurringSnackbar() {

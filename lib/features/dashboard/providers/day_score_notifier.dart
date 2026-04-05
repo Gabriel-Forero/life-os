@@ -109,7 +109,7 @@ class DayScoreNotifier {
         isLoading: false,
       );
       await calculateDayScore(DateTime.now());
-    } on Exception catch (e) {
+    } catch (e) {
       _state = _state.copyWith(
         isLoading: false,
         errorMessage: 'Error al inicializar puntuacion: $e',
@@ -180,7 +180,7 @@ class DayScoreNotifier {
       );
 
       return Success(totalScore);
-    } on Exception catch (e) {
+    } catch (e) {
       _state = _state.copyWith(
         errorMessage: 'Error al calcular DayScore: $e',
       );
@@ -215,7 +215,7 @@ class DayScoreNotifier {
       _state = _state.copyWith(configs: configs);
       await calculateDayScore(DateTime.now());
       return const Success(null);
-    } on Exception catch (e) {
+    } catch (e) {
       return Failure(DatabaseFailure(
         userMessage: 'Error al actualizar el peso del modulo',
         debugMessage: 'updateWeight failed: $e',
@@ -232,7 +232,7 @@ class DayScoreNotifier {
       _state = _state.copyWith(configs: configs);
       await calculateDayScore(DateTime.now());
       return const Success(null);
-    } on Exception catch (e) {
+    } catch (e) {
       return Failure(DatabaseFailure(
         userMessage: 'Error al actualizar la configuracion del modulo',
         debugMessage: 'setModuleEnabled failed: $e',

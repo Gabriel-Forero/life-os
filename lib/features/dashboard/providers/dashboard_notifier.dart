@@ -117,7 +117,7 @@ class DashboardNotifier {
       await dao.seedDefaultConfigsIfEmpty();
       await maybeGenerateYesterdaySnapshot();
       await refresh();
-    } on Exception catch (e) {
+    } catch (e) {
       _state = _state.copyWith(
         isLoading: false,
         errorMessage: 'Error al inicializar dashboard: $e',
@@ -154,7 +154,7 @@ class DashboardNotifier {
         cards: enabledCards,
         isLoading: false,
       );
-    } on Exception catch (e) {
+    } catch (e) {
       _state = _state.copyWith(
         isLoading: false,
         errorMessage: 'Error al actualizar dashboard: $e',
