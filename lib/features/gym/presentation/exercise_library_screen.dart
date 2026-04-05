@@ -345,6 +345,8 @@ class _ExerciseCard extends StatelessWidget {
           style: theme.textTheme.bodyMedium?.copyWith(
             fontWeight: FontWeight.w500,
           ),
+          overflow: TextOverflow.ellipsis,
+          maxLines: 1,
         ),
         subtitle: Row(
           children: [

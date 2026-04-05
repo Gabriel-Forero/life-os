@@ -673,6 +673,7 @@ class _SectionLabel extends StatelessWidget {
 
 // ---------------------------------------------------------------------------
 // Widget: selector de icono en grid
+// TODO: Extract to separate widget file
 // ---------------------------------------------------------------------------
 
 class _IconPicker extends StatelessWidget {
@@ -741,6 +742,7 @@ class _IconPicker extends StatelessWidget {
 
 // ---------------------------------------------------------------------------
 // Widget: selector de color en paleta
+// TODO: Extract to separate widget file
 // ---------------------------------------------------------------------------
 
 class _ColorPicker extends StatelessWidget {
@@ -804,6 +806,7 @@ class _ColorPicker extends StatelessWidget {
 
 // ---------------------------------------------------------------------------
 // Widget: selector de frecuencia con chips
+// TODO: Extract to separate widget file
 // ---------------------------------------------------------------------------
 
 class _FrequencySelector extends StatelessWidget {

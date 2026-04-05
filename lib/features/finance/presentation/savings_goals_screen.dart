@@ -38,13 +38,20 @@ class SavingsGoalsScreen extends ConsumerWidget {
       floatingActionButton: Semantics(
         label: 'Agregar nueva meta de ahorro',
         button: true,
-        child: FloatingActionButton(
-          key: const ValueKey('savings-add-goal-fab'),
-          onPressed: () => _showAddGoalDialog(context, ref),
-          backgroundColor: AppColors.finance,
-          foregroundColor: Colors.white,
-          tooltip: 'Nueva meta',
-          child: const Icon(Icons.add),
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.0, end: 1.0),
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.elasticOut,
+          builder: (context, value, child) =>
+              Transform.scale(scale: value, child: child),
+          child: FloatingActionButton(
+            key: const ValueKey('savings-add-goal-fab'),
+            onPressed: () => _showAddGoalDialog(context, ref),
+            backgroundColor: AppColors.finance,
+            foregroundColor: Colors.white,
+            tooltip: 'Nueva meta',
+            child: const Icon(Icons.add),
+          ),
         ),
       ),
       body: StreamBuilder<List<SavingsGoal>>(
@@ -246,12 +253,17 @@ class _GoalCard extends StatelessWidget {
               // Barra de progreso
               ClipRRect(
                 borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  key: ValueKey('savings-goal-progress-${goal.id}'),
-                  value: progress,
-                  backgroundColor: theme.dividerColor,
-                  color: AppColors.finance,
-                  minHeight: 8,
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.0, end: progress),
+                  duration: const Duration(milliseconds: 800),
+                  curve: Curves.easeOutCubic,
+                  builder: (context, value, _) => LinearProgressIndicator(
+                    key: ValueKey('savings-goal-progress-${goal.id}'),
+                    value: value,
+                    backgroundColor: theme.dividerColor,
+                    color: AppColors.finance,
+                    minHeight: 8,
+                  ),
                 ),
               ),
               const SizedBox(height: 8),

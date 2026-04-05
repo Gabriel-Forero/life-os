@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:life_os/core/constants/app_colors.dart';
 import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
+import 'package:life_os/core/widgets/animated_list_item.dart';
 import 'package:life_os/core/widgets/empty_state_view.dart';
 import 'package:life_os/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
@@ -153,35 +154,47 @@ class _TransactionsListScreenState
           final dateKeys = grouped.keys.toList()
             ..sort((a, b) => b.compareTo(a));
 
-          return ListView.builder(
+          // Build a cumulative index so stagger spans across groups
+          var cumulativeIndex = 0;
+          final groupWidgets = <Widget>[];
+          for (final dateKey in dateKeys) {
+            final txs = grouped[dateKey]!;
+            groupWidgets.add(_DateGroup(
+              dateHeader: _formatDateHeader(dateKey),
+              transactions: txs,
+              formatAmount: _formatAmount,
+              onDelete: (tx) => _deleteTransaction(context, tx),
+              onEdit: (tx) =>
+                  GoRouter.of(context).push('/finance/add?id=${tx.id}'),
+              indexOffset: cumulativeIndex,
+            ));
+            cumulativeIndex += txs.length;
+          }
+
+          return ListView(
             key: const ValueKey('transactions-list'),
             padding: const EdgeInsets.only(bottom: 88),
-            itemCount: dateKeys.length,
-            itemBuilder: (context, index) {
-              final dateKey = dateKeys[index];
-              final txs = grouped[dateKey]!;
-              return _DateGroup(
-                dateHeader: _formatDateHeader(dateKey),
-                transactions: txs,
-                formatAmount: _formatAmount,
-                onDelete: (tx) => _deleteTransaction(context, tx),
-                onEdit: (tx) =>
-                    GoRouter.of(context).push('/finance/add?id=${tx.id}'),
-              );
-            },
+            children: groupWidgets,
           );
         },
       ),
       floatingActionButton: Semantics(
         label: 'Agregar transaccion',
         button: true,
-        child: FloatingActionButton(
-          key: const ValueKey('transactions-fab-add'),
-          backgroundColor: AppColors.finance,
-          foregroundColor: Colors.white,
-          onPressed: () => GoRouter.of(context).push('/finance/add'),
-          tooltip: 'Agregar transaccion',
-          child: const Icon(Icons.add),
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.0, end: 1.0),
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.elasticOut,
+          builder: (context, value, child) =>
+              Transform.scale(scale: value, child: child),
+          child: FloatingActionButton(
+            key: const ValueKey('transactions-fab-add'),
+            backgroundColor: AppColors.finance,
+            foregroundColor: Colors.white,
+            onPressed: () => GoRouter.of(context).push('/finance/add'),
+            tooltip: 'Agregar transaccion',
+            child: const Icon(Icons.add),
+          ),
         ),
       ),
     );
@@ -199,6 +212,7 @@ class _DateGroup extends StatelessWidget {
     required this.formatAmount,
     required this.onDelete,
     required this.onEdit,
+    this.indexOffset = 0,
   });
 
   final String dateHeader;
@@ -206,6 +220,7 @@ class _DateGroup extends StatelessWidget {
   final String Function(Transaction) formatAmount;
   final void Function(Transaction) onDelete;
   final void Function(Transaction) onEdit;
+  final int indexOffset;
 
   @override
   Widget build(BuildContext context) {
@@ -227,12 +242,15 @@ class _DateGroup extends StatelessWidget {
             ),
           ),
         ),
-        ...transactions.map(
-          (tx) => _TransactionTile(
-            transaction: tx,
-            formattedAmount: formatAmount(tx),
-            onDelete: () => onDelete(tx),
-            onEdit: () => onEdit(tx),
+        ...transactions.asMap().entries.map(
+          (entry) => AnimatedListItem(
+            index: indexOffset + entry.key,
+            child: _TransactionTile(
+              transaction: entry.value,
+              formattedAmount: formatAmount(entry.value),
+              onDelete: () => onDelete(entry.value),
+              onEdit: () => onEdit(entry.value),
+            ),
           ),
         ),
       ],
@@ -320,6 +338,8 @@ class _TransactionTile extends StatelessWidget {
           title: Text(
             transaction.note ?? (isExpense ? 'Gasto' : 'Ingreso'),
             style: theme.textTheme.bodyMedium,
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
           ),
           trailing: Text(
             formattedAmount,

@@ -321,6 +321,7 @@ class _RoutineBuilderScreenState extends ConsumerState<RoutineBuilderScreen> {
 
 // ---------------------------------------------------------------------------
 // Widget: fila de ejercicio con series/reps/descanso
+// TODO: Extract to separate widget file
 // ---------------------------------------------------------------------------
 
 class _ExerciseRow extends StatelessWidget {
@@ -375,12 +376,16 @@ class _ExerciseRow extends StatelessWidget {
                         style: theme.textTheme.bodyMedium?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
                       ),
                       Text(
                         exercise.primaryMuscle,
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: AppColors.gym,
                         ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
                       ),
                     ],
                   ),
@@ -696,7 +701,11 @@ class _ExercisePickerSheetState extends ConsumerState<_ExercisePickerSheet> {
                               size: 16,
                             ),
                           ),
-                          title: Text(ex.name),
+                          title: Text(
+                            ex.name,
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
                           subtitle: Text(
                             ex.primaryMuscle,
                             style: const TextStyle(

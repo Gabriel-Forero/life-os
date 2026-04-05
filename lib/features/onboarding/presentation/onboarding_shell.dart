@@ -49,6 +49,18 @@ class OnboardingShell extends ConsumerWidget {
             Expanded(
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 300),
+                transitionBuilder: (child, animation) {
+                  return SlideTransition(
+                    position: Tween(
+                      begin: const Offset(1, 0),
+                      end: Offset.zero,
+                    ).animate(CurvedAnimation(
+                      parent: animation,
+                      curve: Curves.easeOutCubic,
+                    )),
+                    child: FadeTransition(opacity: animation, child: child),
+                  );
+                },
                 child: _buildCurrentScreen(state.currentStep),
               ),
             ),

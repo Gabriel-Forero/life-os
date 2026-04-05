@@ -136,13 +136,20 @@ class _DailyNutritionScreenState
       floatingActionButton: Semantics(
         label: 'Agregar comida al registro de hoy',
         button: true,
-        child: FloatingActionButton(
-          key: const ValueKey('nutrition-add-meal-fab'),
-          onPressed: () => GoRouter.of(context).push('/nutrition/log'),
-          backgroundColor: AppColors.nutrition,
-          foregroundColor: Colors.white,
-          tooltip: 'Agregar comida',
-          child: const Icon(Icons.add),
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.0, end: 1.0),
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.elasticOut,
+          builder: (context, value, child) =>
+              Transform.scale(scale: value, child: child),
+          child: FloatingActionButton(
+            key: const ValueKey('nutrition-add-meal-fab'),
+            onPressed: () => GoRouter.of(context).push('/nutrition/log'),
+            backgroundColor: AppColors.nutrition,
+            foregroundColor: Colors.white,
+            tooltip: 'Agregar comida',
+            child: const Icon(Icons.add),
+          ),
         ),
       ),
       body: StreamBuilder<NutritionGoal?>(
@@ -284,6 +291,7 @@ class _DailyNutritionScreenState
 
 // ---------------------------------------------------------------------------
 // Widget: anillos de macros
+// TODO: Extract to separate widget file
 // ---------------------------------------------------------------------------
 
 class _MacroRingsSection extends StatelessWidget {
@@ -336,12 +344,17 @@ class _MacroRing extends StatelessWidget {
           SizedBox(
             width: 68,
             height: 68,
-            child: CustomPaint(
-              painter: _RingPainter(
-                progress: macro.progress,
-                color: macro.color,
-                backgroundColor:
-                    theme.dividerColor.withAlpha(60),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0.0, end: macro.progress),
+              duration: const Duration(milliseconds: 800),
+              curve: Curves.easeOutCubic,
+              builder: (context, value, child) => CustomPaint(
+                painter: _RingPainter(
+                  progress: value,
+                  color: macro.color,
+                  backgroundColor: theme.dividerColor.withAlpha(60),
+                ),
+                child: child,
               ),
               child: Center(
                 child: Column(
@@ -585,7 +598,12 @@ class _MealLogTile extends ConsumerWidget {
           ),
         ),
         subtitle: log.note != null && log.note!.isNotEmpty
-            ? Text(log.note!, style: theme.textTheme.bodySmall)
+            ? Text(
+                log.note!,
+                style: theme.textTheme.bodySmall,
+                overflow: TextOverflow.ellipsis,
+                maxLines: 2,
+              )
             : null,
         trailing: Semantics(
           label: 'Eliminar comida',
@@ -619,6 +637,7 @@ class _MealLogTile extends ConsumerWidget {
 
 // ---------------------------------------------------------------------------
 // Widget: rastreador de agua
+// TODO: Extract to separate widget file
 // ---------------------------------------------------------------------------
 
 class _WaterTrackerCard extends StatelessWidget {

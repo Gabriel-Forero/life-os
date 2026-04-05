@@ -568,6 +568,7 @@ class _CalendarWeekHeader extends StatelessWidget {
 
 // ---------------------------------------------------------------------------
 // Widget: cuadricula del calendario
+// TODO: Extract to separate widget file
 // ---------------------------------------------------------------------------
 
 class _CalendarGrid extends StatelessWidget {
@@ -750,6 +751,7 @@ class _CalendarLegend extends StatelessWidget {
 
 // ---------------------------------------------------------------------------
 // Widget: grilla de estadisticas
+// TODO: Extract to separate widget file
 // ---------------------------------------------------------------------------
 
 class _StatsGrid extends StatelessWidget {

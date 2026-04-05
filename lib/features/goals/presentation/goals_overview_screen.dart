@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_os/core/constants/app_colors.dart';
 import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
+import 'package:life_os/core/widgets/animated_list_item.dart';
+import 'package:life_os/core/widgets/pressable_card.dart';
 import 'package:life_os/features/goals/domain/goals_input.dart';
 import 'package:life_os/features/goals/presentation/add_edit_goal_screen.dart';
 import 'package:life_os/features/goals/presentation/goal_detail_screen.dart';
@@ -117,18 +119,21 @@ class _GoalsOverviewScreenState extends ConsumerState<GoalsOverviewScreen> {
                         separatorBuilder: (_, __) => const SizedBox(height: 12),
                         itemBuilder: (context, index) {
                           final goal = filtered[index];
-                          return _GoalCard(
-                            key: ValueKey('goal_card_${goal.id}'),
-                            goal: goal,
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute<void>(
-                                  builder: (_) =>
-                                      GoalDetailScreen(goalId: goal.id),
-                                ),
-                              );
-                            },
+                          return AnimatedListItem(
+                            index: index,
+                            child: _GoalCard(
+                              key: ValueKey('goal_card_${goal.id}'),
+                              goal: goal,
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute<void>(
+                                    builder: (_) =>
+                                        GoalDetailScreen(goalId: goal.id),
+                                  ),
+                                );
+                              },
+                            ),
                           );
                         },
                       ),
@@ -140,12 +145,19 @@ class _GoalsOverviewScreenState extends ConsumerState<GoalsOverviewScreen> {
       floatingActionButton: Semantics(
         label: 'Nuevo objetivo',
         button: true,
-        child: FloatingActionButton(
-          key: const ValueKey('fab_add_goal'),
-          backgroundColor: _goalsColor,
-          foregroundColor: Colors.white,
-          onPressed: _navigateToAddGoal,
-          child: const Icon(Icons.add),
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.0, end: 1.0),
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.elasticOut,
+          builder: (context, value, child) =>
+              Transform.scale(scale: value, child: child),
+          child: FloatingActionButton(
+            key: const ValueKey('fab_add_goal'),
+            backgroundColor: _goalsColor,
+            foregroundColor: Colors.white,
+            onPressed: _navigateToAddGoal,
+            child: const Icon(Icons.add),
+          ),
         ),
       ),
     );
@@ -241,17 +253,19 @@ class _GoalCard extends StatelessWidget {
     return Semantics(
       label: 'Objetivo: ${goal.name}, progreso ${goal.progress}%',
       button: true,
-      child: Card(
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(
-            color: theme.dividerColor.withOpacity(0.3),
+      child: PressableCard(
+        onTap: onTap,
+        child: Card(
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(
+              color: theme.dividerColor.withOpacity(0.3),
+            ),
           ),
-        ),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(16),
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -343,12 +357,18 @@ class _GoalCard extends StatelessWidget {
                   label: 'Progreso ${goal.progress}%',
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      key: ValueKey('progress_bar_${goal.id}'),
-                      value: goal.progress / 100.0,
-                      backgroundColor: _statusColor.withOpacity(0.15),
-                      valueColor: AlwaysStoppedAnimation<Color>(_statusColor),
-                      minHeight: 6,
+                    child: TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0.0, end: goal.progress / 100.0),
+                      duration: const Duration(milliseconds: 800),
+                      curve: Curves.easeOutCubic,
+                      builder: (context, value, _) => LinearProgressIndicator(
+                        key: ValueKey('progress_bar_${goal.id}'),
+                        value: value,
+                        backgroundColor: _statusColor.withOpacity(0.15),
+                        valueColor:
+                            AlwaysStoppedAnimation<Color>(_statusColor),
+                        minHeight: 6,
+                      ),
                     ),
                   ),
                 ),
@@ -374,7 +394,8 @@ class _GoalCard extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 
   String _formatDate(DateTime date) {

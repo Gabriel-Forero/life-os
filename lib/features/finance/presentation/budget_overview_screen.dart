@@ -220,13 +220,18 @@ class _BudgetSummaryCard extends StatelessWidget {
               const SizedBox(height: 12),
               ClipRRect(
                 borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  key: const ValueKey('budget-total-bar'),
-                  value: utilization,
-                  minHeight: 8,
-                  backgroundColor: theme.dividerColor,
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    overBudget ? AppColors.error : AppColors.finance,
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.0, end: utilization),
+                  duration: const Duration(milliseconds: 800),
+                  curve: Curves.easeOutCubic,
+                  builder: (context, value, _) => LinearProgressIndicator(
+                    key: const ValueKey('budget-total-bar'),
+                    value: value,
+                    minHeight: 8,
+                    backgroundColor: theme.dividerColor,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      overBudget ? AppColors.error : AppColors.finance,
+                    ),
                   ),
                 ),
               ),
@@ -336,11 +341,16 @@ class _BudgetCategoryRow extends StatelessWidget {
                 const SizedBox(height: 10),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: utilization,
-                    minHeight: 6,
-                    backgroundColor: theme.dividerColor,
-                    valueColor: AlwaysStoppedAnimation<Color>(barColor),
+                  child: TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0.0, end: utilization),
+                    duration: const Duration(milliseconds: 800),
+                    curve: Curves.easeOutCubic,
+                    builder: (context, value, _) => LinearProgressIndicator(
+                      value: value,
+                      minHeight: 6,
+                      backgroundColor: theme.dividerColor,
+                      valueColor: AlwaysStoppedAnimation<Color>(barColor),
+                    ),
                   ),
                 ),
               ],

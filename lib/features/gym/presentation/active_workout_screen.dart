@@ -447,12 +447,16 @@ class _WorkoutExerciseSection extends StatelessWidget {
                       style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
                     ),
                     Text(
                       exercise.primaryMuscle,
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: AppColors.gym,
                       ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
                     ),
                   ],
                 ),
@@ -526,6 +530,7 @@ class _WorkoutExerciseSection extends StatelessWidget {
 
 // ---------------------------------------------------------------------------
 // Widget: fila de serie
+// TODO: Extract to separate widget file
 // ---------------------------------------------------------------------------
 
 class _SetRow extends StatefulWidget {
@@ -776,6 +781,7 @@ class _SetRowState extends State<_SetRow> {
 
 // ---------------------------------------------------------------------------
 // Widget: overlay temporizador de descanso
+// TODO: Extract to separate widget file
 // ---------------------------------------------------------------------------
 
 class _RestTimerOverlay extends StatelessWidget {

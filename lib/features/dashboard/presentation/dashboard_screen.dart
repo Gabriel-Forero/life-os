@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:life_os/core/constants/app_colors.dart';
 import 'package:life_os/core/providers/providers.dart';
 import 'package:life_os/core/router/app_router.dart';
+import 'package:life_os/core/widgets/animated_list_item.dart';
+import 'package:life_os/core/widgets/pressable_card.dart';
 import 'package:life_os/features/dashboard/providers/dashboard_notifier.dart';
 
 // ---------------------------------------------------------------------------
@@ -209,10 +211,13 @@ class _DayScoreCard extends StatelessWidget {
         child: Row(
           children: [
             // Anillo de puntuacion
-            _ScoreRing(
-              key: const ValueKey('day-score-ring'),
-              score: score,
-              isLoading: isLoading,
+            Hero(
+              tag: 'day-score-ring',
+              child: _ScoreRing(
+                key: const ValueKey('day-score-ring'),
+                score: score,
+                isLoading: isLoading,
+              ),
             ),
             const SizedBox(width: 20),
             Expanded(
@@ -298,14 +303,27 @@ class _ScoreRing extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          CircularProgressIndicator(
-            key: const ValueKey('score-ring-progress'),
-            value: isLoading ? null : fraction,
-            strokeWidth: 8,
-            backgroundColor: AppColors.dayScore.withAlpha(30),
-            valueColor:
-                const AlwaysStoppedAnimation<Color>(AppColors.dayScore),
-          ),
+          if (isLoading)
+            const CircularProgressIndicator(
+              key: ValueKey('score-ring-progress'),
+              strokeWidth: 8,
+              backgroundColor: Color(0x1EFFD700),
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.dayScore),
+            )
+          else
+            TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0.0, end: fraction),
+              duration: const Duration(milliseconds: 800),
+              curve: Curves.easeOutCubic,
+              builder: (context, value, _) => CircularProgressIndicator(
+                key: const ValueKey('score-ring-progress'),
+                value: value,
+                strokeWidth: 8,
+                backgroundColor: AppColors.dayScore.withAlpha(30),
+                valueColor:
+                    const AlwaysStoppedAnimation<Color>(AppColors.dayScore),
+              ),
+            ),
           Center(
             child: isLoading
                 ? const SizedBox.shrink()
@@ -361,12 +379,15 @@ class _ModuleCardGrid extends StatelessWidget {
       itemCount: cards.length,
       itemBuilder: (context, index) {
         final card = cards[index];
-        return Semantics(
-          label: '${card.title}: ${card.subtitle}. Toca para ver detalles.',
-          button: true,
-          child: _ModuleCard(
-            key: ValueKey('module-card-${card.moduleKey}'),
-            data: card,
+        return AnimatedListItem(
+          index: index,
+          child: Semantics(
+            label: '${card.title}: ${card.subtitle}. Toca para ver detalles.',
+            button: true,
+            child: _ModuleCard(
+              key: ValueKey('module-card-${card.moduleKey}'),
+              data: card,
+            ),
           ),
         );
       },
@@ -381,20 +402,17 @@ class _ModuleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: data.color.withAlpha(60),
-          width: 1,
+    return PressableCard(
+      onTap: () => GoRouter.of(context).go('/${data.moduleKey}'),
+      child: Card(
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(
+            color: data.color.withAlpha(60),
+            width: 1,
+          ),
         ),
-      ),
-      child: InkWell(
-        onTap: () {
-          GoRouter.of(context).go('/${data.moduleKey}');
-        },
-        borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Column(
@@ -402,11 +420,14 @@ class _ModuleCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Icon(
-                    data.icon,
-                    color: data.color,
-                    size: 20,
-                    semanticLabel: data.title,
+                  Hero(
+                    tag: 'module-icon-${data.moduleKey}',
+                    child: Icon(
+                      data.icon,
+                      color: data.color,
+                      size: 20,
+                      semanticLabel: data.title,
+                    ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(

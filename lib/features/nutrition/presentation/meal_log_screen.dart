@@ -386,6 +386,7 @@ class _MealLogScreenState extends ConsumerState<MealLogScreen> {
 
 // ---------------------------------------------------------------------------
 // Widget: fila de alimento con ajuste de cantidad
+// TODO: Extract to separate widget file
 // ---------------------------------------------------------------------------
 
 class _LoggedFoodRow extends StatefulWidget {
@@ -442,6 +443,8 @@ class _LoggedFoodRowState extends State<_LoggedFoodRow> {
                     style: theme.textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
                   ),
                 ),
                 Text(

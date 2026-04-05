@@ -346,10 +346,14 @@ class _FoodResultList extends StatelessWidget {
               style: theme.textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
             ),
             subtitle: Text(
               '$brand · $servingLabel',
               style: theme.textTheme.bodySmall,
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
             ),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,

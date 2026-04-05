@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_os/core/constants/app_colors.dart';
 import 'package:life_os/core/providers/providers.dart';
+import 'package:life_os/core/widgets/animated_list_item.dart';
 import 'package:life_os/features/dashboard/providers/day_score_notifier.dart';
 
 // ---------------------------------------------------------------------------
@@ -70,9 +71,12 @@ class _DayScoreScreenState extends ConsumerState<DayScoreScreen> {
                 Semantics(
                   label: 'Puntuacion del dia: $score de 100',
                   child: Center(
-                    child: _LargeScoreRing(
-                      key: const ValueKey('day-score-large-ring'),
-                      score: score,
+                    child: Hero(
+                      tag: 'day-score-ring',
+                      child: _LargeScoreRing(
+                        key: const ValueKey('day-score-large-ring'),
+                        score: score,
+                      ),
                     ),
                   ),
                 ),
@@ -110,21 +114,28 @@ class _DayScoreScreenState extends ConsumerState<DayScoreScreen> {
                     child: const _EmptyComponentsCard(),
                   )
                 else
-                  ...components.map(
-                    (comp) => Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: Semantics(
-                        label: '${_moduleLabel(comp.moduleKey)}: '
-                            '${comp.rawValue.toStringAsFixed(1)} puntos, '
-                            'peso ${comp.weight}, '
-                            'aporte ${comp.weightedScore.toStringAsFixed(1)}',
-                        child: _ComponentRow(
-                          key: ValueKey(
-                              'score-component-${comp.moduleKey}'),
-                          component: comp,
+                  ...components.asMap().entries.map(
+                    (entry) {
+                      final i = entry.key;
+                      final comp = entry.value;
+                      return AnimatedListItem(
+                        index: i,
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: Semantics(
+                            label: '${_moduleLabel(comp.moduleKey)}: '
+                                '${comp.rawValue.toStringAsFixed(1)} puntos, '
+                                'peso ${comp.weight}, '
+                                'aporte ${comp.weightedScore.toStringAsFixed(1)}',
+                            child: _ComponentRow(
+                              key: ValueKey(
+                                  'score-component-${comp.moduleKey}'),
+                              component: comp,
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
+                      );
+                    },
                   ),
 
                 const SizedBox(height: 24),
@@ -197,11 +208,16 @@ class _LargeScoreRing extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          CircularProgressIndicator(
-            value: score / 100.0,
-            strokeWidth: 14,
-            backgroundColor: AppColors.dayScore.withAlpha(30),
-            valueColor: AlwaysStoppedAnimation<Color>(_ringColor(score)),
+          TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0.0, end: score / 100.0),
+            duration: const Duration(milliseconds: 800),
+            curve: Curves.easeOutCubic,
+            builder: (context, value, _) => CircularProgressIndicator(
+              value: value,
+              strokeWidth: 14,
+              backgroundColor: AppColors.dayScore.withAlpha(30),
+              valueColor: AlwaysStoppedAnimation<Color>(_ringColor(score)),
+            ),
           ),
           Center(
             child: Column(
@@ -316,13 +332,18 @@ class _ComponentRow extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
-            LinearProgressIndicator(
-              key: ValueKey(
-                  'component-progress-${component.moduleKey}'),
-              value: fraction,
-              backgroundColor: color.withAlpha(30),
-              valueColor: AlwaysStoppedAnimation<Color>(color),
-              borderRadius: BorderRadius.circular(4),
+            TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0.0, end: fraction),
+              duration: const Duration(milliseconds: 800),
+              curve: Curves.easeOutCubic,
+              builder: (context, value, _) => LinearProgressIndicator(
+                key: ValueKey(
+                    'component-progress-${component.moduleKey}'),
+                value: value,
+                backgroundColor: color.withAlpha(30),
+                valueColor: AlwaysStoppedAnimation<Color>(color),
+                borderRadius: BorderRadius.circular(4),
+              ),
             ),
             const SizedBox(height: 8),
             Row(

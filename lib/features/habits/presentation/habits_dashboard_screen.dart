@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:life_os/core/constants/app_colors.dart';
 import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
+import 'package:life_os/core/widgets/animated_list_item.dart';
+import 'package:life_os/core/widgets/pressable_card.dart';
 
 // ---------------------------------------------------------------------------
 // Pantalla principal del dashboard de habitos
@@ -49,7 +51,6 @@ class _HabitsDashboardScreenState
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final dao = ref.watch(habitsDaoProvider);
 
     return Scaffold(
@@ -94,13 +95,20 @@ class _HabitsDashboardScreenState
       floatingActionButton: Semantics(
         label: 'Agregar nuevo habito',
         button: true,
-        child: FloatingActionButton(
-          key: const ValueKey('habits-add-fab'),
-          backgroundColor: AppColors.habits,
-          foregroundColor: Colors.white,
-          onPressed: () => GoRouter.of(context).push('/habits/add'),
-          tooltip: 'Agregar habito',
-          child: const Icon(Icons.add),
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.0, end: 1.0),
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.elasticOut,
+          builder: (context, value, child) =>
+              Transform.scale(scale: value, child: child),
+          child: FloatingActionButton(
+            key: const ValueKey('habits-add-fab'),
+            backgroundColor: AppColors.habits,
+            foregroundColor: Colors.white,
+            onPressed: () => GoRouter.of(context).push('/habits/add'),
+            tooltip: 'Agregar habito',
+            child: const Icon(Icons.add),
+          ),
         ),
       ),
     );
@@ -175,22 +183,26 @@ class _HabitsDashboardBody extends ConsumerWidget {
                   color: theme.colorScheme.onSurface,
                 ),
                 const SizedBox(height: 8),
-                ...pending.map(
-                  (habit) {
+                ...pending.asMap().entries.map(
+                  (entry) {
+                    final habit = entry.value;
                     final status = statusMap[habit.id];
-                    return _HabitRow(
-                      key: ValueKey('habit-row-${habit.id}'),
-                      habit: habit,
-                      isCompleted: false,
-                      currentValue: status?.currentValue ?? 0,
-                      streakDays: status?.streak ?? 0,
-                      onToggle: () => onToggle(habit, false),
-                      onIncrement: habit.isQuantitative
-                          ? () => onIncrement(
-                                habit,
-                                status?.currentValue ?? 0,
-                              )
-                          : null,
+                    return AnimatedListItem(
+                      index: entry.key,
+                      child: _HabitRow(
+                        key: ValueKey('habit-row-${habit.id}'),
+                        habit: habit,
+                        isCompleted: false,
+                        currentValue: status?.currentValue ?? 0,
+                        streakDays: status?.streak ?? 0,
+                        onToggle: () => onToggle(habit, false),
+                        onIncrement: habit.isQuantitative
+                            ? () => onIncrement(
+                                  habit,
+                                  status?.currentValue ?? 0,
+                                )
+                            : null,
+                      ),
                     );
                   },
                 ),
@@ -206,17 +218,21 @@ class _HabitsDashboardBody extends ConsumerWidget {
                   color: AppColors.success,
                 ),
                 const SizedBox(height: 8),
-                ...completed.map(
-                  (habit) {
+                ...completed.asMap().entries.map(
+                  (entry) {
+                    final habit = entry.value;
                     final status = statusMap[habit.id];
-                    return _HabitRow(
-                      key: ValueKey('habit-row-${habit.id}'),
-                      habit: habit,
-                      isCompleted: true,
-                      currentValue: status?.currentValue ?? 0,
-                      streakDays: status?.streak ?? 0,
-                      onToggle: () => onToggle(habit, true),
-                      onIncrement: null,
+                    return AnimatedListItem(
+                      index: pending.length + entry.key,
+                      child: _HabitRow(
+                        key: ValueKey('habit-row-${habit.id}'),
+                        habit: habit,
+                        isCompleted: true,
+                        currentValue: status?.currentValue ?? 0,
+                        streakDays: status?.streak ?? 0,
+                        onToggle: () => onToggle(habit, true),
+                        onIncrement: null,
+                      ),
                     );
                   },
                 ),
@@ -441,6 +457,7 @@ class _SectionHeader extends StatelessWidget {
 
 // ---------------------------------------------------------------------------
 // Widget: fila de habito
+// TODO: Extract to separate widget file
 // ---------------------------------------------------------------------------
 
 class _HabitRow extends StatelessWidget {
@@ -488,12 +505,14 @@ class _HabitRow extends StatelessWidget {
 
     return Semantics(
       label: semanticLabel,
-      child: Card(
-        margin: const EdgeInsets.only(bottom: 8),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          child: Row(
-            children: [
+      child: PressableCard(
+        onTap: isQuantitative ? onIncrement : onToggle,
+        child: Card(
+          margin: const EdgeInsets.only(bottom: 8),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Row(
+              children: [
               // Icono del habito
               Container(
                 width: 40,
@@ -520,6 +539,8 @@ class _HabitRow extends StatelessWidget {
                             : null,
                         color: isCompleted ? theme.disabledColor : null,
                       ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
                     ),
                     if (isQuantitative) ...[
                       const SizedBox(height: 4),
@@ -600,8 +621,9 @@ class _HabitRow extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }
 
 // ---------------------------------------------------------------------------

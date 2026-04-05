@@ -317,6 +317,7 @@ class _BodyMeasurementsScreenState extends State<BodyMeasurementsScreen> {
 
 // ---------------------------------------------------------------------------
 // Widget: tarjeta con medicion actual
+// TODO: Extract to separate widget file
 // ---------------------------------------------------------------------------
 
 class _CurrentMeasurementCard extends StatelessWidget {
@@ -514,6 +515,7 @@ class _MeasurementTile extends StatelessWidget {
 
 // ---------------------------------------------------------------------------
 // Widget: formulario de nueva medicion (expandible)
+// TODO: Extract to separate widget file
 // ---------------------------------------------------------------------------
 
 class _NewMeasurementForm extends StatelessWidget {

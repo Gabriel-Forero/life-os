@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_os/core/constants/app_colors.dart';
 import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
+import 'package:life_os/core/widgets/animated_list_item.dart';
+import 'package:life_os/core/widgets/pressable_card.dart';
 
 // ---------------------------------------------------------------------------
 // Pantalla: historial de entrenamientos
@@ -62,10 +64,13 @@ class WorkoutHistoryScreen extends ConsumerWidget {
             separatorBuilder: (_, __) => const SizedBox(height: 8),
             itemBuilder: (context, index) {
               final workout = workouts[index];
-              return _WorkoutSessionCard(
-                key: ValueKey('workout-session-card-${workout.id}'),
-                workout: workout,
-                onTap: () => _openDetail(context, workout),
+              return AnimatedListItem(
+                index: index,
+                child: _WorkoutSessionCard(
+                  key: ValueKey('workout-session-card-${workout.id}'),
+                  workout: workout,
+                  onTap: () => _openDetail(context, workout),
+                ),
               );
             },
           );
@@ -132,12 +137,14 @@ class _WorkoutSessionCard extends StatelessWidget {
       label: '$label, ${_formatDate(workout.startedAt)}, '
           'duracion ${_formatDuration(workout)}',
       button: true,
-      child: Card(
-        margin: EdgeInsets.zero,
-        child: InkWell(
-          key: ValueKey('workout-session-item-${workout.id}'),
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
+      child: PressableCard(
+        onTap: onTap,
+        child: Card(
+          margin: EdgeInsets.zero,
+          child: InkWell(
+            key: ValueKey('workout-session-item-${workout.id}'),
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(12),
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -205,8 +212,9 @@ class _WorkoutSessionCard extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }
 
 // ---------------------------------------------------------------------------
