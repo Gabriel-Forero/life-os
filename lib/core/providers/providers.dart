@@ -32,6 +32,8 @@ import 'package:life_os/features/intelligence/domain/openai_provider.dart';
 import 'package:life_os/features/intelligence/providers/ai_notifier.dart';
 import 'package:life_os/features/mental/database/mental_dao.dart';
 import 'package:life_os/features/mental/providers/mental_notifier.dart';
+import 'package:life_os/features/nutrition/data/nutrition_repository.dart';
+import 'package:life_os/features/nutrition/data/open_food_facts_client.dart';
 import 'package:life_os/features/nutrition/database/nutrition_dao.dart';
 import 'package:life_os/features/nutrition/providers/nutrition_notifier.dart';
 import 'package:life_os/features/sleep/database/sleep_dao.dart';
@@ -220,5 +222,19 @@ final aiNotifierProvider = Provider<AINotifier>((ref) {
   return AINotifier(
     dao: ref.watch(aiDaoProvider),
     providerFactory: _createAIProvider,
+  );
+});
+
+// ============================================================
+// NUTRITION API
+// ============================================================
+
+final openFoodFactsClientProvider =
+    Provider<OpenFoodFactsClient>((ref) => OpenFoodFactsClient());
+
+final nutritionRepositoryProvider = Provider<NutritionRepository>((ref) {
+  return NutritionRepository(
+    dao: ref.watch(nutritionDaoProvider),
+    apiClient: ref.watch(openFoodFactsClientProvider),
   );
 });

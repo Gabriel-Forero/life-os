@@ -1,99 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:life_os/core/constants/app_colors.dart';
-
-// ---------------------------------------------------------------------------
-// Enums y modelos mock
-// ---------------------------------------------------------------------------
-
-/// Tipo de frecuencia de un habito.
-enum _HabitFrequency { daily, weekly, custom }
-
-/// Tipo de habito: binario (hecho / no hecho) o cuantitativo.
-enum _HabitKind { binary, quantitative }
-
-class _MockHabit {
-  _MockHabit({
-    required this.id,
-    required this.name,
-    required this.icon,
-    required this.color,
-    required this.frequency,
-    required this.kind,
-    this.targetValue,
-    this.unit,
-    this.currentValue = 0,
-    this.streakDays = 0,
-    this.isCompleted = false,
-  });
-
-  final int id;
-  final String name;
-  final IconData icon;
-  final Color color;
-  final _HabitFrequency frequency;
-  final _HabitKind kind;
-  final double? targetValue;
-  final String? unit;
-  double currentValue;
-  int streakDays;
-  bool isCompleted;
-}
-
-final _mockHabits = [
-  _MockHabit(
-    id: 1,
-    name: 'Meditar',
-    icon: Icons.self_improvement,
-    color: AppColors.habits,
-    frequency: _HabitFrequency.daily,
-    kind: _HabitKind.binary,
-    streakDays: 14,
-    isCompleted: true,
-  ),
-  _MockHabit(
-    id: 2,
-    name: 'Leer',
-    icon: Icons.menu_book_outlined,
-    color: const Color(0xFF06B6D4),
-    frequency: _HabitFrequency.daily,
-    kind: _HabitKind.quantitative,
-    targetValue: 30,
-    unit: 'min',
-    currentValue: 20,
-    streakDays: 7,
-  ),
-  _MockHabit(
-    id: 3,
-    name: 'Beber agua',
-    icon: Icons.water_drop_outlined,
-    color: const Color(0xFF3B82F6),
-    frequency: _HabitFrequency.daily,
-    kind: _HabitKind.quantitative,
-    targetValue: 8,
-    unit: 'vasos',
-    currentValue: 8,
-    streakDays: 21,
-    isCompleted: true,
-  ),
-  _MockHabit(
-    id: 4,
-    name: 'Ejercicio',
-    icon: Icons.fitness_center,
-    color: AppColors.gym,
-    frequency: _HabitFrequency.daily,
-    kind: _HabitKind.binary,
-    streakDays: 3,
-  ),
-  _MockHabit(
-    id: 5,
-    name: 'Sin azucar',
-    icon: Icons.no_food_outlined,
-    color: AppColors.nutrition,
-    frequency: _HabitFrequency.daily,
-    kind: _HabitKind.binary,
-    streakDays: 5,
-  ),
-];
+import 'package:life_os/core/database/app_database.dart';
+import 'package:life_os/core/providers/providers.dart';
 
 // ---------------------------------------------------------------------------
 // Pantalla principal del dashboard de habitos
@@ -102,52 +12,45 @@ final _mockHabits = [
 /// Dashboard de habitos del dia con lista de pendientes y completados,
 /// barra de progreso cuantitativa y racha de dias consecutivos.
 ///
-/// Shell de presentacion — la integracion con Riverpod se realizara en un
-/// paso posterior.
-///
 /// Accesibilidad: A11Y-HAB-01 — cada fila de habito tiene etiqueta semantica
 /// con nombre, estado y racha.
-class HabitsDashboardScreen extends StatefulWidget {
+class HabitsDashboardScreen extends ConsumerStatefulWidget {
   const HabitsDashboardScreen({super.key});
 
   @override
-  State<HabitsDashboardScreen> createState() => _HabitsDashboardScreenState();
+  ConsumerState<HabitsDashboardScreen> createState() =>
+      _HabitsDashboardScreenState();
 }
 
-class _HabitsDashboardScreenState extends State<HabitsDashboardScreen> {
-  final List<_MockHabit> _habits = _mockHabits;
+class _HabitsDashboardScreenState
+    extends ConsumerState<HabitsDashboardScreen> {
+  final DateTime _today = DateTime(
+    DateTime.now().year,
+    DateTime.now().month,
+    DateTime.now().day,
+  );
 
-  List<_MockHabit> get _pending =>
-      _habits.where((h) => !h.isCompleted).toList();
-
-  List<_MockHabit> get _completed =>
-      _habits.where((h) => h.isCompleted).toList();
-
-  bool get _allDone => _habits.every((h) => h.isCompleted);
-
-  void _toggleHabit(_MockHabit habit) {
-    setState(() {
-      if (habit.kind == _HabitKind.binary) {
-        habit.isCompleted = !habit.isCompleted;
-        if (habit.isCompleted) habit.streakDays++;
-      }
-    });
+  Future<void> _toggleHabit(Habit habit, bool isCompleted) async {
+    final notifier = ref.read(habitsNotifierProvider);
+    if (isCompleted) {
+      await notifier.uncheckIn(habit.id, _today);
+    } else {
+      await notifier.checkIn(habit.id);
+    }
   }
 
-  void _incrementQuantitative(_MockHabit habit) {
-    setState(() {
-      final next = habit.currentValue + 1;
-      habit.currentValue = next.clamp(0, habit.targetValue!);
-      habit.isCompleted = habit.currentValue >= habit.targetValue!;
-      if (habit.isCompleted) {
-        habit.streakDays++;
-      }
-    });
+  Future<void> _incrementQuantitative(Habit habit, double current) async {
+    final notifier = ref.read(habitsNotifierProvider);
+    final next = current + 1;
+    final target = habit.quantitativeTarget ?? 1.0;
+    final clamped = next.clamp(0.0, target);
+    await notifier.checkIn(habit.id, value: clamped);
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final dao = ref.watch(habitsDaoProvider);
 
     return Scaffold(
       key: const ValueKey('habits-dashboard-screen'),
@@ -165,80 +68,28 @@ class _HabitsDashboardScreenState extends State<HabitsDashboardScreen> {
             child: IconButton(
               key: const ValueKey('habits-stats-button'),
               icon: const Icon(Icons.bar_chart_outlined),
-              onPressed: () {
-                // TODO: navegar a estadisticas cuando se conecte
-              },
+              onPressed: () {},
               tooltip: 'Estadisticas',
             ),
           ),
         ],
       ),
-      body: RefreshIndicator(
-        color: AppColors.habits,
-        onRefresh: () async {
-          await Future<void>.delayed(const Duration(milliseconds: 600));
+      body: StreamBuilder<List<Habit>>(
+        stream: dao.watchActiveHabits(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final habits = snapshot.data ?? [];
+
+          return _HabitsDashboardBody(
+            key: const ValueKey('habits-dashboard-body'),
+            habits: habits,
+            today: _today,
+            onToggle: _toggleHabit,
+            onIncrement: _incrementQuantitative,
+          );
         },
-        child: ListView(
-          key: const ValueKey('habits-dashboard-list'),
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-          children: [
-            // --- Progreso del dia ---
-            _DayProgressHeader(
-              key: const ValueKey('habits-day-progress'),
-              completed: _completed.length,
-              total: _habits.length,
-              allDone: _allDone,
-            ),
-            const SizedBox(height: 20),
-
-            // --- Mensaje de celebracion ---
-            if (_allDone)
-              _CelebrationBanner(
-                key: const ValueKey('habits-celebration-banner'),
-              ),
-
-            // --- Seccion Pendientes ---
-            if (_pending.isNotEmpty) ...[
-              _SectionHeader(
-                key: const ValueKey('habits-pending-header'),
-                title: 'Pendientes',
-                count: _pending.length,
-                color: theme.colorScheme.onSurface,
-              ),
-              const SizedBox(height: 8),
-              ..._pending.map(
-                (habit) => _HabitRow(
-                  key: ValueKey('habit-row-${habit.id}'),
-                  habit: habit,
-                  onToggle: () => _toggleHabit(habit),
-                  onIncrement: habit.kind == _HabitKind.quantitative
-                      ? () => _incrementQuantitative(habit)
-                      : null,
-                ),
-              ),
-              const SizedBox(height: 16),
-            ],
-
-            // --- Seccion Completados ---
-            if (_completed.isNotEmpty) ...[
-              _SectionHeader(
-                key: const ValueKey('habits-completed-header'),
-                title: 'Completados',
-                count: _completed.length,
-                color: AppColors.success,
-              ),
-              const SizedBox(height: 8),
-              ..._completed.map(
-                (habit) => _HabitRow(
-                  key: ValueKey('habit-row-${habit.id}'),
-                  habit: habit,
-                  onToggle: () => _toggleHabit(habit),
-                  onIncrement: null,
-                ),
-              ),
-            ],
-          ],
-        ),
       ),
       floatingActionButton: Semantics(
         label: 'Agregar nuevo habito',
@@ -247,15 +98,165 @@ class _HabitsDashboardScreenState extends State<HabitsDashboardScreen> {
           key: const ValueKey('habits-add-fab'),
           backgroundColor: AppColors.habits,
           foregroundColor: Colors.white,
-          onPressed: () {
-            // TODO: navegar a AddEditHabitScreen cuando se conecte
-          },
+          onPressed: () => GoRouter.of(context).push('/habits/add'),
           tooltip: 'Agregar habito',
           child: const Icon(Icons.add),
         ),
       ),
     );
   }
+}
+
+// ---------------------------------------------------------------------------
+// Widget: cuerpo del dashboard (separado para poder leer logs por habito)
+// ---------------------------------------------------------------------------
+
+class _HabitsDashboardBody extends ConsumerWidget {
+  const _HabitsDashboardBody({
+    super.key,
+    required this.habits,
+    required this.today,
+    required this.onToggle,
+    required this.onIncrement,
+  });
+
+  final List<Habit> habits;
+  final DateTime today;
+  final Future<void> Function(Habit, bool) onToggle;
+  final Future<void> Function(Habit, double) onIncrement;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final dao = ref.watch(habitsDaoProvider);
+
+    // Build a map of habitId -> (isCompleted, currentValue, streak) from DB
+    return FutureBuilder<Map<int, _HabitStatus>>(
+      future: _loadAllStatuses(dao),
+      builder: (context, statusSnapshot) {
+        final statusMap = statusSnapshot.data ?? {};
+
+        final pending = habits
+            .where((h) => !(statusMap[h.id]?.isCompleted ?? false))
+            .toList();
+        final completed = habits
+            .where((h) => statusMap[h.id]?.isCompleted ?? false)
+            .toList();
+        final allDone = habits.isNotEmpty && completed.length == habits.length;
+
+        return RefreshIndicator(
+          color: AppColors.habits,
+          onRefresh: () async {},
+          child: ListView(
+            key: const ValueKey('habits-dashboard-list'),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+            children: [
+              // --- Progreso del dia ---
+              _DayProgressHeader(
+                key: const ValueKey('habits-day-progress'),
+                completed: completed.length,
+                total: habits.length,
+                allDone: allDone,
+              ),
+              const SizedBox(height: 20),
+
+              // --- Mensaje de celebracion ---
+              if (allDone)
+                _CelebrationBanner(
+                  key: const ValueKey('habits-celebration-banner'),
+                ),
+
+              // --- Seccion Pendientes ---
+              if (pending.isNotEmpty) ...[
+                _SectionHeader(
+                  key: const ValueKey('habits-pending-header'),
+                  title: 'Pendientes',
+                  count: pending.length,
+                  color: theme.colorScheme.onSurface,
+                ),
+                const SizedBox(height: 8),
+                ...pending.map(
+                  (habit) {
+                    final status = statusMap[habit.id];
+                    return _HabitRow(
+                      key: ValueKey('habit-row-${habit.id}'),
+                      habit: habit,
+                      isCompleted: false,
+                      currentValue: status?.currentValue ?? 0,
+                      streakDays: status?.streak ?? 0,
+                      onToggle: () => onToggle(habit, false),
+                      onIncrement: habit.isQuantitative
+                          ? () => onIncrement(
+                                habit,
+                                status?.currentValue ?? 0,
+                              )
+                          : null,
+                    );
+                  },
+                ),
+                const SizedBox(height: 16),
+              ],
+
+              // --- Seccion Completados ---
+              if (completed.isNotEmpty) ...[
+                _SectionHeader(
+                  key: const ValueKey('habits-completed-header'),
+                  title: 'Completados',
+                  count: completed.length,
+                  color: AppColors.success,
+                ),
+                const SizedBox(height: 8),
+                ...completed.map(
+                  (habit) {
+                    final status = statusMap[habit.id];
+                    return _HabitRow(
+                      key: ValueKey('habit-row-${habit.id}'),
+                      habit: habit,
+                      isCompleted: true,
+                      currentValue: status?.currentValue ?? 0,
+                      streakDays: status?.streak ?? 0,
+                      onToggle: () => onToggle(habit, true),
+                      onIncrement: null,
+                    );
+                  },
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<Map<int, _HabitStatus>> _loadAllStatuses(
+    dynamic dao,
+  ) async {
+    final Map<int, _HabitStatus> map = {};
+    for (final habit in habits) {
+      final log = await (dao as dynamic).getLogForDate(habit.id, today);
+      final isCompleted = log != null;
+      final currentValue = (log?.value as double?) ?? 0.0;
+      final streak = await dao.streakCount(habit.id, today);
+      map[habit.id] = _HabitStatus(
+        isCompleted: isCompleted,
+        currentValue: currentValue,
+        streak: streak as int,
+      );
+    }
+    return map;
+  }
+}
+
+class _HabitStatus {
+  const _HabitStatus({
+    required this.isCompleted,
+    required this.currentValue,
+    required this.streak,
+  });
+
+  final bool isCompleted;
+  final double currentValue;
+  final int streak;
 }
 
 // ---------------------------------------------------------------------------
@@ -446,26 +447,44 @@ class _HabitRow extends StatelessWidget {
   const _HabitRow({
     super.key,
     required this.habit,
+    required this.isCompleted,
+    required this.currentValue,
+    required this.streakDays,
     required this.onToggle,
     this.onIncrement,
   });
 
-  final _MockHabit habit;
+  final Habit habit;
+  final bool isCompleted;
+  final double currentValue;
+  final int streakDays;
   final VoidCallback onToggle;
   final VoidCallback? onIncrement;
+
+  Color get _habitColor => Color(habit.color);
+
+  IconData get _habitIcon {
+    // Parse stored icon name to IconData codePoint
+    final cp = int.tryParse(habit.icon);
+    if (cp != null) {
+      return IconData(cp, fontFamily: 'MaterialIcons');
+    }
+    return Icons.check_circle_outline;
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isQuantitative = habit.kind == _HabitKind.quantitative;
-    final progress = isQuantitative && habit.targetValue != null
-        ? (habit.currentValue / habit.targetValue!).clamp(0.0, 1.0)
+    final isQuantitative = habit.isQuantitative;
+    final target = habit.quantitativeTarget ?? 1.0;
+    final progress = isQuantitative
+        ? (currentValue / target).clamp(0.0, 1.0)
         : 0.0;
 
     final semanticLabel = '${habit.name}, '
-        '${habit.isCompleted ? 'completado' : 'pendiente'}, '
-        'racha de ${habit.streakDays} dias'
-        '${isQuantitative ? ', ${habit.currentValue.toInt()} de ${habit.targetValue!.toInt()} ${habit.unit}' : ''}';
+        '${isCompleted ? 'completado' : 'pendiente'}, '
+        'racha de $streakDays dias'
+        '${isQuantitative ? ', ${currentValue.toInt()} de ${target.toInt()} ${habit.quantitativeUnit ?? ''}' : ''}';
 
     return Semantics(
       label: semanticLabel,
@@ -480,10 +499,10 @@ class _HabitRow extends StatelessWidget {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: habit.color.withAlpha(25),
+                  color: _habitColor.withAlpha(25),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(habit.icon, color: habit.color, size: 20),
+                child: Icon(_habitIcon, color: _habitColor, size: 20),
               ),
               const SizedBox(width: 12),
 
@@ -496,15 +515,13 @@ class _HabitRow extends StatelessWidget {
                       habit.name,
                       style: theme.textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w600,
-                        decoration: habit.isCompleted
+                        decoration: isCompleted
                             ? TextDecoration.lineThrough
                             : null,
-                        color: habit.isCompleted
-                            ? theme.disabledColor
-                            : null,
+                        color: isCompleted ? theme.disabledColor : null,
                       ),
                     ),
-                    if (isQuantitative && habit.targetValue != null) ...[
+                    if (isQuantitative) ...[
                       const SizedBox(height: 4),
                       Row(
                         children: [
@@ -512,7 +529,8 @@ class _HabitRow extends StatelessWidget {
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(4),
                               child: TweenAnimationBuilder<double>(
-                                tween: Tween<double>(begin: 0, end: progress),
+                                tween:
+                                    Tween<double>(begin: 0, end: progress),
                                 duration:
                                     const Duration(milliseconds: 400),
                                 curve: Curves.easeOut,
@@ -521,10 +539,10 @@ class _HabitRow extends StatelessWidget {
                                   value: value,
                                   minHeight: 5,
                                   backgroundColor:
-                                      habit.color.withAlpha(25),
+                                      _habitColor.withAlpha(25),
                                   valueColor:
                                       AlwaysStoppedAnimation<Color>(
-                                    habit.color,
+                                    _habitColor,
                                   ),
                                 ),
                               ),
@@ -532,9 +550,9 @@ class _HabitRow extends StatelessWidget {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            '${habit.currentValue.toInt()}/${habit.targetValue!.toInt()} ${habit.unit ?? ''}',
+                            '${currentValue.toInt()}/${target.toInt()} ${habit.quantitativeUnit ?? ''}',
                             style: theme.textTheme.labelSmall?.copyWith(
-                              color: habit.color,
+                              color: _habitColor,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -549,32 +567,32 @@ class _HabitRow extends StatelessWidget {
               // Racha badge
               _StreakBadge(
                 key: ValueKey('streak-badge-${habit.id}'),
-                days: habit.streakDays,
-                color: habit.color,
+                days: streakDays,
+                color: _habitColor,
               ),
               const SizedBox(width: 8),
 
               // Toggle / incrementar
-              if (isQuantitative && onIncrement != null && !habit.isCompleted)
+              if (isQuantitative && onIncrement != null && !isCompleted)
                 Semantics(
                   label: 'Registrar progreso en ${habit.name}',
                   button: true,
                   child: _IncrementButton(
                     key: ValueKey('habit-increment-${habit.id}'),
-                    color: habit.color,
+                    color: _habitColor,
                     onTap: onIncrement!,
                   ),
                 )
               else
                 Semantics(
-                  label: habit.isCompleted
+                  label: isCompleted
                       ? 'Marcar ${habit.name} como pendiente'
                       : 'Marcar ${habit.name} como completado',
                   button: true,
                   child: _CheckToggle(
                     key: ValueKey('habit-check-${habit.id}'),
-                    isChecked: habit.isCompleted,
-                    color: habit.color,
+                    isChecked: isCompleted,
+                    color: _habitColor,
                     onTap: onToggle,
                   ),
                 ),

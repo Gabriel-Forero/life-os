@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_os/core/constants/app_colors.dart';
+import 'package:life_os/core/providers/providers.dart';
+import 'package:life_os/features/habits/domain/habits_input.dart';
 
 // ---------------------------------------------------------------------------
 // Constantes y datos de configuracion
@@ -85,7 +88,7 @@ const _availableColors = <Color>[
 ///
 /// Accesibilidad: A11Y-HAB-02 — todos los campos y controles tienen etiquetas
 /// semanticas.
-class AddEditHabitScreen extends StatefulWidget {
+class AddEditHabitScreen extends ConsumerStatefulWidget {
   const AddEditHabitScreen({
     super.key,
     this.habitId,
@@ -95,10 +98,11 @@ class AddEditHabitScreen extends StatefulWidget {
   final int? habitId;
 
   @override
-  State<AddEditHabitScreen> createState() => _AddEditHabitScreenState();
+  ConsumerState<AddEditHabitScreen> createState() =>
+      _AddEditHabitScreenState();
 }
 
-class _AddEditHabitScreenState extends State<AddEditHabitScreen> {
+class _AddEditHabitScreenState extends ConsumerState<AddEditHabitScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _targetController = TextEditingController();
@@ -112,6 +116,7 @@ class _AddEditHabitScreenState extends State<AddEditHabitScreen> {
   bool _isQuantitative = false;
   TimeOfDay? _reminderTime;
   bool _autoComplete = false;
+  bool _isSaving = false;
 
   bool get _isEditing => widget.habitId != null;
 
@@ -148,10 +153,53 @@ class _AddEditHabitScreenState extends State<AddEditHabitScreen> {
     setState(() => _reminderTime = null);
   }
 
-  void _handleSave() {
+  Future<void> _handleSave() async {
     if (!_formKey.currentState!.validate()) return;
-    // TODO: conectar con HabitsNotifier.addHabit / editHabit cuando se integre
-    Navigator.of(context).pop();
+    if (_frequency == _Frequency.custom && _selectedDays.isEmpty) return;
+
+    setState(() => _isSaving = true);
+
+    final reminderStr = _reminderTime != null
+        ? '${_reminderTime!.hour.toString().padLeft(2, '0')}:${_reminderTime!.minute.toString().padLeft(2, '0')}'
+        : null;
+
+    final input = HabitInput(
+      name: _nameController.text.trim(),
+      icon: _selectedIcon.codePoint.toString(),
+      color: _selectedColor.value,
+      frequencyType: _frequency.name,
+      weeklyTarget: _frequency == _Frequency.weekly ? _weeklyTarget : 1,
+      customDays: _frequency == _Frequency.custom
+          ? (_selectedDays.toList()..sort())
+          : null,
+      isQuantitative: _isQuantitative,
+      quantitativeTarget: _isQuantitative
+          ? double.tryParse(_targetController.text)
+          : null,
+      quantitativeUnit:
+          _isQuantitative ? _unitController.text.trim() : null,
+      reminderTime: reminderStr,
+    );
+
+    final notifier = ref.read(habitsNotifierProvider);
+    final result = await notifier.addHabit(input);
+
+    if (!mounted) return;
+    setState(() => _isSaving = false);
+
+    result.when(
+      success: (_) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Guardado!')),
+        );
+        Navigator.of(context).pop();
+      },
+      failure: (f) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(f.userMessage)),
+        );
+      },
+    );
   }
 
   String _formatTime(TimeOfDay time) {
@@ -512,8 +560,17 @@ class _AddEditHabitScreenState extends State<AddEditHabitScreen> {
                   backgroundColor: _selectedColor,
                   minimumSize: const Size.fromHeight(52),
                 ),
-                onPressed: _handleSave,
-                icon: const Icon(Icons.check),
+                onPressed: _isSaving ? null : _handleSave,
+                icon: _isSaving
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.check),
                 label: Text(
                   _isEditing ? 'Guardar cambios' : 'Crear habito',
                   style: const TextStyle(

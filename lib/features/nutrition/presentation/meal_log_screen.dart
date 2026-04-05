@@ -1,92 +1,58 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:life_os/core/constants/app_colors.dart';
+import 'package:life_os/core/database/app_database.dart';
+import 'package:life_os/core/providers/providers.dart';
+import 'package:life_os/features/nutrition/domain/nutrition_input.dart';
 
 // ---------------------------------------------------------------------------
-// Modelos mock
+// Helpers de tipo de comida
 // ---------------------------------------------------------------------------
 
-enum _MealType { desayuno, almuerzo, cena, snack }
+const _mealTypeValues = ['breakfast', 'lunch', 'dinner', 'snack'];
 
-extension _MealTypeLabel on _MealType {
-  String get label => switch (this) {
-        _MealType.desayuno => 'Desayuno',
-        _MealType.almuerzo => 'Almuerzo',
-        _MealType.cena => 'Cena',
-        _MealType.snack => 'Snack',
-      };
+String _mealLabel(String type) => switch (type) {
+      'breakfast' => 'Desayuno',
+      'lunch' => 'Almuerzo',
+      'dinner' => 'Cena',
+      'snack' => 'Snack',
+      _ => type,
+    };
 
-  IconData get icon => switch (this) {
-        _MealType.desayuno => Icons.wb_sunny_outlined,
-        _MealType.almuerzo => Icons.restaurant_outlined,
-        _MealType.cena => Icons.nightlight_outlined,
-        _MealType.snack => Icons.apple_outlined,
-      };
-}
+IconData _mealIcon(String type) => switch (type) {
+      'breakfast' => Icons.wb_sunny_outlined,
+      'lunch' => Icons.restaurant_outlined,
+      'dinner' => Icons.nightlight_outlined,
+      'snack' => Icons.apple_outlined,
+      _ => Icons.restaurant_menu_outlined,
+    };
 
-/// Detecta el tipo de comida sugerido segun la hora del dia.
-_MealType _suggestMealType() {
+String _suggestMealType() {
   final hour = DateTime.now().hour;
-  if (hour < 10) return _MealType.desayuno;
-  if (hour < 14) return _MealType.almuerzo;
-  if (hour < 19) return _MealType.cena;
-  return _MealType.snack;
+  if (hour < 10) return 'breakfast';
+  if (hour < 14) return 'lunch';
+  if (hour < 19) return 'dinner';
+  return 'snack';
 }
 
-class _MockLoggedFood {
-  _MockLoggedFood({
-    required this.id,
-    required this.name,
-    required this.caloriesPer100g,
-    required this.proteinPer100g,
-    required this.carbsPer100g,
-    required this.fatPer100g,
-    required this.quantityG,
-  });
+// Local model: a food item selected for the meal with mutable quantity
+class _LoggedFoodItem {
+  _LoggedFoodItem({required this.food, required this.quantityG});
 
-  final int id;
-  final String name;
-  final double caloriesPer100g;
-  final double proteinPer100g;
-  final double carbsPer100g;
-  final double fatPer100g;
+  final FoodItem food;
   double quantityG;
 
-  double get calories => caloriesPer100g * quantityG / 100;
-  double get proteinG => proteinPer100g * quantityG / 100;
-  double get carbsG => carbsPer100g * quantityG / 100;
-  double get fatG => fatPer100g * quantityG / 100;
-}
+  // Convenience delegates
+  int get id => food.id;
+  String get name => food.name;
 
-List<_MockLoggedFood> _buildMockItems() => [
-      _MockLoggedFood(
-        id: 1,
-        name: 'Pechuga de pollo',
-        caloriesPer100g: 165,
-        proteinPer100g: 31,
-        carbsPer100g: 0,
-        fatPer100g: 3.6,
-        quantityG: 150,
-      ),
-      _MockLoggedFood(
-        id: 2,
-        name: 'Arroz blanco cocido',
-        caloriesPer100g: 130,
-        proteinPer100g: 2.7,
-        carbsPer100g: 28,
-        fatPer100g: 0.3,
-        quantityG: 200,
-      ),
-      _MockLoggedFood(
-        id: 3,
-        name: 'Ensalada mixta',
-        caloriesPer100g: 15,
-        proteinPer100g: 1.2,
-        carbsPer100g: 2.5,
-        fatPer100g: 0.2,
-        quantityG: 100,
-      ),
-    ];
+  double get calories => food.caloriesPer100g * quantityG / 100;
+  double get proteinG => food.proteinPer100g * quantityG / 100;
+  double get carbsG => food.carbsPer100g * quantityG / 100;
+  double get fatG => food.fatPer100g * quantityG / 100;
+}
 
 // ---------------------------------------------------------------------------
 // Pantalla: registro de comida
@@ -99,23 +65,23 @@ List<_MockLoggedFood> _buildMockItems() => [
 /// paso posterior.
 ///
 /// Accesibilidad: A11Y-NUT-03 — todos los campos tienen etiquetas semanticas.
-class MealLogScreen extends StatefulWidget {
+class MealLogScreen extends ConsumerStatefulWidget {
   const MealLogScreen({super.key});
 
   @override
-  State<MealLogScreen> createState() => _MealLogScreenState();
+  ConsumerState<MealLogScreen> createState() => _MealLogScreenState();
 }
 
-class _MealLogScreenState extends State<MealLogScreen> {
-  late _MealType _selectedMealType;
-  late final List<_MockLoggedFood> _items;
+class _MealLogScreenState extends ConsumerState<MealLogScreen> {
+  late String _selectedMealType;
+  final List<_LoggedFoodItem> _items = [];
   final _noteController = TextEditingController();
+  bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
     _selectedMealType = _suggestMealType();
-    _items = _buildMockItems();
   }
 
   @override
@@ -146,7 +112,23 @@ class _MealLogScreenState extends State<MealLogScreen> {
     }
   }
 
-  void _handleSave() {
+  Future<void> _openFoodSearch() async {
+    final result = await GoRouter.of(context).push<FoodItem>(
+      '/nutrition/search',
+    );
+    if (result != null && mounted) {
+      setState(() {
+        _items.add(
+          _LoggedFoodItem(
+            food: result,
+            quantityG: result.servingSizeG,
+          ),
+        );
+      });
+    }
+  }
+
+  Future<void> _handleSave() async {
     if (_items.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -157,8 +139,41 @@ class _MealLogScreenState extends State<MealLogScreen> {
       );
       return;
     }
-    // TODO: llamar a NutritionNotifier.logMeal cuando se conecte
-    Navigator.of(context).pop();
+
+    setState(() => _isSaving = true);
+
+    final notifier = ref.read(nutritionNotifierProvider);
+    final result = await notifier.logMeal(
+      MealLogInput(
+        mealType: _selectedMealType,
+        items: _items
+            .map((i) => MealItemInput(
+                  foodItemId: i.food.id,
+                  quantityG: i.quantityG,
+                ))
+            .toList(),
+        note: _noteController.text.trim().isNotEmpty
+            ? _noteController.text.trim()
+            : null,
+      ),
+    );
+
+    if (!mounted) return;
+    setState(() => _isSaving = false);
+
+    result.when(
+      success: (_) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Guardado!')),
+        );
+        Navigator.of(context).pop();
+      },
+      failure: (f) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(f.userMessage)),
+        );
+      },
+    );
   }
 
   @override
@@ -190,11 +205,20 @@ class _MealLogScreenState extends State<MealLogScreen> {
             button: true,
             child: TextButton.icon(
               key: const ValueKey('meal-log-save-button'),
-              onPressed: _handleSave,
+              onPressed: _isSaving ? null : _handleSave,
               style: TextButton.styleFrom(
                 foregroundColor: AppColors.nutrition,
               ),
-              icon: const Icon(Icons.check),
+              icon: _isSaving
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppColors.nutrition,
+                      ),
+                    )
+                  : const Icon(Icons.check),
               label: const Text(
                 'Guardar',
                 style: TextStyle(fontWeight: FontWeight.w600),
@@ -224,23 +248,21 @@ class _MealLogScreenState extends State<MealLogScreen> {
                 ),
                 Semantics(
                   label:
-                      'Seleccionar tipo de comida, actualmente: ${_selectedMealType.label}',
+                      'Seleccionar tipo de comida, actualmente: ${_mealLabel(_selectedMealType)}',
                   child: Wrap(
                     key: const ValueKey('meal-log-type-chips'),
                     spacing: 8,
-                    children: _MealType.values.map((type) {
+                    children: _mealTypeValues.map((type) {
                       final isSelected = type == _selectedMealType;
                       return Semantics(
                         label:
-                            '${type.label}${isSelected ? ', seleccionado' : ''}',
+                            '${_mealLabel(type)}${isSelected ? ', seleccionado' : ''}',
                         button: true,
                         child: FilterChip(
-                          key: ValueKey(
-                            'meal-log-type-chip-${type.name}',
-                          ),
-                          label: Text(type.label),
+                          key: ValueKey('meal-log-type-chip-$type'),
+                          label: Text(_mealLabel(type)),
                           avatar: Icon(
-                            type.icon,
+                            _mealIcon(type),
                             size: 16,
                             color: isSelected
                                 ? Colors.white
@@ -289,9 +311,7 @@ class _MealLogScreenState extends State<MealLogScreen> {
                       button: true,
                       child: TextButton.icon(
                         key: const ValueKey('meal-log-add-food-button'),
-                        onPressed: () {
-                          // TODO: navegar a FoodSearchScreen cuando se conecte
-                        },
+                        onPressed: _openFoodSearch,
                         style: TextButton.styleFrom(
                           foregroundColor: AppColors.nutrition,
                         ),
@@ -306,15 +326,13 @@ class _MealLogScreenState extends State<MealLogScreen> {
                 if (_items.isEmpty)
                   _EmptyFoodList(
                     key: const ValueKey('meal-log-empty-food'),
-                    onAdd: () {
-                      // TODO: navegar a FoodSearchScreen cuando se conecte
-                    },
+                    onAdd: _openFoodSearch,
                   )
                 else
                   ..._items.asMap().entries.map(
                     (entry) => _LoggedFoodRow(
                       key: ValueKey(
-                        'meal-log-food-row-${entry.value.id}',
+                        'meal-log-food-row-${entry.value.food.id}-${entry.key}',
                       ),
                       food: entry.value,
                       onRemove: () => _removeItem(entry.key),
@@ -378,7 +396,7 @@ class _LoggedFoodRow extends StatefulWidget {
     required this.onQuantityChanged,
   });
 
-  final _MockLoggedFood food;
+  final _LoggedFoodItem food;
   final VoidCallback onRemove;
   final ValueChanged<double> onQuantityChanged;
 
@@ -420,7 +438,7 @@ class _LoggedFoodRowState extends State<_LoggedFoodRow> {
               children: [
                 Expanded(
                   child: Text(
-                    food.name,
+                    food.food.name,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
@@ -434,10 +452,10 @@ class _LoggedFoodRowState extends State<_LoggedFoodRow> {
                   ),
                 ),
                 Semantics(
-                  label: 'Eliminar ${food.name} de la comida',
+                  label: 'Eliminar ${food.food.name} de la comida',
                   button: true,
                   child: IconButton(
-                    key: ValueKey('meal-log-remove-food-${food.id}'),
+                    key: ValueKey('meal-log-remove-food-${food.food.id}'),
                     icon: const Icon(Icons.delete_outline, size: 18),
                     color: AppColors.error,
                     onPressed: widget.onRemove,

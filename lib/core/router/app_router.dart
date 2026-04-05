@@ -31,7 +31,10 @@ import 'package:life_os/features/nutrition/presentation/daily_nutrition_screen.d
 import 'package:life_os/features/nutrition/presentation/food_search_screen.dart';
 import 'package:life_os/features/nutrition/presentation/meal_log_screen.dart';
 import 'package:life_os/features/nutrition/presentation/nutrition_goals_screen.dart';
+import 'package:life_os/features/nutrition/presentation/barcode_scanner_screen.dart';
 import 'package:life_os/features/onboarding/presentation/onboarding_shell.dart';
+import 'package:life_os/features/settings/presentation/backup_screen.dart';
+import 'package:life_os/features/settings/presentation/settings_screen.dart';
 import 'package:life_os/features/sleep/presentation/energy_tracker_screen.dart';
 import 'package:life_os/features/sleep/presentation/sleep_history_screen.dart';
 import 'package:life_os/features/sleep/presentation/sleep_log_screen.dart';
@@ -62,6 +65,10 @@ abstract final class AppRoutes {
   static const String nutritionSearch = '/nutrition/search';
   static const String nutritionMealLog = '/nutrition/meal-log';
   static const String nutritionGoals = '/nutrition/goals';
+  static const String barcodeScanner = '/nutrition/scan';
+
+  // Settings
+  static const String backup = '/settings/backup';
 
   // Habits
   static const String habits = '/habits';
@@ -137,10 +144,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: AppRoutes.goals,
             builder: (context, state) => const GoalsOverviewScreen(),
           ),
-          // Settings placeholder
+          // Settings
           GoRoute(
             path: AppRoutes.settings,
-            builder: (context, state) => const _PlaceholderScreen(title: 'Configuracion'),
+            builder: (context, state) => const SettingsScreen(),
           ),
         ],
       ),
@@ -157,6 +164,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: AppRoutes.nutritionSearch, builder: (context, state) => const FoodSearchScreen()),
       GoRoute(path: AppRoutes.nutritionMealLog, builder: (context, state) => const MealLogScreen()),
       GoRoute(path: AppRoutes.nutritionGoals, builder: (context, state) => const NutritionGoalsScreen()),
+      GoRoute(path: AppRoutes.barcodeScanner, builder: (context, state) => const BarcodeScannerScreen()),
+      GoRoute(path: AppRoutes.backup, builder: (context, state) => const BackupScreen()),
       GoRoute(path: AppRoutes.habitsAdd, builder: (context, state) => const AddEditHabitScreen()),
       GoRoute(path: AppRoutes.habitsDetail, builder: (context, state) => const HabitDetailScreen()),
       GoRoute(path: AppRoutes.dayScore, builder: (context, state) => const DayScoreScreen()),
@@ -199,6 +208,21 @@ class _AppShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: Builder(
+          builder: (ctx) => IconButton(
+            icon: const Icon(Icons.menu),
+            onPressed: () => Scaffold.of(ctx).openDrawer(),
+            tooltip: 'Menu',
+          ),
+        ),
+        title: Text(
+          _titleForLocation(context),
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+      ),
       body: child,
       drawer: Drawer(
         child: ListView(
@@ -217,6 +241,32 @@ class _AppShell extends StatelessWidget {
                 ],
               ),
             ),
+            ListTile(
+              leading: Icon(Icons.dashboard, color: AppColors.finance),
+              title: const Text('Dashboard'),
+              onTap: () { Navigator.pop(context); GoRouter.of(context).go(AppRoutes.home); },
+            ),
+            ListTile(
+              leading: Icon(Icons.account_balance_wallet, color: AppColors.finance),
+              title: const Text('Finanzas'),
+              onTap: () { Navigator.pop(context); GoRouter.of(context).go(AppRoutes.finance); },
+            ),
+            ListTile(
+              leading: Icon(Icons.fitness_center, color: AppColors.gym),
+              title: const Text('Gimnasio'),
+              onTap: () { Navigator.pop(context); GoRouter.of(context).go(AppRoutes.gym); },
+            ),
+            ListTile(
+              leading: Icon(Icons.restaurant, color: AppColors.nutrition),
+              title: const Text('Nutricion'),
+              onTap: () { Navigator.pop(context); GoRouter.of(context).go(AppRoutes.nutrition); },
+            ),
+            ListTile(
+              leading: Icon(Icons.check_circle, color: AppColors.habits),
+              title: const Text('Habitos'),
+              onTap: () { Navigator.pop(context); GoRouter.of(context).go(AppRoutes.habits); },
+            ),
+            const Divider(),
             ListTile(
               leading: Icon(Icons.bedtime_outlined, color: AppColors.sleep),
               title: const Text('Sueno'),
@@ -306,6 +356,17 @@ class _AppShell extends StatelessWidget {
         },
       ),
     );
+  }
+
+  String _titleForLocation(BuildContext context) {
+    final location = GoRouterState.of(context).uri.path;
+    if (location.startsWith('/finance')) return 'Finanzas';
+    if (location.startsWith('/gym')) return 'Gimnasio';
+    if (location.startsWith('/nutrition')) return 'Nutricion';
+    if (location.startsWith('/habits')) return 'Habitos';
+    if (location.startsWith('/goals')) return 'Metas';
+    if (location.startsWith('/settings')) return 'Configuracion';
+    return 'LifeOS';
   }
 
   int _selectedIndex(BuildContext context) {

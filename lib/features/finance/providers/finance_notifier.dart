@@ -310,6 +310,16 @@ class FinanceNotifier {
     }
   }
 
+  // --- Recurring Transactions ---
+
+  /// Processes any overdue recurring transactions.
+  /// Currently a no-op stub — recurring transaction scheduling will be
+  /// implemented when the recurring-transactions feature is built out.
+  Future<void> processRecurringTransactions() async {
+    // TODO: Query recurring transaction templates and insert due entries.
+    // Safe to call on every startup; returns immediately until implemented.
+  }
+
   // --- Private helpers ---
 
   Future<int> _resolveCategory(int? categoryId, String type) async {
