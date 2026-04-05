@@ -82,10 +82,28 @@ class BodyMeasurements extends Table {
 
   IntColumn get id => integer().autoIncrement()();
   DateTimeColumn get date => dateTime()();
+  // Existing
   RealColumn get weightKg => real().nullable()();
   RealColumn get bodyFatPercent => real().nullable()();
   RealColumn get waistCm => real().nullable()();
   RealColumn get chestCm => real().nullable()();
   RealColumn get armCm => real().nullable()();
+  // New body composition fields
+  RealColumn get neckCm => real().nullable()();
+  RealColumn get shouldersCm => real().nullable()();
+  RealColumn get forearmCm => real().nullable()();
+  RealColumn get thighCm => real().nullable()();
+  RealColumn get calfCm => real().nullable()();
+  RealColumn get hipCm => real().nullable()();
+  RealColumn get muscleMassKg => real().nullable()();
+  RealColumn get bodyWaterPercent => real().nullable()();
+  // Height needed for BMI calculation
+  RealColumn get heightCm => real().nullable()();
+  // Progress photos stored as file paths
+  TextColumn get photoFrontPath => text().nullable()();
+  TextColumn get photoSidePath => text().nullable()();
+  TextColumn get photoBackPath => text().nullable()();
+  // Notes
+  TextColumn get note => text().nullable().withLength(max: 200)();
   DateTimeColumn get createdAt => dateTime()();
 }

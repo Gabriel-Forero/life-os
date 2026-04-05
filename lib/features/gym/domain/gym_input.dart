@@ -49,22 +49,57 @@ class RoutineExerciseInput {
 class MeasurementInput {
   const MeasurementInput({
     this.weightKg,
+    this.heightCm,
     this.bodyFatPercent,
+    this.muscleMassKg,
+    this.bodyWaterPercent,
     this.waistCm,
     this.chestCm,
     this.armCm,
+    this.neckCm,
+    this.shouldersCm,
+    this.forearmCm,
+    this.thighCm,
+    this.calfCm,
+    this.hipCm,
+    this.photoFrontPath,
+    this.photoSidePath,
+    this.photoBackPath,
+    this.note,
   });
 
   final double? weightKg;
+  final double? heightCm;
   final double? bodyFatPercent;
+  final double? muscleMassKg;
+  final double? bodyWaterPercent;
   final double? waistCm;
   final double? chestCm;
   final double? armCm;
+  final double? neckCm;
+  final double? shouldersCm;
+  final double? forearmCm;
+  final double? thighCm;
+  final double? calfCm;
+  final double? hipCm;
+  final String? photoFrontPath;
+  final String? photoSidePath;
+  final String? photoBackPath;
+  final String? note;
 
   bool get hasAnyValue =>
       weightKg != null ||
+      heightCm != null ||
       bodyFatPercent != null ||
+      muscleMassKg != null ||
+      bodyWaterPercent != null ||
       waistCm != null ||
       chestCm != null ||
-      armCm != null;
+      armCm != null ||
+      neckCm != null ||
+      shouldersCm != null ||
+      forearmCm != null ||
+      thighCm != null ||
+      calfCm != null ||
+      hipCm != null;
 }

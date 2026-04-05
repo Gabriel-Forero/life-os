@@ -5926,6 +5926,142 @@ class $BodyMeasurementsTable extends BodyMeasurements
     type: DriftSqlType.double,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _neckCmMeta = const VerificationMeta('neckCm');
+  @override
+  late final GeneratedColumn<double> neckCm = GeneratedColumn<double>(
+    'neck_cm',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _shouldersCmMeta = const VerificationMeta(
+    'shouldersCm',
+  );
+  @override
+  late final GeneratedColumn<double> shouldersCm = GeneratedColumn<double>(
+    'shoulders_cm',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _forearmCmMeta = const VerificationMeta(
+    'forearmCm',
+  );
+  @override
+  late final GeneratedColumn<double> forearmCm = GeneratedColumn<double>(
+    'forearm_cm',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _thighCmMeta = const VerificationMeta(
+    'thighCm',
+  );
+  @override
+  late final GeneratedColumn<double> thighCm = GeneratedColumn<double>(
+    'thigh_cm',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _calfCmMeta = const VerificationMeta('calfCm');
+  @override
+  late final GeneratedColumn<double> calfCm = GeneratedColumn<double>(
+    'calf_cm',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _hipCmMeta = const VerificationMeta('hipCm');
+  @override
+  late final GeneratedColumn<double> hipCm = GeneratedColumn<double>(
+    'hip_cm',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _muscleMassKgMeta = const VerificationMeta(
+    'muscleMassKg',
+  );
+  @override
+  late final GeneratedColumn<double> muscleMassKg = GeneratedColumn<double>(
+    'muscle_mass_kg',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _bodyWaterPercentMeta = const VerificationMeta(
+    'bodyWaterPercent',
+  );
+  @override
+  late final GeneratedColumn<double> bodyWaterPercent = GeneratedColumn<double>(
+    'body_water_percent',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _heightCmMeta = const VerificationMeta(
+    'heightCm',
+  );
+  @override
+  late final GeneratedColumn<double> heightCm = GeneratedColumn<double>(
+    'height_cm',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _photoFrontPathMeta = const VerificationMeta(
+    'photoFrontPath',
+  );
+  @override
+  late final GeneratedColumn<String> photoFrontPath = GeneratedColumn<String>(
+    'photo_front_path',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _photoSidePathMeta = const VerificationMeta(
+    'photoSidePath',
+  );
+  @override
+  late final GeneratedColumn<String> photoSidePath = GeneratedColumn<String>(
+    'photo_side_path',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _photoBackPathMeta = const VerificationMeta(
+    'photoBackPath',
+  );
+  @override
+  late final GeneratedColumn<String> photoBackPath = GeneratedColumn<String>(
+    'photo_back_path',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+    'note',
+    aliasedName,
+    true,
+    additionalChecks: GeneratedColumn.checkTextLength(maxTextLength: 200),
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -5946,6 +6082,19 @@ class $BodyMeasurementsTable extends BodyMeasurements
     waistCm,
     chestCm,
     armCm,
+    neckCm,
+    shouldersCm,
+    forearmCm,
+    thighCm,
+    calfCm,
+    hipCm,
+    muscleMassKg,
+    bodyWaterPercent,
+    heightCm,
+    photoFrontPath,
+    photoSidePath,
+    photoBackPath,
+    note,
     createdAt,
   ];
   @override
@@ -6004,6 +6153,102 @@ class $BodyMeasurementsTable extends BodyMeasurements
         armCm.isAcceptableOrUnknown(data['arm_cm']!, _armCmMeta),
       );
     }
+    if (data.containsKey('neck_cm')) {
+      context.handle(
+        _neckCmMeta,
+        neckCm.isAcceptableOrUnknown(data['neck_cm']!, _neckCmMeta),
+      );
+    }
+    if (data.containsKey('shoulders_cm')) {
+      context.handle(
+        _shouldersCmMeta,
+        shouldersCm.isAcceptableOrUnknown(
+          data['shoulders_cm']!,
+          _shouldersCmMeta,
+        ),
+      );
+    }
+    if (data.containsKey('forearm_cm')) {
+      context.handle(
+        _forearmCmMeta,
+        forearmCm.isAcceptableOrUnknown(data['forearm_cm']!, _forearmCmMeta),
+      );
+    }
+    if (data.containsKey('thigh_cm')) {
+      context.handle(
+        _thighCmMeta,
+        thighCm.isAcceptableOrUnknown(data['thigh_cm']!, _thighCmMeta),
+      );
+    }
+    if (data.containsKey('calf_cm')) {
+      context.handle(
+        _calfCmMeta,
+        calfCm.isAcceptableOrUnknown(data['calf_cm']!, _calfCmMeta),
+      );
+    }
+    if (data.containsKey('hip_cm')) {
+      context.handle(
+        _hipCmMeta,
+        hipCm.isAcceptableOrUnknown(data['hip_cm']!, _hipCmMeta),
+      );
+    }
+    if (data.containsKey('muscle_mass_kg')) {
+      context.handle(
+        _muscleMassKgMeta,
+        muscleMassKg.isAcceptableOrUnknown(
+          data['muscle_mass_kg']!,
+          _muscleMassKgMeta,
+        ),
+      );
+    }
+    if (data.containsKey('body_water_percent')) {
+      context.handle(
+        _bodyWaterPercentMeta,
+        bodyWaterPercent.isAcceptableOrUnknown(
+          data['body_water_percent']!,
+          _bodyWaterPercentMeta,
+        ),
+      );
+    }
+    if (data.containsKey('height_cm')) {
+      context.handle(
+        _heightCmMeta,
+        heightCm.isAcceptableOrUnknown(data['height_cm']!, _heightCmMeta),
+      );
+    }
+    if (data.containsKey('photo_front_path')) {
+      context.handle(
+        _photoFrontPathMeta,
+        photoFrontPath.isAcceptableOrUnknown(
+          data['photo_front_path']!,
+          _photoFrontPathMeta,
+        ),
+      );
+    }
+    if (data.containsKey('photo_side_path')) {
+      context.handle(
+        _photoSidePathMeta,
+        photoSidePath.isAcceptableOrUnknown(
+          data['photo_side_path']!,
+          _photoSidePathMeta,
+        ),
+      );
+    }
+    if (data.containsKey('photo_back_path')) {
+      context.handle(
+        _photoBackPathMeta,
+        photoBackPath.isAcceptableOrUnknown(
+          data['photo_back_path']!,
+          _photoBackPathMeta,
+        ),
+      );
+    }
+    if (data.containsKey('note')) {
+      context.handle(
+        _noteMeta,
+        note.isAcceptableOrUnknown(data['note']!, _noteMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -6049,6 +6294,58 @@ class $BodyMeasurementsTable extends BodyMeasurements
         DriftSqlType.double,
         data['${effectivePrefix}arm_cm'],
       ),
+      neckCm: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}neck_cm'],
+      ),
+      shouldersCm: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}shoulders_cm'],
+      ),
+      forearmCm: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}forearm_cm'],
+      ),
+      thighCm: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}thigh_cm'],
+      ),
+      calfCm: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}calf_cm'],
+      ),
+      hipCm: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}hip_cm'],
+      ),
+      muscleMassKg: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}muscle_mass_kg'],
+      ),
+      bodyWaterPercent: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}body_water_percent'],
+      ),
+      heightCm: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}height_cm'],
+      ),
+      photoFrontPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}photo_front_path'],
+      ),
+      photoSidePath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}photo_side_path'],
+      ),
+      photoBackPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}photo_back_path'],
+      ),
+      note: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}note'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -6070,6 +6367,19 @@ class BodyMeasurement extends DataClass implements Insertable<BodyMeasurement> {
   final double? waistCm;
   final double? chestCm;
   final double? armCm;
+  final double? neckCm;
+  final double? shouldersCm;
+  final double? forearmCm;
+  final double? thighCm;
+  final double? calfCm;
+  final double? hipCm;
+  final double? muscleMassKg;
+  final double? bodyWaterPercent;
+  final double? heightCm;
+  final String? photoFrontPath;
+  final String? photoSidePath;
+  final String? photoBackPath;
+  final String? note;
   final DateTime createdAt;
   const BodyMeasurement({
     required this.id,
@@ -6079,6 +6389,19 @@ class BodyMeasurement extends DataClass implements Insertable<BodyMeasurement> {
     this.waistCm,
     this.chestCm,
     this.armCm,
+    this.neckCm,
+    this.shouldersCm,
+    this.forearmCm,
+    this.thighCm,
+    this.calfCm,
+    this.hipCm,
+    this.muscleMassKg,
+    this.bodyWaterPercent,
+    this.heightCm,
+    this.photoFrontPath,
+    this.photoSidePath,
+    this.photoBackPath,
+    this.note,
     required this.createdAt,
   });
   @override
@@ -6100,6 +6423,45 @@ class BodyMeasurement extends DataClass implements Insertable<BodyMeasurement> {
     }
     if (!nullToAbsent || armCm != null) {
       map['arm_cm'] = Variable<double>(armCm);
+    }
+    if (!nullToAbsent || neckCm != null) {
+      map['neck_cm'] = Variable<double>(neckCm);
+    }
+    if (!nullToAbsent || shouldersCm != null) {
+      map['shoulders_cm'] = Variable<double>(shouldersCm);
+    }
+    if (!nullToAbsent || forearmCm != null) {
+      map['forearm_cm'] = Variable<double>(forearmCm);
+    }
+    if (!nullToAbsent || thighCm != null) {
+      map['thigh_cm'] = Variable<double>(thighCm);
+    }
+    if (!nullToAbsent || calfCm != null) {
+      map['calf_cm'] = Variable<double>(calfCm);
+    }
+    if (!nullToAbsent || hipCm != null) {
+      map['hip_cm'] = Variable<double>(hipCm);
+    }
+    if (!nullToAbsent || muscleMassKg != null) {
+      map['muscle_mass_kg'] = Variable<double>(muscleMassKg);
+    }
+    if (!nullToAbsent || bodyWaterPercent != null) {
+      map['body_water_percent'] = Variable<double>(bodyWaterPercent);
+    }
+    if (!nullToAbsent || heightCm != null) {
+      map['height_cm'] = Variable<double>(heightCm);
+    }
+    if (!nullToAbsent || photoFrontPath != null) {
+      map['photo_front_path'] = Variable<String>(photoFrontPath);
+    }
+    if (!nullToAbsent || photoSidePath != null) {
+      map['photo_side_path'] = Variable<String>(photoSidePath);
+    }
+    if (!nullToAbsent || photoBackPath != null) {
+      map['photo_back_path'] = Variable<String>(photoBackPath);
+    }
+    if (!nullToAbsent || note != null) {
+      map['note'] = Variable<String>(note);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
@@ -6124,6 +6486,43 @@ class BodyMeasurement extends DataClass implements Insertable<BodyMeasurement> {
       armCm: armCm == null && nullToAbsent
           ? const Value.absent()
           : Value(armCm),
+      neckCm: neckCm == null && nullToAbsent
+          ? const Value.absent()
+          : Value(neckCm),
+      shouldersCm: shouldersCm == null && nullToAbsent
+          ? const Value.absent()
+          : Value(shouldersCm),
+      forearmCm: forearmCm == null && nullToAbsent
+          ? const Value.absent()
+          : Value(forearmCm),
+      thighCm: thighCm == null && nullToAbsent
+          ? const Value.absent()
+          : Value(thighCm),
+      calfCm: calfCm == null && nullToAbsent
+          ? const Value.absent()
+          : Value(calfCm),
+      hipCm: hipCm == null && nullToAbsent
+          ? const Value.absent()
+          : Value(hipCm),
+      muscleMassKg: muscleMassKg == null && nullToAbsent
+          ? const Value.absent()
+          : Value(muscleMassKg),
+      bodyWaterPercent: bodyWaterPercent == null && nullToAbsent
+          ? const Value.absent()
+          : Value(bodyWaterPercent),
+      heightCm: heightCm == null && nullToAbsent
+          ? const Value.absent()
+          : Value(heightCm),
+      photoFrontPath: photoFrontPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(photoFrontPath),
+      photoSidePath: photoSidePath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(photoSidePath),
+      photoBackPath: photoBackPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(photoBackPath),
+      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
       createdAt: Value(createdAt),
     );
   }
@@ -6141,6 +6540,19 @@ class BodyMeasurement extends DataClass implements Insertable<BodyMeasurement> {
       waistCm: serializer.fromJson<double?>(json['waistCm']),
       chestCm: serializer.fromJson<double?>(json['chestCm']),
       armCm: serializer.fromJson<double?>(json['armCm']),
+      neckCm: serializer.fromJson<double?>(json['neckCm']),
+      shouldersCm: serializer.fromJson<double?>(json['shouldersCm']),
+      forearmCm: serializer.fromJson<double?>(json['forearmCm']),
+      thighCm: serializer.fromJson<double?>(json['thighCm']),
+      calfCm: serializer.fromJson<double?>(json['calfCm']),
+      hipCm: serializer.fromJson<double?>(json['hipCm']),
+      muscleMassKg: serializer.fromJson<double?>(json['muscleMassKg']),
+      bodyWaterPercent: serializer.fromJson<double?>(json['bodyWaterPercent']),
+      heightCm: serializer.fromJson<double?>(json['heightCm']),
+      photoFrontPath: serializer.fromJson<String?>(json['photoFrontPath']),
+      photoSidePath: serializer.fromJson<String?>(json['photoSidePath']),
+      photoBackPath: serializer.fromJson<String?>(json['photoBackPath']),
+      note: serializer.fromJson<String?>(json['note']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -6155,6 +6567,19 @@ class BodyMeasurement extends DataClass implements Insertable<BodyMeasurement> {
       'waistCm': serializer.toJson<double?>(waistCm),
       'chestCm': serializer.toJson<double?>(chestCm),
       'armCm': serializer.toJson<double?>(armCm),
+      'neckCm': serializer.toJson<double?>(neckCm),
+      'shouldersCm': serializer.toJson<double?>(shouldersCm),
+      'forearmCm': serializer.toJson<double?>(forearmCm),
+      'thighCm': serializer.toJson<double?>(thighCm),
+      'calfCm': serializer.toJson<double?>(calfCm),
+      'hipCm': serializer.toJson<double?>(hipCm),
+      'muscleMassKg': serializer.toJson<double?>(muscleMassKg),
+      'bodyWaterPercent': serializer.toJson<double?>(bodyWaterPercent),
+      'heightCm': serializer.toJson<double?>(heightCm),
+      'photoFrontPath': serializer.toJson<String?>(photoFrontPath),
+      'photoSidePath': serializer.toJson<String?>(photoSidePath),
+      'photoBackPath': serializer.toJson<String?>(photoBackPath),
+      'note': serializer.toJson<String?>(note),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -6167,6 +6592,19 @@ class BodyMeasurement extends DataClass implements Insertable<BodyMeasurement> {
     Value<double?> waistCm = const Value.absent(),
     Value<double?> chestCm = const Value.absent(),
     Value<double?> armCm = const Value.absent(),
+    Value<double?> neckCm = const Value.absent(),
+    Value<double?> shouldersCm = const Value.absent(),
+    Value<double?> forearmCm = const Value.absent(),
+    Value<double?> thighCm = const Value.absent(),
+    Value<double?> calfCm = const Value.absent(),
+    Value<double?> hipCm = const Value.absent(),
+    Value<double?> muscleMassKg = const Value.absent(),
+    Value<double?> bodyWaterPercent = const Value.absent(),
+    Value<double?> heightCm = const Value.absent(),
+    Value<String?> photoFrontPath = const Value.absent(),
+    Value<String?> photoSidePath = const Value.absent(),
+    Value<String?> photoBackPath = const Value.absent(),
+    Value<String?> note = const Value.absent(),
     DateTime? createdAt,
   }) => BodyMeasurement(
     id: id ?? this.id,
@@ -6178,6 +6616,27 @@ class BodyMeasurement extends DataClass implements Insertable<BodyMeasurement> {
     waistCm: waistCm.present ? waistCm.value : this.waistCm,
     chestCm: chestCm.present ? chestCm.value : this.chestCm,
     armCm: armCm.present ? armCm.value : this.armCm,
+    neckCm: neckCm.present ? neckCm.value : this.neckCm,
+    shouldersCm: shouldersCm.present ? shouldersCm.value : this.shouldersCm,
+    forearmCm: forearmCm.present ? forearmCm.value : this.forearmCm,
+    thighCm: thighCm.present ? thighCm.value : this.thighCm,
+    calfCm: calfCm.present ? calfCm.value : this.calfCm,
+    hipCm: hipCm.present ? hipCm.value : this.hipCm,
+    muscleMassKg: muscleMassKg.present ? muscleMassKg.value : this.muscleMassKg,
+    bodyWaterPercent: bodyWaterPercent.present
+        ? bodyWaterPercent.value
+        : this.bodyWaterPercent,
+    heightCm: heightCm.present ? heightCm.value : this.heightCm,
+    photoFrontPath: photoFrontPath.present
+        ? photoFrontPath.value
+        : this.photoFrontPath,
+    photoSidePath: photoSidePath.present
+        ? photoSidePath.value
+        : this.photoSidePath,
+    photoBackPath: photoBackPath.present
+        ? photoBackPath.value
+        : this.photoBackPath,
+    note: note.present ? note.value : this.note,
     createdAt: createdAt ?? this.createdAt,
   );
   BodyMeasurement copyWithCompanion(BodyMeasurementsCompanion data) {
@@ -6191,6 +6650,31 @@ class BodyMeasurement extends DataClass implements Insertable<BodyMeasurement> {
       waistCm: data.waistCm.present ? data.waistCm.value : this.waistCm,
       chestCm: data.chestCm.present ? data.chestCm.value : this.chestCm,
       armCm: data.armCm.present ? data.armCm.value : this.armCm,
+      neckCm: data.neckCm.present ? data.neckCm.value : this.neckCm,
+      shouldersCm: data.shouldersCm.present
+          ? data.shouldersCm.value
+          : this.shouldersCm,
+      forearmCm: data.forearmCm.present ? data.forearmCm.value : this.forearmCm,
+      thighCm: data.thighCm.present ? data.thighCm.value : this.thighCm,
+      calfCm: data.calfCm.present ? data.calfCm.value : this.calfCm,
+      hipCm: data.hipCm.present ? data.hipCm.value : this.hipCm,
+      muscleMassKg: data.muscleMassKg.present
+          ? data.muscleMassKg.value
+          : this.muscleMassKg,
+      bodyWaterPercent: data.bodyWaterPercent.present
+          ? data.bodyWaterPercent.value
+          : this.bodyWaterPercent,
+      heightCm: data.heightCm.present ? data.heightCm.value : this.heightCm,
+      photoFrontPath: data.photoFrontPath.present
+          ? data.photoFrontPath.value
+          : this.photoFrontPath,
+      photoSidePath: data.photoSidePath.present
+          ? data.photoSidePath.value
+          : this.photoSidePath,
+      photoBackPath: data.photoBackPath.present
+          ? data.photoBackPath.value
+          : this.photoBackPath,
+      note: data.note.present ? data.note.value : this.note,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -6205,13 +6689,26 @@ class BodyMeasurement extends DataClass implements Insertable<BodyMeasurement> {
           ..write('waistCm: $waistCm, ')
           ..write('chestCm: $chestCm, ')
           ..write('armCm: $armCm, ')
+          ..write('neckCm: $neckCm, ')
+          ..write('shouldersCm: $shouldersCm, ')
+          ..write('forearmCm: $forearmCm, ')
+          ..write('thighCm: $thighCm, ')
+          ..write('calfCm: $calfCm, ')
+          ..write('hipCm: $hipCm, ')
+          ..write('muscleMassKg: $muscleMassKg, ')
+          ..write('bodyWaterPercent: $bodyWaterPercent, ')
+          ..write('heightCm: $heightCm, ')
+          ..write('photoFrontPath: $photoFrontPath, ')
+          ..write('photoSidePath: $photoSidePath, ')
+          ..write('photoBackPath: $photoBackPath, ')
+          ..write('note: $note, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     id,
     date,
     weightKg,
@@ -6219,8 +6716,21 @@ class BodyMeasurement extends DataClass implements Insertable<BodyMeasurement> {
     waistCm,
     chestCm,
     armCm,
+    neckCm,
+    shouldersCm,
+    forearmCm,
+    thighCm,
+    calfCm,
+    hipCm,
+    muscleMassKg,
+    bodyWaterPercent,
+    heightCm,
+    photoFrontPath,
+    photoSidePath,
+    photoBackPath,
+    note,
     createdAt,
-  );
+  ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -6232,6 +6742,19 @@ class BodyMeasurement extends DataClass implements Insertable<BodyMeasurement> {
           other.waistCm == this.waistCm &&
           other.chestCm == this.chestCm &&
           other.armCm == this.armCm &&
+          other.neckCm == this.neckCm &&
+          other.shouldersCm == this.shouldersCm &&
+          other.forearmCm == this.forearmCm &&
+          other.thighCm == this.thighCm &&
+          other.calfCm == this.calfCm &&
+          other.hipCm == this.hipCm &&
+          other.muscleMassKg == this.muscleMassKg &&
+          other.bodyWaterPercent == this.bodyWaterPercent &&
+          other.heightCm == this.heightCm &&
+          other.photoFrontPath == this.photoFrontPath &&
+          other.photoSidePath == this.photoSidePath &&
+          other.photoBackPath == this.photoBackPath &&
+          other.note == this.note &&
           other.createdAt == this.createdAt);
 }
 
@@ -6243,6 +6766,19 @@ class BodyMeasurementsCompanion extends UpdateCompanion<BodyMeasurement> {
   final Value<double?> waistCm;
   final Value<double?> chestCm;
   final Value<double?> armCm;
+  final Value<double?> neckCm;
+  final Value<double?> shouldersCm;
+  final Value<double?> forearmCm;
+  final Value<double?> thighCm;
+  final Value<double?> calfCm;
+  final Value<double?> hipCm;
+  final Value<double?> muscleMassKg;
+  final Value<double?> bodyWaterPercent;
+  final Value<double?> heightCm;
+  final Value<String?> photoFrontPath;
+  final Value<String?> photoSidePath;
+  final Value<String?> photoBackPath;
+  final Value<String?> note;
   final Value<DateTime> createdAt;
   const BodyMeasurementsCompanion({
     this.id = const Value.absent(),
@@ -6252,6 +6788,19 @@ class BodyMeasurementsCompanion extends UpdateCompanion<BodyMeasurement> {
     this.waistCm = const Value.absent(),
     this.chestCm = const Value.absent(),
     this.armCm = const Value.absent(),
+    this.neckCm = const Value.absent(),
+    this.shouldersCm = const Value.absent(),
+    this.forearmCm = const Value.absent(),
+    this.thighCm = const Value.absent(),
+    this.calfCm = const Value.absent(),
+    this.hipCm = const Value.absent(),
+    this.muscleMassKg = const Value.absent(),
+    this.bodyWaterPercent = const Value.absent(),
+    this.heightCm = const Value.absent(),
+    this.photoFrontPath = const Value.absent(),
+    this.photoSidePath = const Value.absent(),
+    this.photoBackPath = const Value.absent(),
+    this.note = const Value.absent(),
     this.createdAt = const Value.absent(),
   });
   BodyMeasurementsCompanion.insert({
@@ -6262,6 +6811,19 @@ class BodyMeasurementsCompanion extends UpdateCompanion<BodyMeasurement> {
     this.waistCm = const Value.absent(),
     this.chestCm = const Value.absent(),
     this.armCm = const Value.absent(),
+    this.neckCm = const Value.absent(),
+    this.shouldersCm = const Value.absent(),
+    this.forearmCm = const Value.absent(),
+    this.thighCm = const Value.absent(),
+    this.calfCm = const Value.absent(),
+    this.hipCm = const Value.absent(),
+    this.muscleMassKg = const Value.absent(),
+    this.bodyWaterPercent = const Value.absent(),
+    this.heightCm = const Value.absent(),
+    this.photoFrontPath = const Value.absent(),
+    this.photoSidePath = const Value.absent(),
+    this.photoBackPath = const Value.absent(),
+    this.note = const Value.absent(),
     required DateTime createdAt,
   }) : date = Value(date),
        createdAt = Value(createdAt);
@@ -6273,6 +6835,19 @@ class BodyMeasurementsCompanion extends UpdateCompanion<BodyMeasurement> {
     Expression<double>? waistCm,
     Expression<double>? chestCm,
     Expression<double>? armCm,
+    Expression<double>? neckCm,
+    Expression<double>? shouldersCm,
+    Expression<double>? forearmCm,
+    Expression<double>? thighCm,
+    Expression<double>? calfCm,
+    Expression<double>? hipCm,
+    Expression<double>? muscleMassKg,
+    Expression<double>? bodyWaterPercent,
+    Expression<double>? heightCm,
+    Expression<String>? photoFrontPath,
+    Expression<String>? photoSidePath,
+    Expression<String>? photoBackPath,
+    Expression<String>? note,
     Expression<DateTime>? createdAt,
   }) {
     return RawValuesInsertable({
@@ -6283,6 +6858,19 @@ class BodyMeasurementsCompanion extends UpdateCompanion<BodyMeasurement> {
       if (waistCm != null) 'waist_cm': waistCm,
       if (chestCm != null) 'chest_cm': chestCm,
       if (armCm != null) 'arm_cm': armCm,
+      if (neckCm != null) 'neck_cm': neckCm,
+      if (shouldersCm != null) 'shoulders_cm': shouldersCm,
+      if (forearmCm != null) 'forearm_cm': forearmCm,
+      if (thighCm != null) 'thigh_cm': thighCm,
+      if (calfCm != null) 'calf_cm': calfCm,
+      if (hipCm != null) 'hip_cm': hipCm,
+      if (muscleMassKg != null) 'muscle_mass_kg': muscleMassKg,
+      if (bodyWaterPercent != null) 'body_water_percent': bodyWaterPercent,
+      if (heightCm != null) 'height_cm': heightCm,
+      if (photoFrontPath != null) 'photo_front_path': photoFrontPath,
+      if (photoSidePath != null) 'photo_side_path': photoSidePath,
+      if (photoBackPath != null) 'photo_back_path': photoBackPath,
+      if (note != null) 'note': note,
       if (createdAt != null) 'created_at': createdAt,
     });
   }
@@ -6295,6 +6883,19 @@ class BodyMeasurementsCompanion extends UpdateCompanion<BodyMeasurement> {
     Value<double?>? waistCm,
     Value<double?>? chestCm,
     Value<double?>? armCm,
+    Value<double?>? neckCm,
+    Value<double?>? shouldersCm,
+    Value<double?>? forearmCm,
+    Value<double?>? thighCm,
+    Value<double?>? calfCm,
+    Value<double?>? hipCm,
+    Value<double?>? muscleMassKg,
+    Value<double?>? bodyWaterPercent,
+    Value<double?>? heightCm,
+    Value<String?>? photoFrontPath,
+    Value<String?>? photoSidePath,
+    Value<String?>? photoBackPath,
+    Value<String?>? note,
     Value<DateTime>? createdAt,
   }) {
     return BodyMeasurementsCompanion(
@@ -6305,6 +6906,19 @@ class BodyMeasurementsCompanion extends UpdateCompanion<BodyMeasurement> {
       waistCm: waistCm ?? this.waistCm,
       chestCm: chestCm ?? this.chestCm,
       armCm: armCm ?? this.armCm,
+      neckCm: neckCm ?? this.neckCm,
+      shouldersCm: shouldersCm ?? this.shouldersCm,
+      forearmCm: forearmCm ?? this.forearmCm,
+      thighCm: thighCm ?? this.thighCm,
+      calfCm: calfCm ?? this.calfCm,
+      hipCm: hipCm ?? this.hipCm,
+      muscleMassKg: muscleMassKg ?? this.muscleMassKg,
+      bodyWaterPercent: bodyWaterPercent ?? this.bodyWaterPercent,
+      heightCm: heightCm ?? this.heightCm,
+      photoFrontPath: photoFrontPath ?? this.photoFrontPath,
+      photoSidePath: photoSidePath ?? this.photoSidePath,
+      photoBackPath: photoBackPath ?? this.photoBackPath,
+      note: note ?? this.note,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -6333,6 +6947,45 @@ class BodyMeasurementsCompanion extends UpdateCompanion<BodyMeasurement> {
     if (armCm.present) {
       map['arm_cm'] = Variable<double>(armCm.value);
     }
+    if (neckCm.present) {
+      map['neck_cm'] = Variable<double>(neckCm.value);
+    }
+    if (shouldersCm.present) {
+      map['shoulders_cm'] = Variable<double>(shouldersCm.value);
+    }
+    if (forearmCm.present) {
+      map['forearm_cm'] = Variable<double>(forearmCm.value);
+    }
+    if (thighCm.present) {
+      map['thigh_cm'] = Variable<double>(thighCm.value);
+    }
+    if (calfCm.present) {
+      map['calf_cm'] = Variable<double>(calfCm.value);
+    }
+    if (hipCm.present) {
+      map['hip_cm'] = Variable<double>(hipCm.value);
+    }
+    if (muscleMassKg.present) {
+      map['muscle_mass_kg'] = Variable<double>(muscleMassKg.value);
+    }
+    if (bodyWaterPercent.present) {
+      map['body_water_percent'] = Variable<double>(bodyWaterPercent.value);
+    }
+    if (heightCm.present) {
+      map['height_cm'] = Variable<double>(heightCm.value);
+    }
+    if (photoFrontPath.present) {
+      map['photo_front_path'] = Variable<String>(photoFrontPath.value);
+    }
+    if (photoSidePath.present) {
+      map['photo_side_path'] = Variable<String>(photoSidePath.value);
+    }
+    if (photoBackPath.present) {
+      map['photo_back_path'] = Variable<String>(photoBackPath.value);
+    }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -6349,6 +7002,19 @@ class BodyMeasurementsCompanion extends UpdateCompanion<BodyMeasurement> {
           ..write('waistCm: $waistCm, ')
           ..write('chestCm: $chestCm, ')
           ..write('armCm: $armCm, ')
+          ..write('neckCm: $neckCm, ')
+          ..write('shouldersCm: $shouldersCm, ')
+          ..write('forearmCm: $forearmCm, ')
+          ..write('thighCm: $thighCm, ')
+          ..write('calfCm: $calfCm, ')
+          ..write('hipCm: $hipCm, ')
+          ..write('muscleMassKg: $muscleMassKg, ')
+          ..write('bodyWaterPercent: $bodyWaterPercent, ')
+          ..write('heightCm: $heightCm, ')
+          ..write('photoFrontPath: $photoFrontPath, ')
+          ..write('photoSidePath: $photoSidePath, ')
+          ..write('photoBackPath: $photoBackPath, ')
+          ..write('note: $note, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -21815,6 +22481,19 @@ typedef $$BodyMeasurementsTableCreateCompanionBuilder =
       Value<double?> waistCm,
       Value<double?> chestCm,
       Value<double?> armCm,
+      Value<double?> neckCm,
+      Value<double?> shouldersCm,
+      Value<double?> forearmCm,
+      Value<double?> thighCm,
+      Value<double?> calfCm,
+      Value<double?> hipCm,
+      Value<double?> muscleMassKg,
+      Value<double?> bodyWaterPercent,
+      Value<double?> heightCm,
+      Value<String?> photoFrontPath,
+      Value<String?> photoSidePath,
+      Value<String?> photoBackPath,
+      Value<String?> note,
       required DateTime createdAt,
     });
 typedef $$BodyMeasurementsTableUpdateCompanionBuilder =
@@ -21826,6 +22505,19 @@ typedef $$BodyMeasurementsTableUpdateCompanionBuilder =
       Value<double?> waistCm,
       Value<double?> chestCm,
       Value<double?> armCm,
+      Value<double?> neckCm,
+      Value<double?> shouldersCm,
+      Value<double?> forearmCm,
+      Value<double?> thighCm,
+      Value<double?> calfCm,
+      Value<double?> hipCm,
+      Value<double?> muscleMassKg,
+      Value<double?> bodyWaterPercent,
+      Value<double?> heightCm,
+      Value<String?> photoFrontPath,
+      Value<String?> photoSidePath,
+      Value<String?> photoBackPath,
+      Value<String?> note,
       Value<DateTime> createdAt,
     });
 
@@ -21870,6 +22562,71 @@ class $$BodyMeasurementsTableFilterComposer
 
   ColumnFilters<double> get armCm => $composableBuilder(
     column: $table.armCm,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get neckCm => $composableBuilder(
+    column: $table.neckCm,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get shouldersCm => $composableBuilder(
+    column: $table.shouldersCm,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get forearmCm => $composableBuilder(
+    column: $table.forearmCm,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get thighCm => $composableBuilder(
+    column: $table.thighCm,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get calfCm => $composableBuilder(
+    column: $table.calfCm,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get hipCm => $composableBuilder(
+    column: $table.hipCm,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get muscleMassKg => $composableBuilder(
+    column: $table.muscleMassKg,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get bodyWaterPercent => $composableBuilder(
+    column: $table.bodyWaterPercent,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get heightCm => $composableBuilder(
+    column: $table.heightCm,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get photoFrontPath => $composableBuilder(
+    column: $table.photoFrontPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get photoSidePath => $composableBuilder(
+    column: $table.photoSidePath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get photoBackPath => $composableBuilder(
+    column: $table.photoBackPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get note => $composableBuilder(
+    column: $table.note,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -21923,6 +22680,71 @@ class $$BodyMeasurementsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<double> get neckCm => $composableBuilder(
+    column: $table.neckCm,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get shouldersCm => $composableBuilder(
+    column: $table.shouldersCm,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get forearmCm => $composableBuilder(
+    column: $table.forearmCm,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get thighCm => $composableBuilder(
+    column: $table.thighCm,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get calfCm => $composableBuilder(
+    column: $table.calfCm,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get hipCm => $composableBuilder(
+    column: $table.hipCm,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get muscleMassKg => $composableBuilder(
+    column: $table.muscleMassKg,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get bodyWaterPercent => $composableBuilder(
+    column: $table.bodyWaterPercent,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get heightCm => $composableBuilder(
+    column: $table.heightCm,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get photoFrontPath => $composableBuilder(
+    column: $table.photoFrontPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get photoSidePath => $composableBuilder(
+    column: $table.photoSidePath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get photoBackPath => $composableBuilder(
+    column: $table.photoBackPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -21960,6 +22782,57 @@ class $$BodyMeasurementsTableAnnotationComposer
 
   GeneratedColumn<double> get armCm =>
       $composableBuilder(column: $table.armCm, builder: (column) => column);
+
+  GeneratedColumn<double> get neckCm =>
+      $composableBuilder(column: $table.neckCm, builder: (column) => column);
+
+  GeneratedColumn<double> get shouldersCm => $composableBuilder(
+    column: $table.shouldersCm,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get forearmCm =>
+      $composableBuilder(column: $table.forearmCm, builder: (column) => column);
+
+  GeneratedColumn<double> get thighCm =>
+      $composableBuilder(column: $table.thighCm, builder: (column) => column);
+
+  GeneratedColumn<double> get calfCm =>
+      $composableBuilder(column: $table.calfCm, builder: (column) => column);
+
+  GeneratedColumn<double> get hipCm =>
+      $composableBuilder(column: $table.hipCm, builder: (column) => column);
+
+  GeneratedColumn<double> get muscleMassKg => $composableBuilder(
+    column: $table.muscleMassKg,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get bodyWaterPercent => $composableBuilder(
+    column: $table.bodyWaterPercent,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get heightCm =>
+      $composableBuilder(column: $table.heightCm, builder: (column) => column);
+
+  GeneratedColumn<String> get photoFrontPath => $composableBuilder(
+    column: $table.photoFrontPath,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get photoSidePath => $composableBuilder(
+    column: $table.photoSidePath,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get photoBackPath => $composableBuilder(
+    column: $table.photoBackPath,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -22009,6 +22882,19 @@ class $$BodyMeasurementsTableTableManager
                 Value<double?> waistCm = const Value.absent(),
                 Value<double?> chestCm = const Value.absent(),
                 Value<double?> armCm = const Value.absent(),
+                Value<double?> neckCm = const Value.absent(),
+                Value<double?> shouldersCm = const Value.absent(),
+                Value<double?> forearmCm = const Value.absent(),
+                Value<double?> thighCm = const Value.absent(),
+                Value<double?> calfCm = const Value.absent(),
+                Value<double?> hipCm = const Value.absent(),
+                Value<double?> muscleMassKg = const Value.absent(),
+                Value<double?> bodyWaterPercent = const Value.absent(),
+                Value<double?> heightCm = const Value.absent(),
+                Value<String?> photoFrontPath = const Value.absent(),
+                Value<String?> photoSidePath = const Value.absent(),
+                Value<String?> photoBackPath = const Value.absent(),
+                Value<String?> note = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => BodyMeasurementsCompanion(
                 id: id,
@@ -22018,6 +22904,19 @@ class $$BodyMeasurementsTableTableManager
                 waistCm: waistCm,
                 chestCm: chestCm,
                 armCm: armCm,
+                neckCm: neckCm,
+                shouldersCm: shouldersCm,
+                forearmCm: forearmCm,
+                thighCm: thighCm,
+                calfCm: calfCm,
+                hipCm: hipCm,
+                muscleMassKg: muscleMassKg,
+                bodyWaterPercent: bodyWaterPercent,
+                heightCm: heightCm,
+                photoFrontPath: photoFrontPath,
+                photoSidePath: photoSidePath,
+                photoBackPath: photoBackPath,
+                note: note,
                 createdAt: createdAt,
               ),
           createCompanionCallback:
@@ -22029,6 +22928,19 @@ class $$BodyMeasurementsTableTableManager
                 Value<double?> waistCm = const Value.absent(),
                 Value<double?> chestCm = const Value.absent(),
                 Value<double?> armCm = const Value.absent(),
+                Value<double?> neckCm = const Value.absent(),
+                Value<double?> shouldersCm = const Value.absent(),
+                Value<double?> forearmCm = const Value.absent(),
+                Value<double?> thighCm = const Value.absent(),
+                Value<double?> calfCm = const Value.absent(),
+                Value<double?> hipCm = const Value.absent(),
+                Value<double?> muscleMassKg = const Value.absent(),
+                Value<double?> bodyWaterPercent = const Value.absent(),
+                Value<double?> heightCm = const Value.absent(),
+                Value<String?> photoFrontPath = const Value.absent(),
+                Value<String?> photoSidePath = const Value.absent(),
+                Value<String?> photoBackPath = const Value.absent(),
+                Value<String?> note = const Value.absent(),
                 required DateTime createdAt,
               }) => BodyMeasurementsCompanion.insert(
                 id: id,
@@ -22038,6 +22950,19 @@ class $$BodyMeasurementsTableTableManager
                 waistCm: waistCm,
                 chestCm: chestCm,
                 armCm: armCm,
+                neckCm: neckCm,
+                shouldersCm: shouldersCm,
+                forearmCm: forearmCm,
+                thighCm: thighCm,
+                calfCm: calfCm,
+                hipCm: hipCm,
+                muscleMassKg: muscleMassKg,
+                bodyWaterPercent: bodyWaterPercent,
+                heightCm: heightCm,
+                photoFrontPath: photoFrontPath,
+                photoSidePath: photoSidePath,
+                photoBackPath: photoBackPath,
+                note: note,
                 createdAt: createdAt,
               ),
           withReferenceMapper: (p0) => p0

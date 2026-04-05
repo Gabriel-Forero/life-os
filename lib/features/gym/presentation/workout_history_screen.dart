@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:life_os/core/constants/app_colors.dart';
 import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
+import 'package:life_os/core/router/app_router.dart';
 import 'package:life_os/core/widgets/animated_list_item.dart';
 import 'package:life_os/core/widgets/pressable_card.dart';
 
@@ -32,6 +34,17 @@ class WorkoutHistoryScreen extends ConsumerWidget {
           child: const Text('Historial de entrenamientos'),
         ),
         actions: [
+          Semantics(
+            label: 'Medidas corporales',
+            button: true,
+            child: IconButton(
+              key: const ValueKey('workout-history-measurements-button'),
+              icon: const Icon(Icons.monitor_weight_outlined),
+              onPressed: () =>
+                  GoRouter.of(context).push(AppRoutes.gymMeasurements),
+              tooltip: 'Medidas corporales',
+            ),
+          ),
           Semantics(
             label: 'Filtrar historial',
             button: true,

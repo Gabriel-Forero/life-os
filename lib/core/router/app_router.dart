@@ -21,6 +21,7 @@ import 'package:life_os/features/goals/presentation/goals_overview_screen.dart';
 import 'package:life_os/features/gym/presentation/active_workout_screen.dart';
 import 'package:life_os/features/gym/presentation/body_measurements_screen.dart';
 import 'package:life_os/features/gym/presentation/exercise_library_screen.dart';
+import 'package:life_os/features/gym/presentation/gym_dashboard_screen.dart';
 import 'package:life_os/features/gym/presentation/routine_builder_screen.dart';
 import 'package:life_os/features/gym/presentation/workout_history_screen.dart';
 import 'package:life_os/features/habits/presentation/add_edit_habit_screen.dart';
@@ -160,7 +161,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           // Gym
           GoRoute(
             path: AppRoutes.gym,
-            builder: (context, state) => const WorkoutHistoryScreen(),
+            builder: (context, state) => const GymDashboardScreen(),
           ),
           // Nutrition
           GoRoute(

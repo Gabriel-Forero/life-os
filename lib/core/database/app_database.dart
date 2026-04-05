@@ -86,7 +86,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -147,6 +147,25 @@ class AppDatabase extends _$AppDatabase {
           if (from < 10) {
             await m.addColumn(routineExercises, routineExercises.dayNumber);
             await m.addColumn(routineExercises, routineExercises.dayName);
+          }
+          if (from < 11) {
+            await m.addColumn(bodyMeasurements, bodyMeasurements.neckCm);
+            await m.addColumn(bodyMeasurements, bodyMeasurements.shouldersCm);
+            await m.addColumn(bodyMeasurements, bodyMeasurements.forearmCm);
+            await m.addColumn(bodyMeasurements, bodyMeasurements.thighCm);
+            await m.addColumn(bodyMeasurements, bodyMeasurements.calfCm);
+            await m.addColumn(bodyMeasurements, bodyMeasurements.hipCm);
+            await m.addColumn(bodyMeasurements, bodyMeasurements.muscleMassKg);
+            await m.addColumn(
+                bodyMeasurements, bodyMeasurements.bodyWaterPercent);
+            await m.addColumn(bodyMeasurements, bodyMeasurements.heightCm);
+            await m.addColumn(
+                bodyMeasurements, bodyMeasurements.photoFrontPath);
+            await m.addColumn(
+                bodyMeasurements, bodyMeasurements.photoSidePath);
+            await m.addColumn(
+                bodyMeasurements, bodyMeasurements.photoBackPath);
+            await m.addColumn(bodyMeasurements, bodyMeasurements.note);
           }
         },
       );
