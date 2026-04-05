@@ -54,7 +54,14 @@ Future<void> _initializeApp(ProviderContainer container) async {
 
     // 7. Process any overdue recurring transactions
     logger.info('Processing recurring transactions...');
-    await container.read(financeNotifierProvider).processRecurringTransactions();
+    final recurringResult =
+        await container.read(financeNotifierProvider).processRecurringTransactions();
+    final recurringCreated = recurringResult.valueOrNull ?? 0;
+    if (recurringCreated > 0) {
+      logger.info('Created $recurringCreated recurring transaction(s).');
+      container.read(recurringCreatedCountProvider.notifier).state =
+          recurringCreated;
+    }
 
     logger.info('App initialization complete.');
   } catch (e, st) {

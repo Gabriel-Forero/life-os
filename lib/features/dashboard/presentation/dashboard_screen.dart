@@ -27,6 +27,8 @@ class DashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  bool _recurringSnackbarShown = false;
+
   @override
   void initState() {
     super.initState();
@@ -36,6 +38,28 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   Future<void> _init() async {
     await ref.read(dashboardNotifierProvider).initialize();
     await ref.read(dayScoreNotifierProvider).initialize();
+    // Show one-shot snackbar if recurring transactions were processed at startup.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShowRecurringSnackbar());
+  }
+
+  void _maybeShowRecurringSnackbar() {
+    if (_recurringSnackbarShown || !mounted) return;
+    final count = ref.read(recurringCreatedCountProvider);
+    if (count > 0) {
+      _recurringSnackbarShown = true;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Se crearon $count transaccione${count == 1 ? '' : 's'} recurrentes'),
+          duration: const Duration(seconds: 6),
+          action: SnackBarAction(
+            label: 'Ver',
+            onPressed: () => GoRouter.of(context).go(AppRoutes.finance),
+          ),
+        ),
+      );
+      // Reset the count so the snackbar does not appear again.
+      ref.read(recurringCreatedCountProvider.notifier).state = 0;
+    }
   }
 
   Future<void> _refresh() async {

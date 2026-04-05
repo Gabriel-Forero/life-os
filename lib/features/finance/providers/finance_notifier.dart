@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:drift/drift.dart';
 import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/domain/app_event.dart';
@@ -8,11 +9,26 @@ import 'package:life_os/features/finance/database/finance_dao.dart';
 import 'package:life_os/features/finance/domain/finance_input.dart';
 import 'package:life_os/features/finance/domain/finance_validators.dart';
 
+// ---------------------------------------------------------------------------
+// Pending-delete helper
+// ---------------------------------------------------------------------------
+
+/// Holds the transaction being soft-deleted plus a timer that will physically
+/// remove it from the DB after the undo window expires.
+class _PendingDelete {
+  _PendingDelete({required this.transaction, required this.timer});
+
+  final Transaction transaction;
+  final Timer timer;
+}
+
 class FinanceNotifier {
   FinanceNotifier({required this.dao, required this.eventBus});
 
   final FinanceDao dao;
   final EventBus eventBus;
+
+  _PendingDelete? _pendingDelete;
 
   // --- Transactions ---
 
@@ -117,6 +133,61 @@ class FinanceNotifier {
       ));
     }
   }
+
+  /// Soft-deletes a transaction: hides it from the UI immediately and schedules
+  /// the physical DB removal after 5 seconds. If [undoDelete] is called before
+  /// the timer fires the transaction is silently restored.
+  ///
+  /// Returns [Success] immediately so the caller can show the undo SnackBar.
+  Future<Result<void>> removeTransactionWithUndo(int id) async {
+    try {
+      // Fetch the transaction before hiding it.
+      final allTxs = await dao.watchTransactions(
+        DateTime(2000),
+        DateTime(2100),
+      ).first;
+      final tx = allTxs.where((t) => t.id == id).firstOrNull;
+      if (tx == null) {
+        return Failure(NotFoundFailure(
+          userMessage: 'Transaccion no encontrada',
+          debugMessage: 'removeTransactionWithUndo: id=$id not found',
+          entityType: 'Transaction',
+          entityId: id,
+        ));
+      }
+
+      // Cancel any previous pending delete first.
+      _pendingDelete?.timer.cancel();
+
+      // Schedule physical deletion after 5 seconds.
+      final timer = Timer(const Duration(seconds: 5), () async {
+        await dao.deleteTransaction(id);
+        _pendingDelete = null;
+      });
+
+      _pendingDelete = _PendingDelete(transaction: tx, timer: timer);
+      return const Success(null);
+    } on Exception catch (e) {
+      return Failure(DatabaseFailure(
+        userMessage: 'Error al eliminar transaccion',
+        debugMessage: 'removeTransactionWithUndo failed: $e',
+        originalError: e,
+      ));
+    }
+  }
+
+  /// Cancels a pending undo-delete. The transaction was never physically removed
+  /// so no restore is needed — just cancel the timer.
+  void undoDelete() {
+    _pendingDelete?.timer.cancel();
+    _pendingDelete = null;
+  }
+
+  /// Whether there is a pending soft-delete in progress.
+  bool get hasPendingDelete => _pendingDelete != null;
+
+  /// The ID of the transaction currently pending deletion (null if none).
+  int? get pendingDeleteId => _pendingDelete?.transaction.id;
 
   // --- Categories ---
 
@@ -313,11 +384,66 @@ class FinanceNotifier {
   // --- Recurring Transactions ---
 
   /// Processes any overdue recurring transactions.
-  /// Currently a no-op stub — recurring transaction scheduling will be
-  /// implemented when the recurring-transactions feature is built out.
-  Future<void> processRecurringTransactions() async {
-    // TODO: Query recurring transaction templates and insert due entries.
-    // Safe to call on every startup; returns immediately until implemented.
+  ///
+  /// For each active template whose [nextOccurrence] is in the past, inserts
+  /// all overdue transactions (handles the case where the app was closed for
+  /// multiple days) and advances [nextOccurrence] to the future.
+  ///
+  /// Returns [Success] with the total number of transactions created, or a
+  /// [Failure] on database error.
+  Future<Result<int>> processRecurringTransactions() async {
+    try {
+      final now = DateTime.now();
+      final dueRecurrings = await dao.getDueRecurrings(now);
+
+      if (dueRecurrings.isEmpty) return const Success(0);
+
+      var created = 0;
+      for (final recurring in dueRecurrings) {
+        var nextDate = recurring.nextOccurrence;
+
+        // Create all overdue occurrences (handles multi-day app inactivity).
+        while (!nextDate.isAfter(now)) {
+          await dao.insertTransaction(TransactionsCompanion.insert(
+            type: recurring.type,
+            amountCents: recurring.amountCents,
+            categoryId: recurring.categoryId,
+            note: Value(
+              '${recurring.note?.isNotEmpty == true ? '${recurring.note} ' : ''}(recurrente)'
+                  .trim(),
+            ),
+            date: nextDate,
+            recurringId: Value(recurring.id),
+            createdAt: now,
+            updatedAt: now,
+          ));
+          created++;
+          nextDate = _advanceDate(nextDate, recurring.frequency);
+        }
+
+        // Persist the updated nextOccurrence.
+        await dao.updateNextOccurrence(recurring.id, nextDate);
+      }
+
+      return Success(created);
+    } on Exception catch (e) {
+      return Failure(DatabaseFailure(
+        userMessage: 'Error al procesar recurrentes',
+        debugMessage: 'processRecurringTransactions failed: $e',
+        originalError: e,
+      ));
+    }
+  }
+
+  DateTime _advanceDate(DateTime date, String frequency) {
+    return switch (frequency) {
+      'daily' => date.add(const Duration(days: 1)),
+      'weekly' => date.add(const Duration(days: 7)),
+      'biweekly' => date.add(const Duration(days: 14)),
+      'monthly' => DateTime(date.year, date.month + 1, date.day),
+      'yearly' => DateTime(date.year + 1, date.month, date.day),
+      _ => date.add(const Duration(days: 30)),
+    };
   }
 
   // --- Private helpers ---

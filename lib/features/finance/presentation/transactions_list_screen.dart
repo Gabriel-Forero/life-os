@@ -4,9 +4,10 @@ import 'package:go_router/go_router.dart';
 import 'package:life_os/core/constants/app_colors.dart';
 import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
+import 'package:life_os/core/router/app_router.dart';
 import 'package:life_os/core/widgets/animated_list_item.dart';
 import 'package:life_os/core/widgets/empty_state_view.dart';
-import 'package:life_os/l10n/app_localizations.dart';
+import 'package:life_os/features/finance/presentation/sms_import_screen.dart';
 import 'package:intl/intl.dart';
 
 /// Transactions list screen wired to the Drift FinanceDao.
@@ -61,42 +62,29 @@ class _TransactionsListScreenState
   }
 
   Future<void> _deleteTransaction(BuildContext context, Transaction tx) async {
-    final l10n = AppLocalizations.of(context)!;
-    final confirmed = await showDialog<bool>(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            title: const Text('Eliminar transaccion'),
-            content: const Text('Esta accion no se puede deshacer.'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(false),
-                child: const Text('Cancelar'),
-              ),
-              TextButton(
-                style: TextButton.styleFrom(
-                  foregroundColor: const Color(0xFFEF4444),
-                ),
-                onPressed: () => Navigator.of(ctx).pop(true),
-                child: const Text('Eliminar'),
-              ),
-            ],
-          ),
-        ) ??
-        false;
+    // Use deferred (undo) delete — no confirmation dialog needed.
+    final notifier = ref.read(financeNotifierProvider);
+    await notifier.removeTransactionWithUndo(tx.id);
 
-    if (confirmed && context.mounted) {
-      await ref.read(financeNotifierProvider).removeTransaction(tx.id);
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l10n.commonDelete)),
-        );
-      }
-    }
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        key: const ValueKey('delete-undo-snackbar'),
+        content: const Text('Transaccion eliminada'),
+        duration: const Duration(seconds: 5),
+        action: SnackBarAction(
+          label: 'Deshacer',
+          onPressed: () {
+            ref.read(financeNotifierProvider).undoDelete();
+          },
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
     final dao = ref.watch(financeDaoProvider);
 
     return Scaffold(
@@ -110,6 +98,17 @@ class _TransactionsListScreenState
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
+          Semantics(
+            label: 'Importar transacciones desde SMS o portapapeles',
+            button: true,
+            child: IconButton(
+              key: const ValueKey('transactions-sms-import-button'),
+              icon: const Icon(Icons.sms_outlined),
+              onPressed: () =>
+                  GoRouter.of(context).push(AppRoutes.financeSmsImport),
+              tooltip: 'Importar SMS',
+            ),
+          ),
           IconButton(
             key: const ValueKey('transactions-budget-button'),
             icon: const Icon(Icons.pie_chart_outline),
@@ -130,51 +129,61 @@ class _TransactionsListScreenState
           ),
         ],
       ),
-      body: StreamBuilder<List<Transaction>>(
-        stream: dao.watchTransactions(_from, _to),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final transactions = snapshot.data ?? [];
-          if (transactions.isEmpty) {
-            return EmptyStateView(
-              key: const ValueKey('transactions-empty-state'),
-              icon: Icons.receipt_long_outlined,
-              title: 'Sin transacciones',
-              message: 'Agrega tu primera transaccion tocando el boton +',
-              actionLabel: 'Agregar transaccion',
-              onAction: () => GoRouter.of(context).push('/finance/add'),
-            );
-          }
+      body: Column(
+        children: [
+          // Clipboard detection banner (dismisses itself when not applicable)
+          const ClipboardTransactionBanner(
+            key: ValueKey('clipboard-transaction-banner'),
+          ),
+          Expanded(
+            child: StreamBuilder<List<Transaction>>(
+              stream: dao.watchTransactions(_from, _to),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final transactions = snapshot.data ?? [];
+                if (transactions.isEmpty) {
+                  return EmptyStateView(
+                    key: const ValueKey('transactions-empty-state'),
+                    icon: Icons.receipt_long_outlined,
+                    title: 'Sin transacciones',
+                    message: 'Agrega tu primera transaccion tocando el boton +',
+                    actionLabel: 'Agregar transaccion',
+                    onAction: () => GoRouter.of(context).push('/finance/add'),
+                  );
+                }
 
-          final grouped = _groupByDate(transactions);
-          final dateKeys = grouped.keys.toList()
-            ..sort((a, b) => b.compareTo(a));
+                final grouped = _groupByDate(transactions);
+                final dateKeys = grouped.keys.toList()
+                  ..sort((a, b) => b.compareTo(a));
 
-          // Build a cumulative index so stagger spans across groups
-          var cumulativeIndex = 0;
-          final groupWidgets = <Widget>[];
-          for (final dateKey in dateKeys) {
-            final txs = grouped[dateKey]!;
-            groupWidgets.add(_DateGroup(
-              dateHeader: _formatDateHeader(dateKey),
-              transactions: txs,
-              formatAmount: _formatAmount,
-              onDelete: (tx) => _deleteTransaction(context, tx),
-              onEdit: (tx) =>
-                  GoRouter.of(context).push('/finance/add?id=${tx.id}'),
-              indexOffset: cumulativeIndex,
-            ));
-            cumulativeIndex += txs.length;
-          }
+                // Build a cumulative index so stagger spans across groups
+                var cumulativeIndex = 0;
+                final groupWidgets = <Widget>[];
+                for (final dateKey in dateKeys) {
+                  final txs = grouped[dateKey]!;
+                  groupWidgets.add(_DateGroup(
+                    dateHeader: _formatDateHeader(dateKey),
+                    transactions: txs,
+                    formatAmount: _formatAmount,
+                    onDelete: (tx) => _deleteTransaction(context, tx),
+                    onEdit: (tx) =>
+                        GoRouter.of(context).push('/finance/add?id=${tx.id}'),
+                    indexOffset: cumulativeIndex,
+                  ));
+                  cumulativeIndex += txs.length;
+                }
 
-          return ListView(
-            key: const ValueKey('transactions-list'),
-            padding: const EdgeInsets.only(bottom: 88),
-            children: groupWidgets,
-          );
-        },
+                return ListView(
+                  key: const ValueKey('transactions-list'),
+                  padding: const EdgeInsets.only(bottom: 88),
+                  children: groupWidgets,
+                );
+              },
+            ),
+          ),
+        ],
       ),
       floatingActionButton: Semantics(
         label: 'Agregar transaccion',
@@ -297,27 +306,8 @@ class _TransactionTile extends StatelessWidget {
             onEdit();
             return false;
           }
-          return await showDialog<bool>(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  title: const Text('Eliminar transaccion'),
-                  content: const Text('Esta accion no se puede deshacer.'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(ctx).pop(false),
-                      child: const Text('Cancelar'),
-                    ),
-                    TextButton(
-                      style: TextButton.styleFrom(
-                        foregroundColor: const Color(0xFFEF4444),
-                      ),
-                      onPressed: () => Navigator.of(ctx).pop(true),
-                      child: const Text('Eliminar'),
-                    ),
-                  ],
-                ),
-              ) ??
-              false;
+          // Swipe-left confirm immediately — undo snackbar handles recovery.
+          return true;
         },
         onDismissed: (_) => onDelete(),
         child: ListTile(

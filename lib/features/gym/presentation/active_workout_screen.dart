@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_os/core/constants/app_colors.dart';
 import 'package:life_os/core/providers/providers.dart';
 import 'package:life_os/features/gym/domain/gym_input.dart';
+import 'package:life_os/features/gym/providers/rest_timer_notifier.dart';
 
 // ---------------------------------------------------------------------------
 // Local UI models (not DB models — used for pending sets before confirm)
@@ -72,11 +73,6 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
 
   int? _workoutId;
 
-  // Estado del temporizador de descanso
-  bool _restTimerActive = false;
-  int _restSecondsRemaining = 0;
-  Timer? _restTimer;
-
   Duration _elapsed = Duration.zero;
 
   @override
@@ -102,7 +98,8 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
   void dispose() {
     _stopwatch.stop();
     _elapsedTimer.cancel();
-    _restTimer?.cancel();
+    // Reset timer when leaving the screen
+    ref.read(restTimerProvider).skip();
     super.dispose();
   }
 
@@ -124,37 +121,8 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
 
     if (mounted) {
       setState(() => set.isConfirmed = true);
-      _startRestTimer(restSeconds);
+      ref.read(restTimerProvider).start(restSeconds);
     }
-  }
-
-  void _startRestTimer(int seconds) {
-    _restTimer?.cancel();
-    setState(() {
-      _restTimerActive = true;
-      _restSecondsRemaining = seconds;
-    });
-    _restTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted) {
-        timer.cancel();
-        return;
-      }
-      setState(() {
-        _restSecondsRemaining--;
-        if (_restSecondsRemaining <= 0) {
-          _restTimerActive = false;
-          timer.cancel();
-        }
-      });
-    });
-  }
-
-  void _dismissRestTimer() {
-    _restTimer?.cancel();
-    setState(() {
-      _restTimerActive = false;
-      _restSecondsRemaining = 0;
-    });
   }
 
   String _formatElapsed(Duration d) {
@@ -216,6 +184,10 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final timerNotifier = ref.watch(restTimerProvider);
+    final isTimerActive = timerNotifier.state == TimerState.running ||
+        timerNotifier.state == TimerState.paused ||
+        timerNotifier.state == TimerState.expired;
 
     return PopScope(
       canPop: false,
@@ -380,12 +352,10 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
             ),
 
             // --- Overlay temporizador de descanso ---
-            if (_restTimerActive)
+            if (isTimerActive)
               _RestTimerOverlay(
                 key: const ValueKey('active-workout-rest-overlay'),
-                secondsRemaining: _restSecondsRemaining,
-                onDismiss: _dismissRestTimer,
-                onSkip: _dismissRestTimer,
+                timerNotifier: timerNotifier,
               ),
           ],
         ),
@@ -530,7 +500,6 @@ class _WorkoutExerciseSection extends StatelessWidget {
 
 // ---------------------------------------------------------------------------
 // Widget: fila de serie
-// TODO: Extract to separate widget file
 // ---------------------------------------------------------------------------
 
 class _SetRow extends StatefulWidget {
@@ -780,21 +749,16 @@ class _SetRowState extends State<_SetRow> {
 }
 
 // ---------------------------------------------------------------------------
-// Widget: overlay temporizador de descanso
-// TODO: Extract to separate widget file
+// Widget: overlay temporizador de descanso (full-featured)
 // ---------------------------------------------------------------------------
 
-class _RestTimerOverlay extends StatelessWidget {
+class _RestTimerOverlay extends ConsumerWidget {
   const _RestTimerOverlay({
     super.key,
-    required this.secondsRemaining,
-    required this.onDismiss,
-    required this.onSkip,
+    required this.timerNotifier,
   });
 
-  final int secondsRemaining;
-  final VoidCallback onDismiss;
-  final VoidCallback onSkip;
+  final RestTimerNotifier timerNotifier;
 
   String _formatSeconds(int seconds) {
     final m = (seconds ~/ 60).toString().padLeft(2, '0');
@@ -802,72 +766,263 @@ class _RestTimerOverlay extends StatelessWidget {
     return '$m:$s';
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+  Future<void> _showTimePicker(BuildContext context, WidgetRef ref) async {
+    final controller = TextEditingController(
+      text: timerNotifier.remainingSeconds.toString(),
+    );
+    final result = await showDialog<int>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Editar tiempo'),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          decoration: const InputDecoration(
+            labelText: 'Segundos',
+            border: OutlineInputBorder(),
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(null),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final v = int.tryParse(controller.text);
+              Navigator.of(ctx).pop(v);
+            },
+            child: const Text('Confirmar'),
+          ),
+        ],
+      ),
+    );
+    if (result != null && result > 0) {
+      ref.read(restTimerProvider).setTime(result);
+    }
+  }
 
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isExpired = timerNotifier.state == TimerState.expired;
+    final isPaused = timerNotifier.state == TimerState.paused;
+    final progress = timerNotifier.totalSeconds > 0
+        ? timerNotifier.remainingSeconds / timerNotifier.totalSeconds
+        : 0.0;
+
+    // Full-width banner when expired
+    if (isExpired) {
+      return Positioned(
+        bottom: 90,
+        left: 0,
+        right: 0,
+        child: Semantics(
+          liveRegion: true,
+          label: 'Descanso terminado',
+          child: GestureDetector(
+            onTap: () => ref.read(restTimerProvider).skip(),
+            child: Material(
+              key: const ValueKey('rest-timer-expired-banner'),
+              elevation: 12,
+              color: AppColors.gym,
+              child: Container(
+                width: double.infinity,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.notifications_active, color: Colors.white, size: 28),
+                    SizedBox(width: 12),
+                    Text(
+                      '¡Descanso terminado!',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    SizedBox(width: 12),
+                    Text(
+                      'Toca para cerrar',
+                      style: TextStyle(color: Colors.white70, fontSize: 13),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Running / paused overlay card with circular progress
     return Positioned(
       bottom: 90,
       left: 16,
       right: 16,
       child: Semantics(
         label:
-            'Tiempo de descanso: ${_formatSeconds(secondsRemaining)} restantes',
+            'Tiempo de descanso: ${_formatSeconds(timerNotifier.remainingSeconds)} restantes',
         liveRegion: true,
         child: Material(
           key: const ValueKey('rest-timer-overlay'),
           elevation: 8,
-          borderRadius: BorderRadius.circular(16),
-          color: AppColors.gym,
+          borderRadius: BorderRadius.circular(20),
+          color: const Color(0xFF1A1A2E),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 12, 16),
+            padding: const EdgeInsets.fromLTRB(20, 16, 16, 16),
             child: Row(
               children: [
-                const Icon(Icons.timer_outlined, color: Colors.white, size: 28),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      'Descanso',
+                // Circular progress + countdown number
+                GestureDetector(
+                  onTap: () => _showTimePicker(context, ref),
+                  child: Tooltip(
+                    message: 'Toca para editar el tiempo',
+                    child: SizedBox(
+                      width: 72,
+                      height: 72,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          // Background circle
+                          SizedBox(
+                            width: 72,
+                            height: 72,
+                            child: CircularProgressIndicator(
+                              value: 1.0,
+                              strokeWidth: 5,
+                              color: AppColors.gym.withAlpha(40),
+                            ),
+                          ),
+                          // Foreground progress
+                          SizedBox(
+                            width: 72,
+                            height: 72,
+                            child: CircularProgressIndicator(
+                              value: progress.clamp(0.0, 1.0),
+                              strokeWidth: 5,
+                              color: AppColors.gym,
+                              strokeCap: StrokeCap.round,
+                            ),
+                          ),
+                          // Countdown text
+                          Text(
+                            _formatSeconds(timerNotifier.remainingSeconds),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              fontFeatures: [FontFeature.tabularFigures()],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+
+                // Label
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Descanso',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        isPaused ? 'Pausado' : 'En curso...',
+                        style: TextStyle(
+                          color: isPaused ? Colors.orange : AppColors.gym,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // -30s button
+                Semantics(
+                  label: 'Restar 30 segundos',
+                  button: true,
+                  child: IconButton(
+                    key: const ValueKey('rest-timer-minus30'),
+                    onPressed: () => ref.read(restTimerProvider).addTime(-30),
+                    icon: const Text(
+                      '-30s',
                       style: TextStyle(
                         color: Colors.white70,
                         fontSize: 12,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
-                    Text(
-                      _formatSeconds(secondsRemaining),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 28,
-                        fontWeight: FontWeight.w800,
-                        fontFeatures: [FontFeature.tabularFigures()],
-                      ),
-                    ),
-                  ],
+                    tooltip: '-30s',
+                  ),
                 ),
-                const Spacer(),
+
+                // +30s button
                 Semantics(
-                  label: 'Omitir descanso',
+                  label: 'Agregar 30 segundos',
+                  button: true,
+                  child: IconButton(
+                    key: const ValueKey('rest-timer-plus30'),
+                    onPressed: () => ref.read(restTimerProvider).addTime(30),
+                    icon: const Text(
+                      '+30s',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    tooltip: '+30s',
+                  ),
+                ),
+
+                // Pause / Resume button
+                Semantics(
+                  label: isPaused ? 'Reanudar descanso' : 'Pausar descanso',
+                  button: true,
+                  child: IconButton(
+                    key: const ValueKey('rest-timer-pause-resume'),
+                    onPressed: () {
+                      final t = ref.read(restTimerProvider);
+                      if (isPaused) {
+                        t.resume();
+                      } else {
+                        t.pause();
+                      }
+                    },
+                    icon: Icon(
+                      isPaused ? Icons.play_arrow : Icons.pause,
+                      color: Colors.white,
+                    ),
+                    tooltip: isPaused ? 'Reanudar' : 'Pausar',
+                  ),
+                ),
+
+                // Skip button
+                Semantics(
+                  label: 'Saltar descanso',
                   button: true,
                   child: TextButton(
                     key: const ValueKey('rest-timer-skip-button'),
-                    onPressed: onSkip,
+                    onPressed: () => ref.read(restTimerProvider).skip(),
                     style: TextButton.styleFrom(
-                      foregroundColor: Colors.white,
+                      foregroundColor: Colors.white70,
                     ),
-                    child: const Text('Omitir'),
-                  ),
-                ),
-                Semantics(
-                  label: 'Cerrar temporizador de descanso',
-                  button: true,
-                  child: IconButton(
-                    key: const ValueKey('rest-timer-dismiss-button'),
-                    onPressed: onDismiss,
-                    icon: const Icon(Icons.close, color: Colors.white70),
-                    tooltip: 'Cerrar',
+                    child: const Text('Saltar'),
                   ),
                 ),
               ],

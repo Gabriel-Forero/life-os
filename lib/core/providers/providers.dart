@@ -226,6 +226,15 @@ final aiNotifierProvider = Provider<AINotifier>((ref) {
 });
 
 // ============================================================
+// STARTUP STATE
+// ============================================================
+
+/// Number of recurring transactions created during app startup.
+/// Updated by main.dart after processRecurringTransactions() completes.
+/// The Dashboard reads this to show a one-shot snackbar.
+final recurringCreatedCountProvider = StateProvider<int>((ref) => 0);
+
+// ============================================================
 // NUTRITION API
 // ============================================================
 

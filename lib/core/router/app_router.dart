@@ -11,6 +11,7 @@ import 'package:life_os/features/finance/presentation/add_edit_transaction_scree
 import 'package:life_os/features/finance/presentation/budget_overview_screen.dart';
 import 'package:life_os/features/finance/presentation/finance_dashboard_screen.dart';
 import 'package:life_os/features/finance/presentation/savings_goals_screen.dart';
+import 'package:life_os/features/finance/presentation/sms_import_screen.dart';
 import 'package:life_os/features/finance/presentation/transactions_list_screen.dart';
 import 'package:life_os/features/goals/presentation/add_edit_goal_screen.dart';
 import 'package:life_os/features/goals/presentation/goal_detail_screen.dart';
@@ -26,6 +27,8 @@ import 'package:life_os/features/habits/presentation/habits_dashboard_screen.dar
 import 'package:life_os/features/intelligence/presentation/ai_config_screen.dart';
 import 'package:life_os/features/intelligence/presentation/chat_screen.dart';
 import 'package:life_os/features/intelligence/presentation/conversation_list_screen.dart';
+import 'package:life_os/features/intelligence/presentation/ticket_scanner_screen.dart';
+import 'package:life_os/features/intelligence/presentation/weekly_summary_screen.dart';
 import 'package:life_os/features/mental/presentation/breathing_screen.dart';
 import 'package:life_os/features/mental/presentation/gratitude_screen.dart';
 import 'package:life_os/features/mental/presentation/insights_screen.dart';
@@ -57,6 +60,7 @@ abstract final class AppRoutes {
   static const String financeBudgets = '/finance/budgets';
   static const String financeSavings = '/finance/savings';
   static const String financeDashboard = '/finance/dashboard';
+  static const String financeSmsImport = '/finance/sms-import';
 
   // Gym
   static const String gym = '/gym';
@@ -98,6 +102,10 @@ abstract final class AppRoutes {
   static const String mentalHistory = '/mental/history';
   static const String gratitude = '/mental/gratitude';
   static const String mentalInsights = '/mental/insights';
+
+  // AI
+  static const String ticketScanner = '/ai/ticket';
+  static const String weeklySummary = '/ai/weekly';
 
   // Goals
   static const String goals = '/goals';
@@ -193,6 +201,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.financeDashboard,
         pageBuilder: (context, state) =>
             fadeScaleTransition(const FinanceDashboardScreen(), state),
+      ),
+      GoRoute(
+        path: AppRoutes.financeSmsImport,
+        pageBuilder: (context, state) =>
+            slideUpTransition(const SmsImportScreen(), state),
       ),
       GoRoute(
         path: AppRoutes.gymExercises,
@@ -355,6 +368,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               ChatScreen(conversationId: conversationId, title: title), state);
         },
       ),
+      GoRoute(
+        path: AppRoutes.ticketScanner,
+        pageBuilder: (context, state) =>
+            slideUpTransition(const TicketScannerScreen(), state),
+      ),
+      GoRoute(
+        path: AppRoutes.weeklySummary,
+        pageBuilder: (context, state) =>
+            fadeScaleTransition(const WeeklySummaryScreen(), state),
+      ),
     ],
   );
 });
@@ -477,6 +500,22 @@ class _AppShell extends StatelessWidget {
             leading: const Icon(Icons.settings_outlined),
             title: const Text('Configuracion'),
             onTap: () { Navigator.pop(context); GoRouter.of(context).go(AppRoutes.settings); },
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.receipt_long_outlined),
+            title: const Text('Escanear Ticket'),
+            onTap: () { Navigator.pop(context); GoRouter.of(context).push(AppRoutes.ticketScanner); },
+          ),
+          ListTile(
+            leading: const Icon(Icons.summarize_outlined),
+            title: const Text('Resumen Semanal'),
+            onTap: () { Navigator.pop(context); GoRouter.of(context).push(AppRoutes.weeklySummary); },
+          ),
+          ListTile(
+            leading: Icon(Icons.bolt_outlined, color: AppColors.gym),
+            title: const Text('Energia'),
+            onTap: () { Navigator.pop(context); GoRouter.of(context).push(AppRoutes.energy); },
           ),
         ],
       ),
