@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:life_os/core/constants/app_colors.dart';
+import 'package:life_os/core/providers/providers.dart';
 import 'package:life_os/features/dashboard/presentation/dashboard_screen.dart';
 import 'package:life_os/features/dashboard/presentation/day_score_screen.dart';
 import 'package:life_os/features/dashboard/presentation/score_history_screen.dart';
@@ -103,8 +104,19 @@ abstract final class AppRoutes {
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
 
 final appRouterProvider = Provider<GoRouter>((ref) {
+  final settingsDao = ref.watch(appSettingsDaoProvider);
+
   return GoRouter(
-    initialLocation: AppRoutes.onboarding,
+    initialLocation: AppRoutes.home,
+    redirect: (context, state) async {
+      final settings = await settingsDao.getSettings();
+      final onboardingDone = settings?.onboardingCompleted ?? false;
+      final isOnboarding = state.uri.path == AppRoutes.onboarding;
+
+      if (!onboardingDone && !isOnboarding) return AppRoutes.onboarding;
+      if (onboardingDone && isOnboarding) return AppRoutes.home;
+      return null;
+    },
     routes: [
       GoRoute(
         path: AppRoutes.onboarding,

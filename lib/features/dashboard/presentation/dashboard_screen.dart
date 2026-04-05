@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:life_os/core/constants/app_colors.dart';
 import 'package:life_os/core/providers/providers.dart';
+import 'package:life_os/core/router/app_router.dart';
 import 'package:life_os/features/dashboard/providers/dashboard_notifier.dart';
 
 // ---------------------------------------------------------------------------
@@ -243,7 +245,7 @@ class _DayScoreCard extends StatelessWidget {
                     child: OutlinedButton(
                       key: const ValueKey('day-score-detail-button'),
                       onPressed: () {
-                        // TODO: navegar a DayScoreScreen cuando se conecte router
+                        GoRouter.of(context).push(AppRoutes.dayScore);
                       },
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.dayScore,
@@ -390,7 +392,7 @@ class _ModuleCard extends StatelessWidget {
       ),
       child: InkWell(
         onTap: () {
-          // TODO: navegar al modulo correspondiente
+          GoRouter.of(context).go('/${data.moduleKey}');
         },
         borderRadius: BorderRadius.circular(12),
         child: Padding(
@@ -491,7 +493,7 @@ class _QuickActions extends StatelessWidget {
         label: 'Historial',
         color: AppColors.dayScore,
         onTap: () {
-          // TODO: navegar a ScoreHistoryScreen
+          GoRouter.of(context).push(AppRoutes.scoreHistory);
         },
       ),
       _QuickActionItem(
@@ -500,7 +502,7 @@ class _QuickActions extends StatelessWidget {
         label: 'Pesos',
         color: AppColors.goals,
         onTap: () {
-          // TODO: navegar a configuracion de pesos
+          GoRouter.of(context).go(AppRoutes.settings);
         },
       ),
       _QuickActionItem(
@@ -509,7 +511,7 @@ class _QuickActions extends StatelessWidget {
         label: 'Snapshot',
         color: AppColors.habits,
         onTap: () {
-          // TODO: ver snapshots
+          GoRouter.of(context).push(AppRoutes.scoreHistory);
         },
       ),
     ];

@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "flutter-animating-apps": {
+      "source": "flutter/skills",
+      "sourceType": "github",
+      "computedHash": "217700e356dae9e3624a54543aa366aca3871aa3c0368856156715e211aeac4c"
+    }
+  }
+}

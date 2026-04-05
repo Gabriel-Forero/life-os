@@ -327,7 +327,15 @@ class FinanceNotifier {
 
     final defaultName = type == 'income' ? 'General' : 'Otros';
     final cat = await dao.getCategoryByName(defaultName);
-    return cat!.id;
+    if (cat != null) return cat.id;
+
+    // Fallback: first category of matching type
+    final cats = await dao.getCategoriesByType(type);
+    if (cats.isNotEmpty) return cats.first.id;
+
+    // Last resort: any category
+    final all = await dao.watchCategories().first;
+    return all.isNotEmpty ? all.first.id : 1;
   }
 
   Future<void> _checkBudgetThreshold(
