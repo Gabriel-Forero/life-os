@@ -316,8 +316,35 @@ class _DailyNutritionScreenState
                     celebrationScale: _celebrationScale,
                     waterGoalCelebrated: _waterGoalCelebrated,
                     theme: theme,
-                    onAddFoodToMeal: (mealType) =>
-                        GoRouter.of(context).push(AppRoutes.nutritionSearch),
+                    onAddFoodToMeal: (mealType) {
+                      showModalBottomSheet<void>(
+                        context: context,
+                        builder: (ctx) => SafeArea(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              ListTile(
+                                leading: const Icon(Icons.edit_note, color: AppColors.nutrition),
+                                title: const Text('Registro manual'),
+                                subtitle: const Text('Nombre, calorias y macros'),
+                                onTap: () { Navigator.pop(ctx); GoRouter.of(context).push(AppRoutes.manualFoodEntry); },
+                              ),
+                              ListTile(
+                                leading: const Icon(Icons.search, color: AppColors.nutrition),
+                                title: const Text('Buscar alimento'),
+                                onTap: () { Navigator.pop(ctx); GoRouter.of(context).push(AppRoutes.nutritionSearch); },
+                              ),
+                              ListTile(
+                                leading: const Icon(Icons.qr_code_scanner, color: AppColors.nutrition),
+                                title: const Text('Escanear codigo'),
+                                onTap: () { Navigator.pop(ctx); GoRouter.of(context).push(AppRoutes.barcodeScanner); },
+                              ),
+                              const SizedBox(height: 8),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
                   );
                 },
               );

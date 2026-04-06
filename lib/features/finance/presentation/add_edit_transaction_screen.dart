@@ -250,6 +250,60 @@ class _AddEditTransactionScreenState
                     },
                   ),
                 ),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    key: const ValueKey('create-category-button'),
+                    onPressed: () async {
+                      final nameCtrl = TextEditingController();
+                      final result = await showDialog<String>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('Nueva Categoria'),
+                          content: TextField(
+                            controller: nameCtrl,
+                            autofocus: true,
+                            decoration: const InputDecoration(
+                              labelText: 'Nombre',
+                              hintText: 'Ej: Mascota',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx),
+                              child: const Text('Cancelar'),
+                            ),
+                            FilledButton(
+                              onPressed: () => Navigator.pop(ctx, nameCtrl.text),
+                              style: FilledButton.styleFrom(backgroundColor: AppColors.finance),
+                              child: const Text('Crear'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (result != null && result.trim().isNotEmpty && mounted) {
+                        final type = _type;
+                        await ref.read(financeNotifierProvider).addCategory(
+                          CategoryInput(
+                            name: result.trim(),
+                            icon: 'label',
+                            color: AppColors.finance.value,
+                            type: type,
+                          ),
+                        );
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Categoria "${result.trim()}" creada!')),
+                          );
+                        }
+                      }
+                    },
+                    icon: const Icon(Icons.add, size: 16),
+                    label: const Text('Crear categoria'),
+                    style: TextButton.styleFrom(foregroundColor: AppColors.finance),
+                  ),
+                ),
                 const SizedBox(height: 16),
 
                 // --- Fecha ---
