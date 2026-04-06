@@ -20,32 +20,21 @@ jobs:
       - name: Generate Drift code
         run: dart run build_runner build --delete-conflicting-outputs
 
-      - name: Build Flutter iOS framework
-        run: flutter build ios --release --no-codesign || true
+      - name: Build Flutter iOS (ignore signing error)
+        run: flutter build ios --release --no-codesign 2>&1 || true
 
-      - name: Re-build with xcodebuild (unsigned)
+      - name: Package unsigned IPA
         run: |
-          cd ios
-          xcodebuild archive \
-            -workspace Runner.xcworkspace \
-            -scheme Runner \
-            -configuration Release \
-            -sdk iphoneos \
-            -archivePath ../build/ios/Runner.xcarchive \
-            -destination 'generic/platform=iOS' \
-            ARCHS=arm64 \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY=- \
-            AD_HOC_CODE_SIGNING_ALLOWED=YES
-
-      - name: Create unsigned IPA
-        run: |
-          mkdir -p build/ios/ipa
-          cd build/ios/Runner.xcarchive/Products/Applications
-          mkdir Payload
-          cp -r Runner.app Payload/
-          zip -r ../../../ipa/LifeOS.ipa Payload
+          APP_PATH="build/ios/iphoneos/Runner.app"
+          if [ ! -d "$APP_PATH" ]; then
+            echo "ERROR: Runner.app not found at $APP_PATH"
+            ls -la build/ios/iphoneos/ 2>/dev/null || echo "Directory does not exist"
+            exit 1
+          fi
+          mkdir -p build/ios/ipa/Payload
+          cp -r "$APP_PATH" build/ios/ipa/Payload/
+          cd build/ios/ipa
+          zip -r LifeOS.ipa Payload
           rm -rf Payload
 
       - name: Upload IPA artifact
