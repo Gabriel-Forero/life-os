@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:life_os/core/constants/app_colors.dart';
 import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
+import 'package:life_os/features/habits/database/habits_dao.dart';
 import 'package:life_os/core/widgets/animated_list_item.dart';
 import 'package:life_os/core/widgets/pressable_card.dart';
 
@@ -138,11 +139,23 @@ class _HabitsDashboardBody extends ConsumerWidget {
     final theme = Theme.of(context);
     final dao = ref.watch(habitsDaoProvider);
 
-    // Build a map of habitId -> (isCompleted, currentValue, streak) from DB
-    return FutureBuilder<Map<int, _HabitStatus>>(
-      future: _loadAllStatuses(dao),
-      builder: (context, statusSnapshot) {
-        final statusMap = statusSnapshot.data ?? {};
+    // Stream all habit logs for today — rebuilds whenever a log is added/removed
+    final todayStart = DateTime(today.year, today.month, today.day);
+    final todayEnd = todayStart.add(const Duration(days: 1));
+
+    return StreamBuilder<List<HabitLog>>(
+      stream: _watchAllLogsForToday(dao, todayStart, todayEnd),
+      builder: (context, logsSnapshot) {
+        final todayLogs = logsSnapshot.data ?? [];
+        final statusMap = <int, _HabitStatus>{};
+        for (final habit in habits) {
+          final log = todayLogs.where((l) => l.habitId == habit.id).firstOrNull;
+          statusMap[habit.id] = _HabitStatus(
+            isCompleted: log != null,
+            currentValue: log?.value ?? 0.0,
+            streak: 0, // Streaks loaded separately if needed
+          );
+        }
 
         final pending = habits
             .where((h) => !(statusMap[h.id]?.isCompleted ?? false))
@@ -244,6 +257,25 @@ class _HabitsDashboardBody extends ConsumerWidget {
     );
   }
 
+  Stream<List<HabitLog>> _watchAllLogsForToday(
+    HabitsDao dao,
+    DateTime start,
+    DateTime end,
+  ) {
+    // Watch logs for all habits combined — any insert/delete triggers rebuild
+    if (habits.isEmpty) return Stream.value([]);
+    // Use the first habit's stream as trigger, but load all
+    return dao.watchHabitLogs(habits.first.id, start, end).asyncMap((_) async {
+      final allLogs = <HabitLog>[];
+      for (final h in habits) {
+        final log = await dao.getLogForDate(h.id, start);
+        if (log != null) allLogs.add(log);
+      }
+      return allLogs;
+    });
+  }
+
+  // Keep for potential future use
   Future<Map<int, _HabitStatus>> _loadAllStatuses(
     dynamic dao,
   ) async {
