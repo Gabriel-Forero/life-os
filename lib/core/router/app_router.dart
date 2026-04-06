@@ -460,10 +460,10 @@ class _AppShellState extends State<_AppShell> {
     final location = GoRouterState.of(context).uri.path;
     if (location.startsWith('/finance')) return 'Finanzas';
     if (location.startsWith('/gym')) return 'Gimnasio';
-    if (location.startsWith('/nutrition')) return 'Nutricion';
-    if (location.startsWith('/habits')) return 'Habitos';
+    if (location.startsWith('/nutrition')) return 'Nutrición';
+    if (location.startsWith('/habits')) return 'Hábitos';
     if (location.startsWith('/goals')) return 'Metas';
-    if (location.startsWith('/settings')) return 'Configuracion';
+    if (location.startsWith('/settings')) return 'Configuración';
     if (location.startsWith('/monitoring')) return 'Progreso';
     if (location.startsWith('/wellness')) return 'Bienestar';
     return 'LifeOS';
@@ -648,12 +648,12 @@ class _AppShellState extends State<_AppShell> {
           ),
           ListTile(
             leading: Icon(Icons.restaurant, color: AppColors.nutrition),
-            title: const Text('Nutricion'),
+            title: const Text('Nutrición'),
             onTap: () { Navigator.pop(context); GoRouter.of(context).go(AppRoutes.nutrition); },
           ),
           ListTile(
             leading: Icon(Icons.check_circle, color: AppColors.habits),
-            title: const Text('Habitos'),
+            title: const Text('Hábitos'),
             onTap: () { Navigator.pop(context); GoRouter.of(context).go(AppRoutes.habits); },
           ),
           const Divider(),
@@ -687,7 +687,7 @@ class _AppShellState extends State<_AppShell> {
           ),
           ListTile(
             leading: const Icon(Icons.settings_outlined),
-            title: const Text('Configuracion'),
+            title: const Text('Configuración'),
             onTap: () { Navigator.pop(context); GoRouter.of(context).go(AppRoutes.settings); },
           ),
           const Divider(),
@@ -735,7 +735,7 @@ class _AppShellState extends State<_AppShell> {
                   color: _colorForLocation(context),
                 ),
               ),
-              actions: _actionsForLocation(context),
+              // Actions moved to body — keeps title centered and unclipped
             ),
             drawer: _buildDrawer(context),
             body: Row(
@@ -817,9 +817,21 @@ class _AppShellState extends State<_AppShell> {
                 color: _colorForLocation(context),
               ),
             ),
-            actions: _actionsForLocation(context),
           ),
-          body: child,
+          body: Column(
+            children: [
+              if (_actionsForLocation(context).isNotEmpty)
+                Container(
+                  color: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: _actionsForLocation(context),
+                  ),
+                ),
+              Expanded(child: child),
+            ],
+          ),
           drawer: _buildDrawer(context),
           bottomNavigationBar: NavigationBar(
             selectedIndex: _selectedIndex(context),

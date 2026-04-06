@@ -437,7 +437,7 @@ class _MacroStreamBodyState extends ConsumerState<_MacroStreamBody> {
       color: AppColors.nutrition,
       onRefresh: () async => _recalculateMacros(),
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
         children: [
           // --- Anillos de macros ---
           Semantics(
