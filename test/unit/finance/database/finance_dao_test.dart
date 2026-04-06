@@ -20,7 +20,7 @@ void main() {
   });
 
   group('FinanceDao — Transactions', () {
-    Future<int> _insertExpenseCategory() async {
+    Future<int> insertExpenseCategory() async {
       return dao.insertCategory(CategoriesCompanion.insert(
         name: 'Alimentacion',
         icon: const Value('restaurant'),
@@ -33,7 +33,7 @@ void main() {
     }
 
     test('insertTransaction returns id', () async {
-      final catId = await _insertExpenseCategory();
+      final catId = await insertExpenseCategory();
       final id = await dao.insertTransaction(TransactionsCompanion.insert(
         type: 'expense',
         amountCents: 25000,
@@ -46,7 +46,7 @@ void main() {
     });
 
     test('watchTransactions returns inserted transactions', () async {
-      final catId = await _insertExpenseCategory();
+      final catId = await insertExpenseCategory();
       final now = DateTime.now();
 
       await dao.insertTransaction(TransactionsCompanion.insert(
@@ -68,7 +68,7 @@ void main() {
     });
 
     test('deleteTransaction removes the row', () async {
-      final catId = await _insertExpenseCategory();
+      final catId = await insertExpenseCategory();
       final id = await dao.insertTransaction(TransactionsCompanion.insert(
         type: 'expense',
         amountCents: 10000,
@@ -87,7 +87,7 @@ void main() {
     });
 
     test('sumByType returns correct sum for expenses', () async {
-      final catId = await _insertExpenseCategory();
+      final catId = await insertExpenseCategory();
       final now = DateTime.now();
 
       for (final amount in [10000, 20000, 30000]) {

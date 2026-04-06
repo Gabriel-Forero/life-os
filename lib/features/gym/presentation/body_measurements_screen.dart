@@ -159,6 +159,8 @@ class _BodyMeasurementsScreenState
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        centerTitle: true,
+        foregroundColor: AppColors.gym,
         title: Semantics(
           header: true,
           child: const Text('Medidas Corporales'),
@@ -828,6 +830,8 @@ class _PhotoThumb extends StatelessWidget {
           backgroundColor: Colors.black,
           appBar: AppBar(
             backgroundColor: Colors.transparent,
+            centerTitle: true,
+            foregroundColor: AppColors.gym,
             leading: IconButton(
               key: const ValueKey('photo-fullscreen-back'),
               icon: const Icon(Icons.close, color: Colors.white),
@@ -1024,6 +1028,8 @@ class _MeasurementDetailScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        centerTitle: true,
+        foregroundColor: AppColors.gym,
         title: Semantics(
           header: true,
           child: Text(_formatDate(measurement.date)),
@@ -1446,6 +1452,8 @@ class _NewMeasurementSheetState extends ConsumerState<_NewMeasurementSheet> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        centerTitle: true,
+        foregroundColor: AppColors.gym,
         title: Semantics(
           header: true,
           child: const Text('Nueva Medicion'),

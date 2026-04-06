@@ -3,7 +3,6 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/features/goals/database/goals_dao.dart';
-import 'package:life_os/features/goals/database/goals_tables.dart';
 
 AppDatabase _createInMemoryDb() => AppDatabase(NativeDatabase.memory());
 

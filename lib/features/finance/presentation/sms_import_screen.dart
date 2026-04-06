@@ -199,7 +199,8 @@ class _SmsImportScreenState extends ConsumerState<SmsImportScreen> {
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        centerTitle: false,
+        centerTitle: true,
+        foregroundColor: AppColors.finance,
         actions: [
           if (_entries.isNotEmpty)
             TextButton(

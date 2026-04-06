@@ -1,4 +1,3 @@
-import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_os/core/database/app_database.dart';
@@ -92,7 +91,7 @@ void main() {
   group('DashboardDao — DayScores', () {
     final testDate = DateTime.utc(2026, 4, 4);
 
-    Future<void> _upsert({int score = 75}) => dao.upsertDayScore(
+    Future<void> upsert({int score = 75}) => dao.upsertDayScore(
           date: testDate,
           totalScore: score,
           calculatedAt: testDate,
@@ -113,21 +112,21 @@ void main() {
         );
 
     test('upsertDayScore inserts new row', () async {
-      await _upsert();
+      await upsert();
       final result = await dao.getDayScoreForDate(testDate);
       expect(result, isNotNull);
       expect(result!.totalScore, 75);
     });
 
     test('upsertDayScore updates existing row on same date', () async {
-      await _upsert(score: 75);
-      await _upsert(score: 90);
+      await upsert(score: 75);
+      await upsert(score: 90);
       final result = await dao.getDayScoreForDate(testDate);
       expect(result!.totalScore, 90);
     });
 
     test('upsertDayScore replaces components on re-calculation', () async {
-      await _upsert();
+      await upsert();
       // Re-upsert with 3 components
       await dao.upsertDayScore(
         date: testDate,

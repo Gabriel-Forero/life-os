@@ -273,6 +273,8 @@ class _EvolutionScreenState extends ConsumerState<EvolutionScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        centerTitle: true,
+        foregroundColor: AppColors.dayScore,
         title: Semantics(
           header: true,
           child: const Text('Evolucion'),
@@ -1054,6 +1056,8 @@ class _SnapshotComparisonScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        centerTitle: true,
+        foregroundColor: AppColors.dayScore,
         title: Semantics(
           header: true,
           child: Text(

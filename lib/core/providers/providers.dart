@@ -28,6 +28,7 @@ import 'package:life_os/features/intelligence/database/ai_dao.dart';
 import 'package:life_os/features/intelligence/domain/ai_provider.dart';
 import 'package:life_os/features/intelligence/domain/anthropic_provider.dart';
 import 'package:life_os/features/intelligence/domain/gemini_provider.dart';
+import 'package:life_os/features/sleep/services/alarm_service.dart';
 import 'package:life_os/features/intelligence/domain/openai_provider.dart';
 import 'package:life_os/features/intelligence/providers/ai_notifier.dart';
 import 'package:life_os/features/mental/database/mental_dao.dart';
@@ -278,6 +279,8 @@ final dashboardNotifierProvider = ChangeNotifierProvider<DashboardNotifier>((ref
     },
   );
 });
+
+final alarmServiceProvider = Provider<AlarmService>((ref) => AlarmService());
 
 final sleepNotifierProvider = Provider<SleepNotifier>((ref) {
   return SleepNotifier(

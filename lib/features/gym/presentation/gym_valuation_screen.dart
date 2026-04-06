@@ -267,6 +267,8 @@ class _GymValuationScreenState extends ConsumerState<GymValuationScreen> {
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        centerTitle: true,
+        foregroundColor: AppColors.gym,
         actions: [
           Semantics(
             label: 'Ver historial de valoraciones',
@@ -915,6 +917,8 @@ class _ValuationHistoryScreenState
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        centerTitle: true,
+        foregroundColor: AppColors.gym,
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())

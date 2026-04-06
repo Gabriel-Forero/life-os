@@ -114,6 +114,8 @@ class _ManualFoodEntryScreenState
         title: const Text('Registro Manual'),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        centerTitle: true,
+        foregroundColor: AppColors.nutrition,
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),

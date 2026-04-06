@@ -1,9 +1,7 @@
-import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/features/sleep/database/sleep_dao.dart';
-import 'package:life_os/features/sleep/database/sleep_tables.dart';
 
 AppDatabase _createInMemoryDb() => AppDatabase(NativeDatabase.memory());
 
@@ -24,7 +22,7 @@ void main() {
   // Helpers
   // ---------------------------------------------------------------------------
 
-  Future<int> _insertLog({
+  Future<int> insertLog({
     DateTime? date,
     DateTime? bedTime,
     DateTime? wakeTime,
@@ -50,12 +48,12 @@ void main() {
 
   group('SleepDao — SleepLogs CRUD', () {
     test('insertSleepLog returns id > 0', () async {
-      final id = await _insertLog();
+      final id = await insertLog();
       expect(id, greaterThan(0));
     });
 
     test('getSleepLogById returns inserted log', () async {
-      final id = await _insertLog(qualityRating: 3, sleepScore: 65);
+      final id = await insertLog(qualityRating: 3, sleepScore: 65);
       final log = await dao.getSleepLogById(id);
       expect(log, isNotNull);
       expect(log!.qualityRating, 3);
@@ -68,9 +66,9 @@ void main() {
     });
 
     test('watchSleepLogs returns logs within date range', () async {
-      await _insertLog(date: DateTime(2024, 1, 10));
-      await _insertLog(date: DateTime(2024, 1, 15));
-      await _insertLog(date: DateTime(2024, 1, 20));
+      await insertLog(date: DateTime(2024, 1, 10));
+      await insertLog(date: DateTime(2024, 1, 15));
+      await insertLog(date: DateTime(2024, 1, 20));
 
       final logs = await dao
           .watchSleepLogs(DateTime(2024, 1, 12), DateTime(2024, 1, 18))
@@ -80,9 +78,9 @@ void main() {
     });
 
     test('watchSleepLogs returns in descending date order', () async {
-      await _insertLog(date: DateTime(2024, 1, 10));
-      await _insertLog(date: DateTime(2024, 1, 15));
-      await _insertLog(date: DateTime(2024, 1, 12));
+      await insertLog(date: DateTime(2024, 1, 10));
+      await insertLog(date: DateTime(2024, 1, 15));
+      await insertLog(date: DateTime(2024, 1, 12));
 
       final logs = await dao
           .watchSleepLogs(DateTime(2024, 1, 1), DateTime(2024, 1, 31))
@@ -91,7 +89,7 @@ void main() {
     });
 
     test('getSleepLogForDate returns log for given date', () async {
-      await _insertLog(date: DateTime(2024, 1, 15));
+      await insertLog(date: DateTime(2024, 1, 15));
       final log = await dao.getSleepLogForDate(DateTime(2024, 1, 15));
       expect(log, isNotNull);
     });
@@ -102,7 +100,7 @@ void main() {
     });
 
     test('deleteSleepLog removes record', () async {
-      final id = await _insertLog();
+      final id = await insertLog();
       await dao.deleteSleepLog(id);
       final log = await dao.getSleepLogById(id);
       expect(log, isNull);
@@ -117,10 +115,10 @@ void main() {
     late int logId;
 
     setUp(() async {
-      logId = await _insertLog();
+      logId = await insertLog();
     });
 
-    Future<int> _insertInterruption({int minutes = 10}) =>
+    Future<int> insertInterruption({int minutes = 10}) =>
         dao.insertInterruption(SleepInterruptionsCompanion.insert(
           sleepLogId: logId,
           time: DateTime(2024, 1, 16, 2, 0),
@@ -129,13 +127,13 @@ void main() {
         ));
 
     test('insertInterruption returns id > 0', () async {
-      final id = await _insertInterruption();
+      final id = await insertInterruption();
       expect(id, greaterThan(0));
     });
 
     test('getInterruptionsForLog returns all interruptions for log', () async {
-      await _insertInterruption(minutes: 5);
-      await _insertInterruption(minutes: 10);
+      await insertInterruption(minutes: 5);
+      await insertInterruption(minutes: 10);
       final interruptions = await dao.getInterruptionsForLog(logId);
       expect(interruptions, hasLength(2));
     });
@@ -146,7 +144,7 @@ void main() {
     });
 
     test('deleteInterruption removes record', () async {
-      final id = await _insertInterruption();
+      final id = await insertInterruption();
       await dao.deleteInterruption(id);
       final interruptions = await dao.getInterruptionsForLog(logId);
       expect(interruptions, isEmpty);
@@ -154,7 +152,7 @@ void main() {
 
     test('watchInterruptionsForLog emits updates', () async {
       final stream = dao.watchInterruptionsForLog(logId);
-      await _insertInterruption();
+      await insertInterruption();
       final interruptions = await stream.first;
       expect(interruptions, hasLength(1));
     });
@@ -167,7 +165,7 @@ void main() {
   group('SleepDao — EnergyLogs', () {
     final testDate = DateTime(2024, 1, 15);
 
-    Future<int> _insertEnergy({
+    Future<int> insertEnergy({
       String timeOfDay = 'morning',
       int level = 7,
     }) =>
@@ -179,22 +177,22 @@ void main() {
         ));
 
     test('insertEnergyLog returns id > 0', () async {
-      final id = await _insertEnergy();
+      final id = await insertEnergy();
       expect(id, greaterThan(0));
     });
 
     test('watchEnergyLogsForDate returns all logs for date', () async {
-      await _insertEnergy(timeOfDay: 'morning', level: 7);
-      await _insertEnergy(timeOfDay: 'afternoon', level: 5);
-      await _insertEnergy(timeOfDay: 'evening', level: 6);
+      await insertEnergy(timeOfDay: 'morning', level: 7);
+      await insertEnergy(timeOfDay: 'afternoon', level: 5);
+      await insertEnergy(timeOfDay: 'evening', level: 6);
 
       final logs = await dao.watchEnergyLogsForDate(testDate).first;
       expect(logs, hasLength(3));
     });
 
     test('insertEnergyLog with replace mode updates existing record', () async {
-      await _insertEnergy(timeOfDay: 'morning', level: 5);
-      await _insertEnergy(timeOfDay: 'morning', level: 8); // should replace
+      await insertEnergy(timeOfDay: 'morning', level: 5);
+      await insertEnergy(timeOfDay: 'morning', level: 8); // should replace
 
       final logs = await dao.watchEnergyLogsForDate(testDate).first;
       expect(logs.where((l) => l.timeOfDay == 'morning'), hasLength(1));
@@ -205,14 +203,14 @@ void main() {
     });
 
     test('getEnergyLogForTimeOfDay returns correct log', () async {
-      await _insertEnergy(timeOfDay: 'afternoon', level: 6);
+      await insertEnergy(timeOfDay: 'afternoon', level: 6);
       final log = await dao.getEnergyLogForTimeOfDay(testDate, 'afternoon');
       expect(log, isNotNull);
       expect(log!.level, 6);
     });
 
     test('watchEnergyLogs returns logs in date range', () async {
-      await _insertEnergy();
+      await insertEnergy();
       await dao.insertEnergyLog(EnergyLogsCompanion.insert(
         date: DateTime(2024, 1, 20),
         timeOfDay: 'morning',

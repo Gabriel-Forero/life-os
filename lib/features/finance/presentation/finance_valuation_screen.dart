@@ -268,6 +268,8 @@ class _FinanceValuationScreenState
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        centerTitle: true,
+        foregroundColor: AppColors.finance,
         actions: [
           Semantics(
             label: 'Ver historial de valoraciones',
@@ -905,6 +907,8 @@ class _ValuationHistoryScreenState
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        centerTitle: true,
+        foregroundColor: AppColors.finance,
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())

@@ -283,6 +283,8 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen>
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        centerTitle: true,
+        foregroundColor: AppColors.nutrition,
         title: Semantics(
           header: true,
           child: Text(

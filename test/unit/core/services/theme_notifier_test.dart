@@ -14,8 +14,8 @@ void main() {
   });
 
   group('ThemeNotifier', () {
-    test('initial state is dark mode, no high contrast', () {
-      expect(notifier.state.themeMode, ThemeMode.dark);
+    test('initial state is light mode, no high contrast', () {
+      expect(notifier.state.themeMode, ThemeMode.light);
       expect(notifier.state.highContrast, false);
     });
 
@@ -35,7 +35,7 @@ void main() {
       expect(notifier.state.themeMode, ThemeMode.dark);
 
       notifier.setThemeModeFromString('invalid');
-      expect(notifier.state.themeMode, ThemeMode.dark);
+      expect(notifier.state.themeMode, ThemeMode.light);
     });
 
     test('setHighContrast updates state', () {

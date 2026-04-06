@@ -19,7 +19,7 @@ void main() {
     await db.close();
   });
 
-  Future<int> _insertHabit({
+  Future<int> insertHabit({
     String name = 'Meditar',
     String frequencyType = 'daily',
   }) async {
@@ -37,13 +37,13 @@ void main() {
 
   group('HabitsDao — Habits CRUD', () {
     test('insertHabit returns id', () async {
-      final id = await _insertHabit();
+      final id = await insertHabit();
       expect(id, greaterThan(0));
     });
 
     test('watchActiveHabits returns non-archived', () async {
-      await _insertHabit(name: 'Active');
-      final archivedId = await _insertHabit(name: 'Archived');
+      await insertHabit(name: 'Active');
+      final archivedId = await insertHabit(name: 'Archived');
       await dao.archiveHabit(archivedId);
 
       final habits = await dao.watchActiveHabits().first;
@@ -52,8 +52,8 @@ void main() {
     });
 
     test('watchArchivedHabits returns only archived', () async {
-      await _insertHabit(name: 'Active');
-      final archivedId = await _insertHabit(name: 'Archived');
+      await insertHabit(name: 'Active');
+      final archivedId = await insertHabit(name: 'Archived');
       await dao.archiveHabit(archivedId);
 
       final archived = await dao.watchArchivedHabits().first;
@@ -62,7 +62,7 @@ void main() {
     });
 
     test('restoreHabit unarchives', () async {
-      final id = await _insertHabit();
+      final id = await insertHabit();
       await dao.archiveHabit(id);
       await dao.restoreHabit(id);
 
@@ -73,7 +73,7 @@ void main() {
 
   group('HabitsDao — Habit Logs', () {
     test('insertHabitLog and getLogForDate', () async {
-      final habitId = await _insertHabit();
+      final habitId = await insertHabit();
       final today = DateTime.now();
       final date = DateTime(today.year, today.month, today.day);
 
@@ -90,7 +90,7 @@ void main() {
     });
 
     test('deleteHabitLog removes check-in', () async {
-      final habitId = await _insertHabit();
+      final habitId = await insertHabit();
       final today = DateTime.now();
       final date = DateTime(today.year, today.month, today.day);
 
@@ -107,7 +107,7 @@ void main() {
     });
 
     test('watchHabitLogs returns logs in range', () async {
-      final habitId = await _insertHabit();
+      final habitId = await insertHabit();
       final now = DateTime.now();
 
       // Log for today
@@ -156,7 +156,7 @@ void main() {
 
   group('HabitsDao — Streaks', () {
     test('streakCount for daily habit', () async {
-      final habitId = await _insertHabit();
+      final habitId = await insertHabit();
       final today = DateTime.now();
 
       // Log 5 consecutive days
@@ -176,7 +176,7 @@ void main() {
     });
 
     test('streakCount resets on missed day', () async {
-      final habitId = await _insertHabit();
+      final habitId = await insertHabit();
       final today = DateTime.now();
 
       // Log day 3, 2 ago (skip day 1 ago = missed yesterday)
@@ -196,7 +196,7 @@ void main() {
     });
 
     test('completionRate calculates correctly', () async {
-      final habitId = await _insertHabit();
+      final habitId = await insertHabit();
       final today = DateTime.now();
 
       // Log 3 of last 10 days

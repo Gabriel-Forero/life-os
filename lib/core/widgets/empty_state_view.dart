@@ -8,6 +8,7 @@ class EmptyStateView extends StatelessWidget {
     required this.message,
     this.actionLabel,
     this.onAction,
+    this.actionColor,
     this.testId,
   });
 
@@ -16,6 +17,7 @@ class EmptyStateView extends StatelessWidget {
   final String message;
   final String? actionLabel;
   final VoidCallback? onAction;
+  final Color? actionColor;
   final String? testId;
 
   @override
@@ -52,6 +54,9 @@ class EmptyStateView extends StatelessWidget {
                 const SizedBox(height: 24),
                 FilledButton(
                   onPressed: onAction,
+                  style: actionColor != null
+                      ? FilledButton.styleFrom(backgroundColor: actionColor)
+                      : null,
                   child: Text(actionLabel!),
                 ),
               ],

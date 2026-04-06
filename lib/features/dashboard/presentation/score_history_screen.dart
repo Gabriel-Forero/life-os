@@ -48,6 +48,8 @@ class _ScoreHistoryScreenState extends ConsumerState<ScoreHistoryScreen> {
         key: const ValueKey('score-history-app-bar'),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        centerTitle: true,
+        foregroundColor: AppColors.dayScore,
         title: Semantics(
           header: true,
           child: const Text(

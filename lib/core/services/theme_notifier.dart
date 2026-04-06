@@ -85,11 +85,10 @@ class ThemeNotifier extends StateNotifier<ThemeState> {
         backgroundColor: Colors.white,
         foregroundColor: AppColors.lightTextPrimary,
         elevation: 0,
-        centerTitle: false,
+        centerTitle: true,
         titleTextStyle: TextStyle(
           fontSize: 20,
           fontWeight: FontWeight.w700,
-          color: AppColors.lightTextPrimary,
         ),
       ),
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(

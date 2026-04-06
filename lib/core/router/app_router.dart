@@ -545,10 +545,10 @@ class _AppShellState extends State<_AppShell> {
     if (location == AppRoutes.habits) {
       return [
         IconButton(
-          key: const ValueKey('habits-stats-button'),
-          icon: Icon(Icons.bar_chart_outlined, color: AppColors.habits),
-          onPressed: () {},
-          tooltip: 'Estadisticas',
+          key: const ValueKey('habits-add-button'),
+          icon: Icon(Icons.add_circle_outline, color: AppColors.habits),
+          onPressed: () => GoRouter.of(context).push(AppRoutes.habitsAdd),
+          tooltip: 'Agregar habito',
         ),
       ];
     }

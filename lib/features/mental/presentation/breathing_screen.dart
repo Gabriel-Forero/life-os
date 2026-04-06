@@ -272,6 +272,7 @@ class _BreathingScreenState extends ConsumerState<BreathingScreen>
         title: const Text('Respiracion'),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        centerTitle: true,
         foregroundColor: mentalColor,
       ),
       body: SingleChildScrollView(

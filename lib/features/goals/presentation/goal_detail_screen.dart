@@ -34,7 +34,7 @@ class GoalDetailScreen extends ConsumerWidget {
         if (goal == null) {
           return Scaffold(
             key: const ValueKey('goal_detail_screen'),
-            appBar: AppBar(title: const Text('Objetivo')),
+            appBar: AppBar(title: const Text('Objetivo'), centerTitle: true, foregroundColor: AppColors.goals),
             body: const Center(
               child: CircularProgressIndicator(),
             ),

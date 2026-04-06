@@ -19,7 +19,7 @@ void main() {
     await db.close();
   });
 
-  Future<int> _insertExercise({String name = 'Press de banca'}) async {
+  Future<int> insertExercise({String name = 'Press de banca'}) async {
     return dao.insertExercise(ExercisesCompanion.insert(
       name: name,
       primaryMuscle: 'Pecho',
@@ -33,7 +33,7 @@ void main() {
 
   group('GymDao — Exercises', () {
     test('insertExercise returns id', () async {
-      final id = await _insertExercise();
+      final id = await insertExercise();
       expect(id, greaterThan(0));
     });
 
@@ -54,14 +54,14 @@ void main() {
     });
 
     test('countExercises returns correct count', () async {
-      await _insertExercise(name: 'Ex1');
-      await _insertExercise(name: 'Ex2');
+      await insertExercise(name: 'Ex1');
+      await insertExercise(name: 'Ex2');
       final count = await dao.countExercises();
       expect(count, 2);
     });
 
     test('watchExercises filters by muscle group', () async {
-      await _insertExercise(name: 'Bench');
+      await insertExercise(name: 'Bench');
       await dao.insertExercise(ExercisesCompanion.insert(
         name: 'Curl',
         primaryMuscle: 'Biceps',
@@ -76,9 +76,9 @@ void main() {
     });
 
     test('watchExercises filters by search query', () async {
-      await _insertExercise(name: 'Press de banca');
-      await _insertExercise(name: 'Press militar');
-      await _insertExercise(name: 'Curl biceps');
+      await insertExercise(name: 'Press de banca');
+      await insertExercise(name: 'Press militar');
+      await insertExercise(name: 'Curl biceps');
 
       final results = await dao.watchExercises(query: 'press').first;
       expect(results, hasLength(2));
@@ -156,7 +156,7 @@ void main() {
 
   group('GymDao — Workout Sets', () {
     test('insertWorkoutSet and watchWorkoutSets', () async {
-      final exId = await _insertExercise();
+      final exId = await insertExercise();
       final wId = await dao.insertWorkout(WorkoutsCompanion.insert(
         startedAt: DateTime.now(),
         createdAt: DateTime.now(),
@@ -179,7 +179,7 @@ void main() {
     });
 
     test('bodyweight set has null weightKg', () async {
-      final exId = await _insertExercise(name: 'Fondos');
+      final exId = await insertExercise(name: 'Fondos');
       final wId = await dao.insertWorkout(WorkoutsCompanion.insert(
         startedAt: DateTime.now(),
         createdAt: DateTime.now(),
@@ -199,7 +199,7 @@ void main() {
     });
 
     test('getWeightPR returns max non-warmup weight', () async {
-      final exId = await _insertExercise();
+      final exId = await insertExercise();
       final wId = await dao.insertWorkout(WorkoutsCompanion.insert(
         startedAt: DateTime.now(),
         createdAt: DateTime.now(),
@@ -223,7 +223,7 @@ void main() {
     });
 
     test('getVolumePR returns max weight*reps non-warmup', () async {
-      final exId = await _insertExercise();
+      final exId = await insertExercise();
       final wId = await dao.insertWorkout(WorkoutsCompanion.insert(
         startedAt: DateTime.now(),
         createdAt: DateTime.now(),

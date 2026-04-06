@@ -130,6 +130,7 @@ class _MoodLogScreenState extends ConsumerState<MoodLogScreen> {
         title: const Text('Estado de Animo'),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        centerTitle: true,
         foregroundColor: mentalColor,
       ),
       body: SingleChildScrollView(

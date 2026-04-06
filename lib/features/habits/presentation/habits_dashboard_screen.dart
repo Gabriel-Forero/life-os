@@ -239,7 +239,25 @@ class _HabitsDashboardBody extends ConsumerWidget {
                 total: habits.length,
                 allDone: allDone,
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
+
+              // --- Barra de completitud semanal ---
+              _WeeklyCompletionBars(
+                key: const ValueKey('habits-weekly-bars'),
+                dao: dao,
+                habits: habits,
+                today: today,
+              ),
+              const SizedBox(height: 16),
+
+              // --- Card de mejor racha ---
+              _BestStreakCard(
+                key: const ValueKey('habits-best-streak'),
+                dao: dao,
+                habits: habits,
+                today: today,
+              ),
+              const SizedBox(height: 16),
 
               // --- Banner de celebracion ---
               if (allDone)
@@ -957,6 +975,329 @@ class _HabitCardState extends State<_HabitCard> {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Widget: barra de completitud semanal (ultimos 7 dias, todos los habitos)
+// ---------------------------------------------------------------------------
+
+class _WeeklyCompletionBars extends StatefulWidget {
+  const _WeeklyCompletionBars({
+    super.key,
+    required this.dao,
+    required this.habits,
+    required this.today,
+  });
+
+  final HabitsDao dao;
+  final List<Habit> habits;
+  final DateTime today;
+
+  @override
+  State<_WeeklyCompletionBars> createState() => _WeeklyCompletionBarsState();
+}
+
+class _WeeklyCompletionBarsState extends State<_WeeklyCompletionBars> {
+  List<double> _rates = List.filled(7, 0.0);
+  bool _loaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void didUpdateWidget(_WeeklyCompletionBars old) {
+    super.didUpdateWidget(old);
+    _load();
+  }
+
+  Future<void> _load() async {
+    if (widget.habits.isEmpty) return;
+    final rates = <double>[];
+    for (var i = 6; i >= 0; i--) {
+      final day = widget.today.subtract(Duration(days: i));
+      var done = 0;
+      for (final h in widget.habits) {
+        final log = await widget.dao.getLogForDate(h.id, day);
+        if (log != null) done++;
+      }
+      rates.add(widget.habits.isNotEmpty ? done / widget.habits.length : 0.0);
+    }
+    if (mounted) setState(() { _rates = rates; _loaded = true; });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_loaded) return const SizedBox.shrink();
+    final theme = Theme.of(context);
+    const dayNames = ['Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab', 'Dom'];
+
+    return Semantics(
+      label: 'Completitud semanal de habitos',
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(8),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Esta semana',
+              style: theme.textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: AppColors.habits,
+              ),
+            ),
+            const SizedBox(height: 14),
+            SizedBox(
+              height: 80,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: List.generate(7, (i) {
+                  final day = widget.today.subtract(Duration(days: 6 - i));
+                  final isToday = i == 6;
+                  final rate = _rates[i];
+                  final dayLabel = dayNames[day.weekday - 1];
+
+                  return Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 3),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Text(
+                            '${(rate * 100).round()}%',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              fontSize: 9,
+                              color: isToday
+                                  ? AppColors.habits
+                                  : AppColors.lightTextSecondary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Expanded(
+                            child: TweenAnimationBuilder<double>(
+                              tween: Tween(begin: 0.0, end: rate.clamp(0.05, 1.0)),
+                              duration: Duration(milliseconds: 600 + i * 80),
+                              curve: Curves.easeOutCubic,
+                              builder: (context, value, _) => FractionallySizedBox(
+                                heightFactor: value,
+                                alignment: Alignment.bottomCenter,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: isToday
+                                        ? AppColors.habits
+                                        : AppColors.habits.withAlpha(rate > 0 ? 120 : 40),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            dayLabel,
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              fontSize: 10,
+                              color: isToday
+                                  ? AppColors.habits
+                                  : AppColors.lightTextSecondary,
+                              fontWeight: isToday ? FontWeight.w700 : FontWeight.w400,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Widget: card de mejor racha
+// ---------------------------------------------------------------------------
+
+class _BestStreakCard extends StatefulWidget {
+  const _BestStreakCard({
+    super.key,
+    required this.dao,
+    required this.habits,
+    required this.today,
+  });
+
+  final HabitsDao dao;
+  final List<Habit> habits;
+  final DateTime today;
+
+  @override
+  State<_BestStreakCard> createState() => _BestStreakCardState();
+}
+
+class _BestStreakCardState extends State<_BestStreakCard> {
+  String _bestHabitName = '';
+  int _currentStreak = 0;
+  int _longestStreak = 0;
+  bool _loaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void didUpdateWidget(_BestStreakCard old) {
+    super.didUpdateWidget(old);
+    _load();
+  }
+
+  Future<void> _load() async {
+    if (widget.habits.isEmpty) return;
+    String bestName = '';
+    int bestCurrent = 0;
+    int bestLongest = 0;
+
+    for (final h in widget.habits) {
+      final current = await widget.dao.streakCount(h.id, widget.today);
+      final longest = await widget.dao.longestStreak(h.id);
+      if (current > bestCurrent) {
+        bestCurrent = current;
+        bestName = h.name;
+      }
+      if (longest > bestLongest) bestLongest = longest;
+    }
+
+    if (mounted) {
+      setState(() {
+        _bestHabitName = bestName;
+        _currentStreak = bestCurrent;
+        _longestStreak = bestLongest;
+        _loaded = true;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_loaded || (_currentStreak == 0 && _longestStreak == 0)) {
+      return const SizedBox.shrink();
+    }
+    final theme = Theme.of(context);
+
+    return Semantics(
+      label: 'Mejor racha activa: $_currentStreak dias en $_bestHabitName. '
+          'Record historico: $_longestStreak dias.',
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(8),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: AppColors.habits.withAlpha(25),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Center(
+                child: Text('🔥', style: TextStyle(fontSize: 24)),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Mejor racha activa',
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: AppColors.lightTextSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  RichText(
+                    text: TextSpan(children: [
+                      TextSpan(
+                        text: '$_currentStreak',
+                        style: theme.textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.habits,
+                          height: 1.2,
+                        ),
+                      ),
+                      TextSpan(
+                        text: ' dia${_currentStreak != 1 ? 's' : ''}',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: AppColors.lightTextSecondary,
+                        ),
+                      ),
+                    ]),
+                  ),
+                  if (_bestHabitName.isNotEmpty)
+                    Text(
+                      _bestHabitName,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: AppColors.habits,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                ],
+              ),
+            ),
+            // Record historico
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  'Record',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: AppColors.lightTextSecondary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '$_longestStreak dias',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.habits,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );

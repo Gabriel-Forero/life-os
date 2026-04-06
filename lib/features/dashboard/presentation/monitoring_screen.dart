@@ -355,6 +355,8 @@ class _MonitoringScreenState extends ConsumerState<MonitoringScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        centerTitle: true,
+        foregroundColor: AppColors.dayScore,
         title: Semantics(
           header: true,
           child: const Text('Monitoreo'),

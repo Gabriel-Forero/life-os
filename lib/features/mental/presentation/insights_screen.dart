@@ -203,6 +203,7 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
         title: const Text('Patrones de IA'),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        centerTitle: true,
         foregroundColor: mentalColor,
         actions: [
           Semantics(

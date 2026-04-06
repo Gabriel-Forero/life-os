@@ -109,6 +109,7 @@ class _TransactionsListScreenState
                     title: 'Sin transacciones',
                     message: 'Agrega tu primera transaccion tocando el boton +',
                     actionLabel: 'Agregar transaccion',
+                    actionColor: AppColors.finance,
                     onAction: () => GoRouter.of(context).push('/finance/add'),
                   );
                 }

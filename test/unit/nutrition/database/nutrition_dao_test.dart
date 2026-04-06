@@ -19,7 +19,7 @@ void main() {
     await db.close();
   });
 
-  Future<int> _insertFoodItem({String name = 'Pechuga de pollo'}) async {
+  Future<int> insertFoodItem({String name = 'Pechuga de pollo'}) async {
     return dao.insertFoodItem(FoodItemsCompanion.insert(
       name: name,
       caloriesPer100g: 165,
@@ -36,7 +36,7 @@ void main() {
 
   group('NutritionDao — Food Items', () {
     test('insertFoodItem returns id', () async {
-      final id = await _insertFoodItem();
+      final id = await insertFoodItem();
       expect(id, greaterThan(0));
     });
 
@@ -60,8 +60,8 @@ void main() {
     });
 
     test('watchFavorites returns only favorites', () async {
-      await _insertFoodItem(name: 'Item1');
-      final id2 = await _insertFoodItem(name: 'Item2');
+      await insertFoodItem(name: 'Item1');
+      final id2 = await insertFoodItem(name: 'Item2');
       await dao.toggleFavorite(id2, true);
 
       final favs = await dao.watchFavorites().first;
@@ -70,9 +70,9 @@ void main() {
     });
 
     test('searchFoodItems finds by name', () async {
-      await _insertFoodItem(name: 'Arroz blanco');
-      await _insertFoodItem(name: 'Arroz integral');
-      await _insertFoodItem(name: 'Pechuga de pollo');
+      await insertFoodItem(name: 'Arroz blanco');
+      await insertFoodItem(name: 'Arroz integral');
+      await insertFoodItem(name: 'Pechuga de pollo');
 
       final results = await dao.searchFoodItems('arroz');
       expect(results, hasLength(2));
@@ -106,7 +106,7 @@ void main() {
         updatedAt: today,
       ));
 
-      final foodId = await _insertFoodItem();
+      final foodId = await insertFoodItem();
       await dao.insertMealLogItem(MealLogItemsCompanion.insert(
         mealLogId: mealId,
         foodItemId: foodId,

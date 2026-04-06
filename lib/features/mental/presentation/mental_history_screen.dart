@@ -62,6 +62,7 @@ class _MentalHistoryScreenState extends ConsumerState<MentalHistoryScreen>
         title: const Text('Historial Mental'),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        centerTitle: true,
         foregroundColor: mentalColor,
         actions: [
           Semantics(

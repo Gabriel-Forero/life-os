@@ -121,6 +121,7 @@ class _EnergyTrackerScreenState extends ConsumerState<EnergyTrackerScreen> {
         title: const Text('Energia del Dia'),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        centerTitle: true,
         foregroundColor: sleepColor,
       ),
       body: StreamBuilder<List<EnergyLog>>(

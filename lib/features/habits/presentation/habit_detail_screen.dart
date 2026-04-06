@@ -90,7 +90,7 @@ class _HabitDetailScreenState extends ConsumerState<HabitDetailScreen> {
           FilledButton(
             key: const ValueKey('habit-archive-confirm-button'),
             style: FilledButton.styleFrom(
-              backgroundColor: AppColors.warning,
+              backgroundColor: AppColors.habits,
             ),
             onPressed: () async {
               Navigator.of(ctx).pop();
@@ -118,7 +118,7 @@ class _HabitDetailScreenState extends ConsumerState<HabitDetailScreen> {
 
     if (habitId == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Habito')),
+        appBar: AppBar(title: const Text('Habito'), centerTitle: true, foregroundColor: AppColors.habits),
         body: const Center(child: Text('Habito no encontrado')),
       );
     }
@@ -146,7 +146,7 @@ class _HabitDetailScreenState extends ConsumerState<HabitDetailScreen> {
 
         if (habit == null) {
           return Scaffold(
-            appBar: AppBar(title: const Text('Habito')),
+            appBar: AppBar(title: const Text('Habito'), centerTitle: true, foregroundColor: AppColors.habits),
             body: const Center(child: Text('Habito no encontrado')),
           );
         }
@@ -156,6 +156,8 @@ class _HabitDetailScreenState extends ConsumerState<HabitDetailScreen> {
           appBar: AppBar(
             backgroundColor: Colors.transparent,
             elevation: 0,
+            centerTitle: true,
+            foregroundColor: AppColors.habits,
             title: Semantics(
               header: true,
               child: Text(habit.name),

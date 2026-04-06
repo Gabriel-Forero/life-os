@@ -30,6 +30,8 @@ class SavingsGoalsScreen extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        centerTitle: true,
+        foregroundColor: AppColors.finance,
         title: Semantics(
           header: true,
           child: const Text('Metas de ahorro'),
@@ -71,6 +73,7 @@ class SavingsGoalsScreen extends ConsumerWidget {
               message:
                   'Crea tu primera meta de ahorro para empezar a progresar',
               actionLabel: 'Crear meta',
+              actionColor: AppColors.finance,
               onAction: () => _showAddGoalDialog(context, ref),
             );
           }

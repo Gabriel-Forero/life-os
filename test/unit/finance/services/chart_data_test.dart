@@ -1,4 +1,3 @@
-import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_os/core/database/app_database.dart';
@@ -20,7 +19,7 @@ void main() {
     await db.close();
   });
 
-  Future<void> _addExpense(int catId, int amount, DateTime date) async {
+  Future<void> addExpense(int catId, int amount, DateTime date) async {
     await dao.insertTransaction(TransactionsCompanion.insert(
       type: 'expense',
       amountCents: amount,
@@ -31,7 +30,7 @@ void main() {
     ));
   }
 
-  Future<void> _addIncome(int catId, int amount, DateTime date) async {
+  Future<void> addIncome(int catId, int amount, DateTime date) async {
     await dao.insertTransaction(TransactionsCompanion.insert(
       type: 'income',
       amountCents: amount,
@@ -49,9 +48,9 @@ void main() {
       final catTransport = cats.firstWhere((c) => c.name == 'Transporte');
 
       final now = DateTime.now();
-      await _addExpense(catFood.id, 30000, now);
-      await _addExpense(catFood.id, 20000, now);
-      await _addExpense(catTransport.id, 50000, now);
+      await addExpense(catFood.id, 30000, now);
+      await addExpense(catFood.id, 20000, now);
+      await addExpense(catTransport.id, 50000, now);
 
       final from = DateTime(now.year, now.month, 1);
       final to = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
@@ -76,8 +75,8 @@ void main() {
       final incomeCat = incomeCats.first;
 
       final now = DateTime.now();
-      await _addExpense(cat.id, 10000, now);
-      await _addIncome(incomeCat.id, 50000, now);
+      await addExpense(cat.id, 10000, now);
+      await addIncome(incomeCat.id, 50000, now);
 
       final from = DateTime(now.year, now.month, 1);
       final to = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
@@ -104,9 +103,9 @@ void main() {
       final day1 = DateTime(2026, 4, 1);
       final day2 = DateTime(2026, 4, 2);
 
-      await _addExpense(cat.id, 10000, day1);
-      await _addExpense(cat.id, 5000, day1);
-      await _addIncome(incomeCat.id, 30000, day2);
+      await addExpense(cat.id, 10000, day1);
+      await addExpense(cat.id, 5000, day1);
+      await addIncome(incomeCat.id, 30000, day2);
 
       final from = DateTime(2026, 4, 1);
       final to = DateTime(2026, 4, 30, 23, 59, 59);
@@ -140,9 +139,9 @@ void main() {
       final day2 = DateTime(2026, 4, 2);
       final day3 = DateTime(2026, 4, 3);
 
-      await _addIncome(incomeCat.id, 100000, day1);
-      await _addExpense(cat.id, 30000, day2);
-      await _addExpense(cat.id, 20000, day3);
+      await addIncome(incomeCat.id, 100000, day1);
+      await addExpense(cat.id, 30000, day2);
+      await addExpense(cat.id, 20000, day3);
 
       final from = DateTime(2026, 4, 1);
       final to = DateTime(2026, 4, 30, 23, 59, 59);

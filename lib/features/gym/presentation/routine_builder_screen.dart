@@ -242,6 +242,8 @@ class _RoutineBuilderScreenState extends ConsumerState<RoutineBuilderScreen>
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        centerTitle: true,
+        foregroundColor: AppColors.gym,
         title: Semantics(
           header: true,
           child: Text(_isEditing ? 'Editar programa' : 'Nuevo programa'),

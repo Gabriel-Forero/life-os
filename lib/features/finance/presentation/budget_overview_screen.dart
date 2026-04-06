@@ -29,6 +29,8 @@ class BudgetOverviewScreen extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        centerTitle: true,
+        foregroundColor: AppColors.finance,
         title: Semantics(
           header: true,
           child: const Text('Presupuestos'),
@@ -62,6 +64,7 @@ class BudgetOverviewScreen extends ConsumerWidget {
               message:
                   'Define un presupuesto por categoria para controlar tus gastos',
               actionLabel: 'Crear presupuesto',
+              actionColor: AppColors.finance,
               onAction: () => _showSetBudgetDialog(context, ref, null),
             );
           }

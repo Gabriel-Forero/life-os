@@ -12,7 +12,7 @@ void main() {
     engine = BackupEngine();
   });
 
-  BackupManifest _sampleManifest() => BackupManifest(
+  BackupManifest sampleManifest() => BackupManifest(
         appVersion: '0.1.0',
         exportDate: DateTime.utc(2026, 4, 4, 12, 0),
         deviceInfo: 'Test Device - Android 15',
@@ -25,7 +25,7 @@ void main() {
 
   group('BackupEngine', () {
     test('createZip produces valid ZIP bytes', () {
-      final manifest = _sampleManifest();
+      final manifest = sampleManifest();
       final moduleJsons = {
         'settings': jsonEncode([{'id': 1, 'userName': 'Test'}]),
         'finance': jsonEncode(
@@ -45,7 +45,7 @@ void main() {
     });
 
     test('validateAndParseManifest round-trips with createZip', () {
-      final manifest = _sampleManifest();
+      final manifest = sampleManifest();
       final moduleJsons = {
         'settings': jsonEncode([{'id': 1}]),
         'finance': jsonEncode([{'id': 1}]),
@@ -66,7 +66,7 @@ void main() {
     });
 
     test('extractModuleData retrieves correct data', () {
-      final manifest = _sampleManifest();
+      final manifest = sampleManifest();
       final records = [
         {'id': 1, 'amount': 50.0},
         {'id': 2, 'amount': 100.0},
@@ -92,7 +92,7 @@ void main() {
 
   group('BackupManifest', () {
     test('toJson and fromJson are symmetric', () {
-      final manifest = _sampleManifest();
+      final manifest = sampleManifest();
       final json = manifest.toJson();
       final parsed = BackupManifest.fromJson(json);
 

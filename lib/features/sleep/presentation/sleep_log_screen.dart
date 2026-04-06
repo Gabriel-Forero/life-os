@@ -80,15 +80,75 @@ class _SleepLogScreenState extends ConsumerState<SleepLogScreen> {
   // --- Wake-check dialog shown once ---
   bool _wakeDialogShown = false;
 
+  // --- Alarm ---
+  DateTime? _alarmTime;
+  TimeOfDay? _savedAlarmTod;
+
   @override
   void initState() {
     super.initState();
+    _loadAlarm();
     // Feature 3: if returning to app while in sleep mode (phase 1), prompt
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_phase == 1 && !_wakeDialogShown) {
+        _checkAutoWake();
         _showWakeCheckDialog();
       }
     });
+  }
+
+  Future<void> _loadAlarm() async {
+    final alarmService = ref.read(alarmServiceProvider);
+    final alarm = await alarmService.getNextAlarm();
+    final saved = await alarmService.getSavedAlarmTime();
+    if (mounted) {
+      setState(() {
+        _alarmTime = alarm;
+        _savedAlarmTod = saved != null
+            ? TimeOfDay(hour: saved.hour, minute: saved.minute)
+            : null;
+      });
+    }
+  }
+
+  /// If we're in sleep mode and the alarm time has passed, auto-set wake time.
+  void _checkAutoWake() {
+    if (_phase == 1 && _alarmTime != null && _wakeTime == null) {
+      final now = DateTime.now();
+      if (now.isAfter(_alarmTime!)) {
+        setState(() {
+          _wakeTime = _alarmTime;
+          _phase = 2;
+        });
+      }
+    }
+  }
+
+  Future<void> _pickAlarmTime() async {
+    final alarmService = ref.read(alarmServiceProvider);
+    final initial = _savedAlarmTod ?? const TimeOfDay(hour: 7, minute: 0);
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: initial,
+      helpText: 'Hora de tu alarma',
+      cancelText: 'Cancelar',
+      confirmText: 'Guardar',
+      builder: (context, child) => Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: Theme.of(context)
+              .colorScheme
+              .copyWith(primary: AppColors.sleep),
+        ),
+        child: child!,
+      ),
+    );
+    if (picked != null) {
+      await alarmService.saveAlarmTime(picked.hour, picked.minute);
+      if (mounted) {
+        setState(() => _savedAlarmTod = picked);
+        await _loadAlarm();
+      }
+    }
   }
 
   @override
@@ -347,7 +407,7 @@ class _SleepLogScreenState extends ConsumerState<SleepLogScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final sleepColor = AppColors.sleep;
+    const sleepColor = AppColors.sleep;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -355,6 +415,7 @@ class _SleepLogScreenState extends ConsumerState<SleepLogScreen> {
         title: const Text('Registro de Sueno'),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        centerTitle: true,
         foregroundColor: sleepColor,
         actions: [
           // Navigation: Energy tracker
@@ -491,6 +552,59 @@ class _SleepLogScreenState extends ConsumerState<SleepLogScreen> {
             ),
           ),
         ),
+        const SizedBox(height: 12),
+
+        // Alarm configuration card
+        Card(
+          key: const ValueKey('alarm-config-card'),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: InkWell(
+            onTap: _pickAlarmTime,
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Icon(Icons.alarm, color: sleepColor, size: 28),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Mi alarma',
+                          style: theme.textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          _savedAlarmTod != null
+                              ? 'Configurada a las ${_savedAlarmTod!.hour.toString().padLeft(2, '0')}:${_savedAlarmTod!.minute.toString().padLeft(2, '0')}'
+                              : 'Toca para configurar tu hora de despertar',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: _savedAlarmTod != null
+                                ? sleepColor
+                                : AppColors.lightTextSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (_savedAlarmTod != null)
+                    Text(
+                      '${_savedAlarmTod!.hour.toString().padLeft(2, '0')}:${_savedAlarmTod!.minute.toString().padLeft(2, '0')}',
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        color: sleepColor,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    )
+                  else
+                    Icon(Icons.chevron_right, color: AppColors.lightTextSecondary),
+                ],
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -528,6 +642,23 @@ class _SleepLogScreenState extends ConsumerState<SleepLogScreen> {
                   'Dormiste a las ${_fmtTime(_bedTime)}',
                   style: theme.textTheme.bodyMedium,
                 ),
+                if (_alarmTime != null) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.alarm, color: sleepColor, size: 16),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Alarma: ${_fmtTime(_alarmTime)}',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: sleepColor,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
@@ -582,7 +713,7 @@ class _SleepLogScreenState extends ConsumerState<SleepLogScreen> {
           key: const ValueKey('wake-up-button'),
           onPressed: _wakeUp,
           style: FilledButton.styleFrom(
-            backgroundColor: AppColors.gym,
+            backgroundColor: sleepColor,
             minimumSize: const Size.fromHeight(56),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           ),
@@ -917,6 +1048,7 @@ class _SleepLogScreenState extends ConsumerState<SleepLogScreen> {
         actions: [
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.sleep),
             child: const Text('Entendido'),
           ),
         ],
@@ -1000,7 +1132,7 @@ class _InterruptionTile extends StatelessWidget {
           ),
           if (onDelete != null)
             IconButton(
-              icon: Icon(Icons.delete_outline, size: 18, color: AppColors.error),
+              icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.error),
               onPressed: onDelete,
               tooltip: 'Eliminar',
             ),

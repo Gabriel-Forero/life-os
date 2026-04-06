@@ -27,7 +27,7 @@ void main() {
     await db.close();
   });
 
-  Future<int> _insertExercise({String name = 'Press de banca'}) async {
+  Future<int> insertExercise({String name = 'Press de banca'}) async {
     return dao.insertExercise(ExercisesCompanion.insert(
       name: name,
       primaryMuscle: 'Pecho',
@@ -54,7 +54,7 @@ void main() {
     });
 
     test('logSet persists immediately (auto-save)', () async {
-      final exId = await _insertExercise();
+      final exId = await insertExercise();
       final wResult = await notifier.startWorkout();
       final workoutId = wResult.valueOrNull!;
 
@@ -72,7 +72,7 @@ void main() {
     });
 
     test('logSet with bodyweight (null weight)', () async {
-      final exId = await _insertExercise(name: 'Fondos');
+      final exId = await insertExercise(name: 'Fondos');
       final wResult = await notifier.startWorkout();
       final workoutId = wResult.valueOrNull!;
 
@@ -88,7 +88,7 @@ void main() {
     });
 
     test('logSet rejects 0 reps', () async {
-      final exId = await _insertExercise();
+      final exId = await insertExercise();
       final wResult = await notifier.startWorkout();
       final workoutId = wResult.valueOrNull!;
 
@@ -101,7 +101,7 @@ void main() {
     });
 
     test('finishWorkout sets finishedAt and emits event', () async {
-      final exId = await _insertExercise();
+      final exId = await insertExercise();
       final wResult = await notifier.startWorkout();
       final workoutId = wResult.valueOrNull!;
 
@@ -123,7 +123,7 @@ void main() {
     });
 
     test('discardWorkout deletes workout and all sets', () async {
-      final exId = await _insertExercise();
+      final exId = await insertExercise();
       final wResult = await notifier.startWorkout();
       final workoutId = wResult.valueOrNull!;
 
@@ -140,7 +140,7 @@ void main() {
 
   group('GymNotifier — Routines', () {
     test('createRoutine with exercises', () async {
-      final exId = await _insertExercise();
+      final exId = await insertExercise();
 
       final result = await notifier.createRoutine(RoutineInput(
         name: 'Push Day',
@@ -169,7 +169,7 @@ void main() {
     });
 
     test('createRoutine fails with empty name', () async {
-      final exId = await _insertExercise();
+      final exId = await insertExercise();
       final result = await notifier.createRoutine(RoutineInput(
         name: '',
         exercises: [RoutineExerciseInput(exerciseId: exId)],
@@ -193,7 +193,7 @@ void main() {
     });
 
     test('addCustomExercise fails on duplicate name', () async {
-      await _insertExercise(name: 'Existing');
+      await insertExercise(name: 'Existing');
       final result = await notifier.addCustomExercise(
         name: 'Existing',
         primaryMuscle: 'Pecho',

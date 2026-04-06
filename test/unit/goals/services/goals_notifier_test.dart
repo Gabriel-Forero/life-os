@@ -5,7 +5,6 @@ import 'package:life_os/core/domain/app_event.dart';
 import 'package:life_os/core/domain/result.dart';
 import 'package:life_os/core/services/event_bus.dart';
 import 'package:life_os/features/goals/database/goals_dao.dart';
-import 'package:life_os/features/goals/database/goals_tables.dart';
 import 'package:life_os/features/goals/domain/goals_input.dart';
 import 'package:life_os/features/goals/providers/goals_notifier.dart';
 import 'package:drift/drift.dart' hide isNull, isNotNull;

@@ -22,7 +22,7 @@ void main() {
     await db.close();
   });
 
-  Future<int> _insertFood({String name = 'Arroz blanco'}) async {
+  Future<int> insertFood({String name = 'Arroz blanco'}) async {
     return dao.insertFoodItem(FoodItemsCompanion.insert(
       name: name,
       caloriesPer100g: 130,
@@ -39,7 +39,7 @@ void main() {
 
   group('NutritionNotifier — logMeal', () {
     test('logs meal with items', () async {
-      final foodId = await _insertFood();
+      final foodId = await insertFood();
       final result = await notifier.logMeal(MealLogInput(
         mealType: 'lunch',
         items: [MealItemInput(foodItemId: foodId, quantityG: 200)],
@@ -56,7 +56,7 @@ void main() {
     });
 
     test('rejects invalid meal type', () async {
-      final foodId = await _insertFood();
+      final foodId = await insertFood();
       final result = await notifier.logMeal(MealLogInput(
         mealType: 'brunch',
         items: [MealItemInput(foodItemId: foodId, quantityG: 100)],
@@ -65,7 +65,7 @@ void main() {
     });
 
     test('rejects zero quantity', () async {
-      final foodId = await _insertFood();
+      final foodId = await insertFood();
       final result = await notifier.logMeal(MealLogInput(
         mealType: 'lunch',
         items: [MealItemInput(foodItemId: foodId, quantityG: 0)],
@@ -158,7 +158,7 @@ void main() {
 
   group('NutritionNotifier — favorites', () {
     test('toggles favorite on', () async {
-      final foodId = await _insertFood();
+      final foodId = await insertFood();
       await notifier.toggleFavorite(foodId, true);
 
       final favs = await dao.watchFavorites().first;
@@ -166,7 +166,7 @@ void main() {
     });
 
     test('toggles favorite off', () async {
-      final foodId = await _insertFood();
+      final foodId = await insertFood();
       await notifier.toggleFavorite(foodId, true);
       await notifier.toggleFavorite(foodId, false);
 

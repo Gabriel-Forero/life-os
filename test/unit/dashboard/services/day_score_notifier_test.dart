@@ -27,7 +27,7 @@ DayScoreNotifier _makeNotifier({
   return DayScoreNotifier(
     dao: dao,
     eventBus: eventBus,
-    moduleScoreProvider: (key) => moduleScores[key] ?? 0.0,
+    moduleScoreProvider: (key) async => moduleScores[key] ?? 0.0,
   );
 }
 

@@ -54,6 +54,7 @@ class _SleepHistoryScreenState extends ConsumerState<SleepHistoryScreen>
         title: const Text('Historial de Sueno'),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        centerTitle: true,
         foregroundColor: sleepColor,
         actions: [
           IconButton(

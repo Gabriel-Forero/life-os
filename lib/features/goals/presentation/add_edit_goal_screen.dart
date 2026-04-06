@@ -137,6 +137,8 @@ class _AddEditGoalScreenState extends ConsumerState<AddEditGoalScreen> {
       appBar: AppBar(
         backgroundColor: theme.scaffoldBackgroundColor,
         elevation: 0,
+        centerTitle: true,
+        foregroundColor: AppColors.goals,
         title: Text(
           isEditing ? 'Editar Objetivo' : 'Nuevo Objetivo',
           style: const TextStyle(fontWeight: FontWeight.bold),

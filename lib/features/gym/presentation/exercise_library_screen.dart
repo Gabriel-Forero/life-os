@@ -95,6 +95,8 @@ class _ExerciseLibraryScreenState
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        centerTitle: true,
+        foregroundColor: AppColors.gym,
         title: Semantics(
           header: true,
           child: const Text('Biblioteca de ejercicios'),

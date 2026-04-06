@@ -187,6 +187,8 @@ class _MealLogScreenState extends ConsumerState<MealLogScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        centerTitle: true,
+        foregroundColor: AppColors.nutrition,
         title: Semantics(
           header: true,
           child: const Text('Registrar comida'),

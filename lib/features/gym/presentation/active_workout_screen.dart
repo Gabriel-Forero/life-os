@@ -351,7 +351,8 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
             header: true,
             child: Text(widget.routineName ?? 'Entrenamiento libre'),
           ),
-          centerTitle: false,
+          centerTitle: true,
+          foregroundColor: AppColors.gym,
           actions: [
             // Temporizador de tiempo transcurrido
             Semantics(

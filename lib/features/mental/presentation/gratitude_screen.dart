@@ -80,6 +80,7 @@ class _GratitudeScreenState extends ConsumerState<GratitudeScreen> {
         title: const Text('Gratitud'),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        centerTitle: true,
         foregroundColor: mentalColor,
       ),
       body: SingleChildScrollView(

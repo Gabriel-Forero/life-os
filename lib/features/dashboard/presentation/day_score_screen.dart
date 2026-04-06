@@ -40,6 +40,8 @@ class _DayScoreScreenState extends ConsumerState<DayScoreScreen> {
         key: const ValueKey('day-score-app-bar'),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        centerTitle: true,
+        foregroundColor: AppColors.dayScore,
         title: Semantics(
           header: true,
           child: const Text(

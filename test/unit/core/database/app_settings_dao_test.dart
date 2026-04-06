@@ -23,7 +23,7 @@ void main() {
   });
 
   group('AppSettingsDao', () {
-    AppSettingsTableCompanion _validSettings() =>
+    AppSettingsTableCompanion validSettings() =>
         AppSettingsTableCompanion.insert(
           userName: 'Camila',
           language: const Value('es'),
@@ -38,7 +38,7 @@ void main() {
         );
 
     test('createSettings inserts and returns row id', () async {
-      final id = await dao.createSettings(_validSettings());
+      final id = await dao.createSettings(validSettings());
       expect(id, 1);
     });
 
@@ -48,7 +48,7 @@ void main() {
     });
 
     test('getSettings returns row after creation', () async {
-      await dao.createSettings(_validSettings());
+      await dao.createSettings(validSettings());
       final result = await dao.getSettings();
       expect(result, isNotNull);
       expect(result!.userName, 'Camila');
@@ -58,49 +58,49 @@ void main() {
     });
 
     test('updateLanguage changes language', () async {
-      await dao.createSettings(_validSettings());
+      await dao.createSettings(validSettings());
       await dao.updateLanguage('en');
       final result = await dao.getSettings();
       expect(result!.language, 'en');
     });
 
     test('updateCurrency changes currency', () async {
-      await dao.createSettings(_validSettings());
+      await dao.createSettings(validSettings());
       await dao.updateCurrency('USD');
       final result = await dao.getSettings();
       expect(result!.currency, 'USD');
     });
 
     test('updateUserName changes userName', () async {
-      await dao.createSettings(_validSettings());
+      await dao.createSettings(validSettings());
       await dao.updateUserName('Andres');
       final result = await dao.getSettings();
       expect(result!.userName, 'Andres');
     });
 
     test('updateThemeMode changes themeMode', () async {
-      await dao.createSettings(_validSettings());
+      await dao.createSettings(validSettings());
       await dao.updateThemeMode('light');
       final result = await dao.getSettings();
       expect(result!.themeMode, 'light');
     });
 
     test('updateBiometric toggles useBiometric', () async {
-      await dao.createSettings(_validSettings());
+      await dao.createSettings(validSettings());
       await dao.updateBiometric(true);
       final result = await dao.getSettings();
       expect(result!.useBiometric, true);
     });
 
     test('updatePrimaryGoal changes primaryGoal', () async {
-      await dao.createSettings(_validSettings());
+      await dao.createSettings(validSettings());
       await dao.updatePrimaryGoal('get_fit');
       final result = await dao.getSettings();
       expect(result!.primaryGoal, 'get_fit');
     });
 
     test('updateEnabledModules persists JSON list', () async {
-      await dao.createSettings(_validSettings());
+      await dao.createSettings(validSettings());
       await dao.updateEnabledModules(['finance', 'habits', 'sleep']);
       final result = await dao.getSettings();
       final modules =
@@ -109,14 +109,14 @@ void main() {
     });
 
     test('markOnboardingCompleted sets flag to true', () async {
-      await dao.createSettings(_validSettings());
+      await dao.createSettings(validSettings());
       await dao.markOnboardingCompleted();
       final result = await dao.getSettings();
       expect(result!.onboardingCompleted, true);
     });
 
     test('updateSettings updates updatedAt timestamp', () async {
-      await dao.createSettings(_validSettings());
+      await dao.createSettings(validSettings());
       final before = await dao.getSettings();
       await Future<void>.delayed(const Duration(milliseconds: 10));
       await dao.updateUserName('Laura');
@@ -128,7 +128,7 @@ void main() {
     });
 
     test('watchSettings emits on changes', () async {
-      await dao.createSettings(_validSettings());
+      await dao.createSettings(validSettings());
 
       final stream = dao.watchSettings();
       final expectation = expectLater(

@@ -328,6 +328,8 @@ class _NutritionValuationScreenState
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        centerTitle: true,
+        foregroundColor: AppColors.nutrition,
         actions: [
           Semantics(
             label: 'Ver historial de valoraciones',
@@ -952,6 +954,8 @@ class _ValuationHistoryScreenState
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        centerTitle: true,
+        foregroundColor: AppColors.nutrition,
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())

@@ -116,6 +116,8 @@ class _AddEditTransactionScreenState
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        centerTitle: true,
+        foregroundColor: AppColors.finance,
         title: Semantics(
           header: true,
           child: Text(

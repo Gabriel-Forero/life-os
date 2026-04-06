@@ -127,6 +127,8 @@ class _BarcodeScannerScreenState
         title: const Text('Escanear codigo de barras'),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        centerTitle: true,
+        foregroundColor: AppColors.nutrition,
         actions: [
           Semantics(
             label: 'Alternar linterna',

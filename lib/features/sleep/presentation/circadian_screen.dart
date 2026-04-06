@@ -29,6 +29,7 @@ class CircadianScreen extends ConsumerWidget {
         title: const Text('Ritmo Circadiano'),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        centerTitle: true,
         foregroundColor: sleepColor,
       ),
       body: StreamBuilder<List<SleepLog>>(

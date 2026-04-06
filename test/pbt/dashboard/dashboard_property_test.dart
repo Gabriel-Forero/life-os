@@ -2,7 +2,6 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/services/event_bus.dart';
-import 'package:life_os/features/dashboard/database/dashboard_dao.dart';
 import 'package:life_os/features/dashboard/providers/day_score_notifier.dart';
 
 // ---------------------------------------------------------------------------
@@ -24,7 +23,7 @@ Future<({DayScoreNotifier notifier, AppDatabase db, EventBus bus})>
   final notifier = DayScoreNotifier(
     dao: dao,
     eventBus: bus,
-    moduleScoreProvider: (key) => scores[key] ?? 0.0,
+    moduleScoreProvider: (key) async => scores[key] ?? 0.0,
   );
   return (notifier: notifier, db: db, bus: bus);
 }

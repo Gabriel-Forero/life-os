@@ -28,7 +28,7 @@ void main() {
     await db.close();
   });
 
-  Future<int> _insertExercise(String name) async {
+  Future<int> insertExercise(String name) async {
     return dao.insertExercise(ExercisesCompanion.insert(
       name: name,
       primaryMuscle: 'Pecho',
@@ -67,7 +67,7 @@ void main() {
     });
 
     test('RT-GYM-02: WorkoutSet insert → query returns identical fields (30 samples)', () async {
-      final exId = await _insertExercise('Bench');
+      final exId = await insertExercise('Bench');
       final wResult = await notifier.startWorkout();
       final wId = wResult.valueOrNull!;
       final random = Random(42);
@@ -96,7 +96,7 @@ void main() {
 
   group('INV-GYM: Invariant properties', () {
     test('INV-GYM-01: Total volume excludes warmup sets', () async {
-      final exId = await _insertExercise('Squat');
+      final exId = await insertExercise('Squat');
       final wResult = await notifier.startWorkout();
       final wId = wResult.valueOrNull!;
 
@@ -115,7 +115,7 @@ void main() {
     });
 
     test('INV-GYM-02: Weight PR only from non-warmup sets', () async {
-      final exId = await _insertExercise('Deadlift');
+      final exId = await insertExercise('Deadlift');
       final wResult = await notifier.startWorkout();
       final wId = wResult.valueOrNull!;
 
@@ -160,7 +160,7 @@ void main() {
 
   group('IDP-GYM: Idempotence properties', () {
     test('IDP-GYM-01: Finishing workout twice fails second time', () async {
-      final exId = await _insertExercise('Press');
+      final exId = await insertExercise('Press');
       final wResult = await notifier.startWorkout();
       final wId = wResult.valueOrNull!;
       await notifier.logSet(wId, exId, SetInput(reps: 10, weightKg: 60.0));
@@ -175,7 +175,7 @@ void main() {
     });
 
     test('IDP-GYM-02: Bulk insert exercises skips if count > 0', () async {
-      await _insertExercise('Existing');
+      await insertExercise('Existing');
 
       final countBefore = await dao.countExercises();
       expect(countBefore, 1);

@@ -3,7 +3,6 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/features/goals/database/goals_dao.dart';
-import 'package:life_os/features/goals/database/goals_tables.dart';
 import 'package:life_os/features/goals/domain/goals_input.dart';
 import 'package:life_os/features/goals/domain/goals_validators.dart';
 
