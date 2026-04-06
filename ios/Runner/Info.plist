@@ -41,6 +41,14 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>LifeOS necesita acceso a la camara para escanear codigos de barras y registrar fotos de progreso</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>LifeOS necesita acceso a tus fotos para registrar medidas corporales y analizar alimentos</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>LifeOS usa Face ID para proteger tus datos personales</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>LifeOS necesita acceso al microfono para funciones de video</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
