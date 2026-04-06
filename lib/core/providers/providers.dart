@@ -1,9 +1,6 @@
-import 'dart:io';
-
-import 'package:drift/drift.dart';
-import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_os/core/database/app_database.dart';
+import 'package:life_os/core/database/connection/connection.dart';
 import 'package:life_os/core/database/daos/app_settings_dao.dart';
 import 'package:life_os/core/services/accessibility_service.dart';
 import 'package:life_os/core/services/app_logger.dart';
@@ -39,20 +36,13 @@ import 'package:life_os/features/nutrition/database/nutrition_dao.dart';
 import 'package:life_os/features/nutrition/providers/nutrition_notifier.dart';
 import 'package:life_os/features/sleep/database/sleep_dao.dart';
 import 'package:life_os/features/sleep/providers/sleep_notifier.dart';
-import 'package:path_provider/path_provider.dart';
 
 // ============================================================
 // DATABASE
 // ============================================================
 
 final appDatabaseProvider = Provider<AppDatabase>((ref) {
-  final db = AppDatabase(
-    LazyDatabase(() async {
-      final dir = await getApplicationDocumentsDirectory();
-      final path = '${dir.path}${Platform.pathSeparator}life_os.sqlite';
-      return NativeDatabase.createInBackground(File(path));
-    }),
-  );
+  final db = AppDatabase(createDatabaseConnection());
   ref.onDispose(db.close);
   return db;
 });
