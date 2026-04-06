@@ -16,10 +16,18 @@ workflows:
         script: dart run build_runner build --delete-conflicting-outputs
       - name: Set up code signing
         script: xcode-project use-profiles
-      - name: Build iOS
-        script: flutter build ipa --release --export-options-plist=/Users/builder/export_options.plist
+      - name: Build IPA
+        script: |
+          flutter build ipa --release \
+            --export-options-plist=/Users/builder/export_options.plist
+      - name: Verify IPA exists
+        script: |
+          echo "=== Looking for IPA ==="
+          find build -name "*.ipa" -type f
+          ls -la build/ios/ipa/ 2>/dev/null || echo "No ipa directory"
     artifacts:
       - build/ios/ipa/*.ipa
+      - "**/*.ipa"
 
   android-build:
     name: Android Build
