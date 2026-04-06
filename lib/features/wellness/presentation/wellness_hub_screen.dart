@@ -20,11 +20,6 @@ class WellnessHubScreen extends ConsumerWidget {
     final todayStart = DateTime(today.year, today.month, today.day);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Bienestar'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [

@@ -162,11 +162,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Configuracion'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
       body: FutureBuilder<AppSettingsTableData?>(
         future: _getSettings(),
         builder: (context, snap) {

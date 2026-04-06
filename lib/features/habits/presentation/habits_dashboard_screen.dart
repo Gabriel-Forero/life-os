@@ -57,26 +57,6 @@ class _HabitsDashboardScreenState
 
     return Scaffold(
       key: const ValueKey('habits-dashboard-screen'),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: Semantics(
-          header: true,
-          child: const Text('Habitos'),
-        ),
-        actions: [
-          Semantics(
-            label: 'Ver estadisticas de habitos',
-            button: true,
-            child: IconButton(
-              key: const ValueKey('habits-stats-button'),
-              icon: const Icon(Icons.bar_chart_outlined),
-              onPressed: () {},
-              tooltip: 'Estadisticas',
-            ),
-          ),
-        ],
-      ),
       body: StreamBuilder<List<Habit>>(
         stream: dao.watchActiveHabits(),
         builder: (context, snapshot) {

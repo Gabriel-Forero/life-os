@@ -465,7 +465,106 @@ class _AppShellState extends State<_AppShell> {
     if (location.startsWith('/goals')) return 'Metas';
     if (location.startsWith('/settings')) return 'Configuracion';
     if (location.startsWith('/monitoring')) return 'Progreso';
+    if (location.startsWith('/wellness')) return 'Bienestar';
     return 'LifeOS';
+  }
+
+  Color _colorForLocation(BuildContext context) {
+    final location = GoRouterState.of(context).uri.path;
+    if (location.startsWith('/finance')) return AppColors.finance;
+    if (location.startsWith('/gym')) return AppColors.gym;
+    if (location.startsWith('/nutrition')) return AppColors.nutrition;
+    if (location.startsWith('/habits')) return AppColors.habits;
+    if (location.startsWith('/goals')) return AppColors.goals;
+    if (location.startsWith('/wellness')) return AppColors.mental;
+    if (location.startsWith('/settings')) return AppColors.lightTextPrimary;
+    return AppColors.primary;
+  }
+
+  List<Widget> _actionsForLocation(BuildContext context) {
+    final location = GoRouterState.of(context).uri.path;
+
+    if (location == AppRoutes.finance) {
+      return [
+        IconButton(
+          key: const ValueKey('transactions-sms-import-button'),
+          icon: Icon(Icons.sms_outlined, color: AppColors.finance),
+          onPressed: () => GoRouter.of(context).push(AppRoutes.financeSmsImport),
+          tooltip: 'Importar SMS',
+        ),
+        IconButton(
+          key: const ValueKey('transactions-budget-button'),
+          icon: Icon(Icons.pie_chart_outline, color: AppColors.finance),
+          onPressed: () => GoRouter.of(context).push(AppRoutes.financeBudgets),
+          tooltip: 'Presupuestos',
+        ),
+        IconButton(
+          key: const ValueKey('transactions-dashboard-button'),
+          icon: Icon(Icons.bar_chart, color: AppColors.finance),
+          onPressed: () => GoRouter.of(context).push(AppRoutes.financeDashboard),
+          tooltip: 'Dashboard',
+        ),
+        IconButton(
+          key: const ValueKey('transactions-savings-button'),
+          icon: Icon(Icons.savings_outlined, color: AppColors.finance),
+          onPressed: () => GoRouter.of(context).push(AppRoutes.financeSavings),
+          tooltip: 'Metas de ahorro',
+        ),
+        IconButton(
+          key: const ValueKey('transactions-valuation-button'),
+          icon: Icon(Icons.assessment_outlined, color: AppColors.finance),
+          onPressed: () => GoRouter.of(context).push(AppRoutes.financeValuation),
+          tooltip: 'Valoracion',
+        ),
+      ];
+    }
+
+    if (location == AppRoutes.nutrition) {
+      return [
+        IconButton(
+          key: const ValueKey('nutrition-photo-analysis-button'),
+          icon: Icon(Icons.camera_alt_outlined, color: AppColors.nutrition),
+          onPressed: () => GoRouter.of(context).push(AppRoutes.photoAnalysis),
+          tooltip: 'Analizar foto',
+        ),
+        IconButton(
+          key: const ValueKey('nutrition-goals-nav-button'),
+          icon: Icon(Icons.track_changes_outlined, color: AppColors.nutrition),
+          onPressed: () => GoRouter.of(context).push(AppRoutes.nutritionGoals),
+          tooltip: 'Metas',
+        ),
+        IconButton(
+          key: const ValueKey('nutrition-valuation-button'),
+          icon: Icon(Icons.assessment_outlined, color: AppColors.nutrition),
+          onPressed: () => GoRouter.of(context).push(AppRoutes.nutritionValuation),
+          tooltip: 'Valoracion',
+        ),
+      ];
+    }
+
+    if (location == AppRoutes.habits) {
+      return [
+        IconButton(
+          key: const ValueKey('habits-stats-button'),
+          icon: Icon(Icons.bar_chart_outlined, color: AppColors.habits),
+          onPressed: () {},
+          tooltip: 'Estadisticas',
+        ),
+      ];
+    }
+
+    if (location == AppRoutes.goals) {
+      return [
+        IconButton(
+          key: const ValueKey('add_goal_button'),
+          icon: Icon(Icons.add, color: AppColors.goals),
+          onPressed: () => GoRouter.of(context).push(AppRoutes.goalsAdd),
+          tooltip: 'Agregar objetivo',
+        ),
+      ];
+    }
+
+    return [];
   }
 
   /// Bottom nav indices:
@@ -593,19 +692,9 @@ class _AppShellState extends State<_AppShell> {
           ),
           const Divider(),
           ListTile(
-            leading: const Icon(Icons.receipt_long_outlined),
-            title: const Text('Escanear Ticket'),
-            onTap: () { Navigator.pop(context); GoRouter.of(context).push(AppRoutes.ticketScanner); },
-          ),
-          ListTile(
             leading: const Icon(Icons.summarize_outlined),
             title: const Text('Resumen Semanal'),
             onTap: () { Navigator.pop(context); GoRouter.of(context).push(AppRoutes.weeklySummary); },
-          ),
-          ListTile(
-            leading: Icon(Icons.bolt_outlined, color: AppColors.gym),
-            title: const Text('Energia'),
-            onTap: () { Navigator.pop(context); GoRouter.of(context).push(AppRoutes.energy); },
           ),
         ],
       ),
@@ -631,6 +720,7 @@ class _AppShellState extends State<_AppShell> {
               backgroundColor: Colors.white,
               elevation: 0,
               surfaceTintColor: Colors.white,
+              centerTitle: true,
               leading: Builder(
                 builder: (ctx) => IconButton(
                   icon: const Icon(Icons.menu),
@@ -640,11 +730,12 @@ class _AppShellState extends State<_AppShell> {
               ),
               title: Text(
                 _titleForLocation(context),
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.lightTextPrimary,
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: _colorForLocation(context),
                 ),
               ),
+              actions: _actionsForLocation(context),
             ),
             drawer: _buildDrawer(context),
             body: Row(
@@ -711,6 +802,7 @@ class _AppShellState extends State<_AppShell> {
             elevation: 0,
             surfaceTintColor: Colors.white,
             shadowColor: Colors.black.withAlpha(20),
+            centerTitle: true,
             leading: Builder(
               builder: (ctx) => IconButton(
                 icon: const Icon(Icons.menu),
@@ -720,11 +812,12 @@ class _AppShellState extends State<_AppShell> {
             ),
             title: Text(
               _titleForLocation(context),
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: AppColors.lightTextPrimary,
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.w800,
+                color: _colorForLocation(context),
               ),
             ),
+            actions: _actionsForLocation(context),
           ),
           body: child,
           drawer: _buildDrawer(context),

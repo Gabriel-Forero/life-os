@@ -86,47 +86,24 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         onRefresh: _refresh,
         child: CustomScrollView(
           slivers: [
-            // --- App Bar con saludo ---
-            SliverAppBar(
-              key: const ValueKey('dashboard-app-bar'),
-              floating: true,
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              expandedHeight: 80,
-              flexibleSpace: FlexibleSpaceBar(
-                titlePadding:
-                    const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                title: Semantics(
-                  header: true,
-                  label: '$greeting — Panel principal',
-                  child: Text(
-                    greeting,
-                    key: const ValueKey('dashboard-greeting-text'),
-                    style: Theme.of(context)
-                        .textTheme
-                        .headlineSmall
-                        ?.copyWith(fontWeight: FontWeight.w700),
-                  ),
-                ),
-              ),
-              actions: [
-                Semantics(
-                  label: 'Actualizar datos del panel',
-                  button: true,
-                  child: IconButton(
-                    key: const ValueKey('dashboard-refresh-button'),
-                    icon: const Icon(Icons.refresh_rounded),
-                    tooltip: 'Actualizar',
-                    onPressed: _refresh,
-                  ),
-                ),
-              ],
-            ),
-
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
+                  const SizedBox(height: 8),
+                  // --- Saludo ---
+                  Semantics(
+                    header: true,
+                    label: '$greeting — Panel principal',
+                    child: Text(
+                      greeting,
+                      key: const ValueKey('dashboard-greeting-text'),
+                      style: Theme.of(context)
+                          .textTheme
+                          .headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                  ),
                   const SizedBox(height: 8),
 
                   // --- Tarjeta DayScore ---

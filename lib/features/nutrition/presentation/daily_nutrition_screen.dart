@@ -135,26 +135,6 @@ class _DailyNutritionScreenState
     setState(() => _waterGoalCelebrated = false);
   }
 
-  void _showTemplatesSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => _TemplatesBottomSheet(
-        onTemplateApplied: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Plantilla aplicada!'),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        },
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -164,62 +144,6 @@ class _DailyNutritionScreenState
 
     return Scaffold(
       key: const ValueKey('daily-nutrition-screen'),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: Semantics(
-          header: true,
-          child: const Text('Nutricion'),
-        ),
-        actions: [
-          // Camera / Photo Analysis
-          Semantics(
-            label: 'Analizar comida con foto',
-            button: true,
-            child: IconButton(
-              key: const ValueKey('nutrition-photo-analysis-button'),
-              icon: const Icon(Icons.camera_alt_outlined),
-              onPressed: () => GoRouter.of(context).push(AppRoutes.photoAnalysis),
-              tooltip: 'Analizar foto',
-            ),
-          ),
-          // Templates
-          Semantics(
-            label: 'Ver plantillas de comidas',
-            button: true,
-            child: IconButton(
-              key: const ValueKey('nutrition-templates-button'),
-              icon: const Icon(Icons.dashboard_customize_outlined),
-              onPressed: () => _showTemplatesSheet(context),
-              tooltip: 'Plantillas',
-            ),
-          ),
-          // Goals / Settings
-          Semantics(
-            label: 'Configurar metas nutricionales',
-            button: true,
-            child: IconButton(
-              key: const ValueKey('nutrition-goals-nav-button'),
-              icon: const Icon(Icons.track_changes_outlined),
-              onPressed: () =>
-                  GoRouter.of(context).push(AppRoutes.nutritionGoals),
-              tooltip: 'Metas',
-            ),
-          ),
-          // Valuation
-          Semantics(
-            label: 'Ver valoracion de nutricion',
-            button: true,
-            child: IconButton(
-              key: const ValueKey('nutrition-valuation-button'),
-              icon: const Icon(Icons.assessment_outlined),
-              onPressed: () =>
-                  GoRouter.of(context).push(AppRoutes.nutritionValuation),
-              tooltip: 'Valoracion',
-            ),
-          ),
-        ],
-      ),
       floatingActionButton: Semantics(
         label: 'Agregar comida al registro de hoy',
         button: true,

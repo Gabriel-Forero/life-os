@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:life_os/core/constants/app_colors.dart';
 import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
-import 'package:life_os/core/router/app_router.dart';
 import 'package:life_os/core/widgets/animated_list_item.dart';
 import 'package:life_os/core/widgets/empty_state_view.dart';
 import 'package:life_os/features/finance/presentation/sms_import_screen.dart';
@@ -89,57 +88,6 @@ class _TransactionsListScreenState
 
     return Scaffold(
       key: const ValueKey('transactions-list-screen'),
-      appBar: AppBar(
-        title: Semantics(
-          header: true,
-          child: const Text('Transacciones'),
-        ),
-        centerTitle: false,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        actions: [
-          Semantics(
-            label: 'Importar transacciones desde SMS o portapapeles',
-            button: true,
-            child: IconButton(
-              key: const ValueKey('transactions-sms-import-button'),
-              icon: const Icon(Icons.sms_outlined),
-              onPressed: () =>
-                  GoRouter.of(context).push(AppRoutes.financeSmsImport),
-              tooltip: 'Importar SMS',
-            ),
-          ),
-          IconButton(
-            key: const ValueKey('transactions-budget-button'),
-            icon: const Icon(Icons.pie_chart_outline),
-            onPressed: () => GoRouter.of(context).push('/finance/budgets'),
-            tooltip: 'Presupuestos',
-          ),
-          IconButton(
-            key: const ValueKey('transactions-dashboard-button'),
-            icon: const Icon(Icons.bar_chart),
-            onPressed: () => GoRouter.of(context).push('/finance/dashboard'),
-            tooltip: 'Dashboard',
-          ),
-          IconButton(
-            key: const ValueKey('transactions-savings-button'),
-            icon: const Icon(Icons.savings_outlined),
-            onPressed: () => GoRouter.of(context).push('/finance/savings'),
-            tooltip: 'Metas de ahorro',
-          ),
-          Semantics(
-            label: 'Ver valoracion de finanzas',
-            button: true,
-            child: IconButton(
-              key: const ValueKey('transactions-valuation-button'),
-              icon: const Icon(Icons.assessment_outlined),
-              onPressed: () =>
-                  GoRouter.of(context).push(AppRoutes.financeValuation),
-              tooltip: 'Valoracion',
-            ),
-          ),
-        ],
-      ),
       body: Column(
         children: [
           // Clipboard detection banner (dismisses itself when not applicable)

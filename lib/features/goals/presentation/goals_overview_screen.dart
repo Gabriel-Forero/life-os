@@ -125,62 +125,6 @@ class _GoalsOverviewScreenState extends ConsumerState<GoalsOverviewScreen> {
     return Scaffold(
       key: const ValueKey('goals_overview_screen'),
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        backgroundColor: theme.scaffoldBackgroundColor,
-        elevation: 0,
-        title: const Text(
-          'Mis Objetivos',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        actions: [
-          // Sort picker
-          PopupMenuButton<_GoalSortOption>(
-            key: const ValueKey('sort_goals_button'),
-            icon: const Icon(Icons.sort),
-            tooltip: 'Ordenar',
-            onSelected: (opt) => setState(() => _sortOption = opt),
-            itemBuilder: (_) => _GoalSortOption.values
-                .map(
-                  (opt) => PopupMenuItem<_GoalSortOption>(
-                    value: opt,
-                    child: Row(
-                      children: [
-                        Icon(opt.icon,
-                            size: 18,
-                            color: _sortOption == opt
-                                ? _goalsColor
-                                : null),
-                        const SizedBox(width: 8),
-                        Text(
-                          opt.label,
-                          style: TextStyle(
-                            color: _sortOption == opt
-                                ? _goalsColor
-                                : null,
-                            fontWeight: _sortOption == opt
-                                ? FontWeight.w600
-                                : FontWeight.normal,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-                .toList(),
-          ),
-          Semantics(
-            label: 'Agregar objetivo',
-            button: true,
-            child: IconButton(
-              key: const ValueKey('add_goal_button'),
-              icon: const Icon(Icons.add),
-              color: _goalsColor,
-              onPressed: _navigateToAddGoal,
-              tooltip: 'Agregar objetivo',
-            ),
-          ),
-        ],
-      ),
       body: StreamBuilder<List<LifeGoal>>(
         stream: goalsDao.watchAllGoals(),
         builder: (context, snapshot) {
@@ -210,26 +154,59 @@ class _GoalsOverviewScreenState extends ConsumerState<GoalsOverviewScreen> {
                   });
                 },
               ),
-              // Sort indicator
-              if (active.isNotEmpty)
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  child: Row(
-                    children: [
-                      Icon(_sortOption.icon,
-                          size: 14,
-                          color: theme.textTheme.bodySmall?.color),
-                      const SizedBox(width: 4),
-                      Text(
-                        _sortOption.label,
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.textTheme.bodySmall?.color,
-                        ),
+              // Sort picker row
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                child: Row(
+                  children: [
+                    Icon(_sortOption.icon,
+                        size: 14,
+                        color: theme.textTheme.bodySmall?.color),
+                    const SizedBox(width: 4),
+                    Text(
+                      _sortOption.label,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.textTheme.bodySmall?.color,
                       ),
-                    ],
-                  ),
+                    ),
+                    const Spacer(),
+                    PopupMenuButton<_GoalSortOption>(
+                      key: const ValueKey('sort_goals_button'),
+                      icon: Icon(Icons.sort, color: _goalsColor),
+                      tooltip: 'Ordenar',
+                      onSelected: (opt) => setState(() => _sortOption = opt),
+                      itemBuilder: (_) => _GoalSortOption.values
+                          .map(
+                            (opt) => PopupMenuItem<_GoalSortOption>(
+                              value: opt,
+                              child: Row(
+                                children: [
+                                  Icon(opt.icon,
+                                      size: 18,
+                                      color: _sortOption == opt
+                                          ? _goalsColor
+                                          : null),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    opt.label,
+                                    style: TextStyle(
+                                      color: _sortOption == opt
+                                          ? _goalsColor
+                                          : null,
+                                      fontWeight: _sortOption == opt
+                                          ? FontWeight.w600
+                                          : FontWeight.normal,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ],
                 ),
+              ),
               Expanded(
                 child: active.isEmpty && completed.isEmpty
                     ? _EmptyGoalsPlaceholder(onAddGoal: _navigateToAddGoal)
@@ -309,8 +286,6 @@ class _SummaryBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Semantics(
       label:
           '$activeCount metas activas, $completedThisYearCount completadas este año',
