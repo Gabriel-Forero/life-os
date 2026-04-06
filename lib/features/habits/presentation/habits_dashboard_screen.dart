@@ -10,11 +10,11 @@ import 'package:life_os/core/widgets/animated_list_item.dart';
 import 'package:life_os/core/widgets/pressable_card.dart';
 
 // ---------------------------------------------------------------------------
-// Pantalla principal del dashboard de habitos
+// Pantalla principal del dashboard de habitos — UI mejorada
 // ---------------------------------------------------------------------------
 
-/// Dashboard de habitos del dia con lista de pendientes y completados,
-/// barra de progreso cuantitativa y racha de dias consecutivos.
+/// Dashboard de habitos con anillo de progreso, tarjetas enriquecidas,
+/// racha con fuego, barra de completitud mensual y vista mini semanal.
 ///
 /// Accesibilidad: A11Y-HAB-01 — cada fila de habito tiene etiqueta semantica
 /// con nombre, estado y racha.
@@ -85,6 +85,13 @@ class _HabitsDashboardScreenState
           }
           final habits = snapshot.data ?? [];
 
+          if (habits.isEmpty) {
+            return _EmptyHabitsState(
+              key: const ValueKey('habits-empty-state'),
+              onAdd: () => GoRouter.of(context).push('/habits/add'),
+            );
+          }
+
           return _HabitsDashboardBody(
             key: const ValueKey('habits-dashboard-body'),
             habits: habits,
@@ -118,7 +125,77 @@ class _HabitsDashboardScreenState
 }
 
 // ---------------------------------------------------------------------------
-// Widget: cuerpo del dashboard (separado para poder leer logs por habito)
+// Widget: empty state
+// ---------------------------------------------------------------------------
+
+class _EmptyHabitsState extends StatelessWidget {
+  const _EmptyHabitsState({super.key, required this.onAdd});
+
+  final VoidCallback onAdd;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                color: AppColors.habits.withAlpha(25),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.track_changes_outlined,
+                size: 52,
+                color: AppColors.habits,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Crea tu primer habito',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Los habitos son la base del progreso',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: AppColors.lightTextSecondary,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            FilledButton.icon(
+              key: const ValueKey('habits-create-first-button'),
+              onPressed: onAdd,
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.habits,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 14,
+                ),
+              ),
+              icon: const Icon(Icons.add),
+              label: const Text(
+                '+ Crear habito',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Widget: cuerpo del dashboard
 // ---------------------------------------------------------------------------
 
 class _HabitsDashboardBody extends ConsumerWidget {
@@ -137,10 +214,8 @@ class _HabitsDashboardBody extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
     final dao = ref.watch(habitsDaoProvider);
 
-    // Stream all habit logs for today — rebuilds whenever a log is added/removed
     final todayStart = DateTime(today.year, today.month, today.day);
     final todayEnd = todayStart.add(const Duration(days: 1));
 
@@ -154,7 +229,7 @@ class _HabitsDashboardBody extends ConsumerWidget {
           statusMap[habit.id] = _HabitStatus(
             isCompleted: log != null,
             currentValue: log?.value ?? 0.0,
-            streak: 0, // Streaks loaded separately if needed
+            streak: 0,
           );
         }
 
@@ -166,6 +241,10 @@ class _HabitsDashboardBody extends ConsumerWidget {
             .toList();
         final allDone = habits.isNotEmpty && completed.length == habits.length;
 
+        // Compute monthly completion rate for each habit
+        final monthStart = DateTime(today.year, today.month, 1);
+        final monthEnd = DateTime(today.year, today.month + 1, 0);
+
         return RefreshIndicator(
           color: AppColors.habits,
           onRefresh: () async {},
@@ -173,7 +252,7 @@ class _HabitsDashboardBody extends ConsumerWidget {
             key: const ValueKey('habits-dashboard-list'),
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
             children: [
-              // --- Progreso del dia ---
+              // --- Header con anillo de progreso ---
               _DayProgressHeader(
                 key: const ValueKey('habits-day-progress'),
                 completed: completed.length,
@@ -182,10 +261,10 @@ class _HabitsDashboardBody extends ConsumerWidget {
               ),
               const SizedBox(height: 20),
 
-              // --- Mensaje de celebracion ---
+              // --- Banner de celebracion ---
               if (allDone)
-                _CelebrationBanner(
-                  key: const ValueKey('habits-celebration-banner'),
+                const _CelebrationBanner(
+                  key: ValueKey('habits-celebration-banner'),
                 ),
 
               // --- Seccion Pendientes ---
@@ -194,7 +273,7 @@ class _HabitsDashboardBody extends ConsumerWidget {
                   key: const ValueKey('habits-pending-header'),
                   title: 'Pendientes',
                   count: pending.length,
-                  color: theme.colorScheme.onSurface,
+                  color: AppColors.lightTextSecondary,
                 ),
                 const SizedBox(height: 8),
                 ...pending.asMap().entries.map(
@@ -203,18 +282,19 @@ class _HabitsDashboardBody extends ConsumerWidget {
                     final status = statusMap[habit.id];
                     return AnimatedListItem(
                       index: entry.key,
-                      child: _HabitRow(
-                        key: ValueKey('habit-row-${habit.id}'),
+                      child: _HabitCard(
+                        key: ValueKey('habit-card-${habit.id}'),
                         habit: habit,
                         isCompleted: false,
                         currentValue: status?.currentValue ?? 0,
                         streakDays: status?.streak ?? 0,
+                        dao: dao,
+                        today: today,
+                        monthStart: monthStart,
+                        monthEnd: monthEnd,
                         onToggle: () => onToggle(habit, false),
                         onIncrement: habit.isQuantitative
-                            ? () => onIncrement(
-                                  habit,
-                                  status?.currentValue ?? 0,
-                                )
+                            ? () => onIncrement(habit, status?.currentValue ?? 0)
                             : null,
                         onTapName: (ctx) => GoRouter.of(ctx)
                             .push('${AppRoutes.habitsDetail}?id=${habit.id}'),
@@ -231,7 +311,7 @@ class _HabitsDashboardBody extends ConsumerWidget {
                   key: const ValueKey('habits-completed-header'),
                   title: 'Completados',
                   count: completed.length,
-                  color: AppColors.success,
+                  color: AppColors.habits,
                 ),
                 const SizedBox(height: 8),
                 ...completed.asMap().entries.map(
@@ -240,12 +320,16 @@ class _HabitsDashboardBody extends ConsumerWidget {
                     final status = statusMap[habit.id];
                     return AnimatedListItem(
                       index: pending.length + entry.key,
-                      child: _HabitRow(
-                        key: ValueKey('habit-row-${habit.id}'),
+                      child: _HabitCard(
+                        key: ValueKey('habit-card-${habit.id}'),
                         habit: habit,
                         isCompleted: true,
                         currentValue: status?.currentValue ?? 0,
                         streakDays: status?.streak ?? 0,
+                        dao: dao,
+                        today: today,
+                        monthStart: monthStart,
+                        monthEnd: monthEnd,
                         onToggle: () => onToggle(habit, true),
                         onIncrement: null,
                         onTapName: (ctx) => GoRouter.of(ctx)
@@ -267,9 +351,7 @@ class _HabitsDashboardBody extends ConsumerWidget {
     DateTime start,
     DateTime end,
   ) {
-    // Watch logs for all habits combined — any insert/delete triggers rebuild
     if (habits.isEmpty) return Stream.value([]);
-    // Use the first habit's stream as trigger, but load all
     return dao.watchHabitLogs(habits.first.id, start, end).asyncMap((_) async {
       final allLogs = <HabitLog>[];
       for (final h in habits) {
@@ -278,25 +360,6 @@ class _HabitsDashboardBody extends ConsumerWidget {
       }
       return allLogs;
     });
-  }
-
-  // Keep for potential future use
-  Future<Map<int, _HabitStatus>> _loadAllStatuses(
-    dynamic dao,
-  ) async {
-    final Map<int, _HabitStatus> map = {};
-    for (final habit in habits) {
-      final log = await (dao as dynamic).getLogForDate(habit.id, today);
-      final isCompleted = log != null;
-      final currentValue = (log?.value as double?) ?? 0.0;
-      final streak = await dao.streakCount(habit.id, today);
-      map[habit.id] = _HabitStatus(
-        isCompleted: isCompleted,
-        currentValue: currentValue,
-        streak: streak as int,
-      );
-    }
-    return map;
   }
 }
 
@@ -313,7 +376,7 @@ class _HabitStatus {
 }
 
 // ---------------------------------------------------------------------------
-// Widget: encabezado de progreso del dia
+// Widget: encabezado de progreso del dia con anillo
 // ---------------------------------------------------------------------------
 
 class _DayProgressHeader extends StatelessWidget {
@@ -337,55 +400,77 @@ class _DayProgressHeader extends StatelessWidget {
       label: 'Progreso del dia: $completed de $total habitos completados',
       child: Container(
         key: const ValueKey('habits-progress-container'),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withAlpha(8),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
+              blurRadius: 12,
+              offset: const Offset(0, 3),
             ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
-            Row(
-              children: [
-                Text(
-                  'Hoy',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.lightTextPrimary,
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  '$completed / $total completados',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppColors.habits,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
+            // Anillo de progreso circular
+            _ProgressRingDisplay(
+              progress: progress,
+              completed: completed,
+              total: total,
             ),
-            const SizedBox(height: 10),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: TweenAnimationBuilder<double>(
-                tween: Tween<double>(begin: 0, end: progress),
-                duration: const Duration(milliseconds: 600),
-                curve: Curves.easeOutCubic,
-                builder: (context, value, _) => LinearProgressIndicator(
-                  key: const ValueKey('habits-day-progress-bar'),
-                  value: value,
-                  minHeight: 8,
-                  backgroundColor: const Color(0xFFE5E7EB),
-                  valueColor:
-                      const AlwaysStoppedAnimation<Color>(AppColors.habits),
-                ),
+            const SizedBox(width: 20),
+            // Texto informativo
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Hoy',
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: AppColors.lightTextSecondary,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  RichText(
+                    text: TextSpan(
+                      children: [
+                        TextSpan(
+                          text: '$completed',
+                          style: theme.textTheme.displaySmall?.copyWith(
+                            color: AppColors.habits,
+                            fontWeight: FontWeight.w800,
+                            height: 1,
+                          ),
+                        ),
+                        TextSpan(
+                          text: '/$total',
+                          style: theme.textTheme.headlineMedium?.copyWith(
+                            color: AppColors.lightTextSecondary,
+                            fontWeight: FontWeight.w400,
+                            height: 1,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    total == 0
+                        ? 'Sin habitos activos'
+                        : completed == total
+                            ? 'Todos completados!'
+                            : '${total - completed} pendiente${total - completed != 1 ? 's' : ''}',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: completed == total && total > 0
+                          ? AppColors.habits
+                          : AppColors.lightTextSecondary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -393,6 +478,99 @@ class _DayProgressHeader extends StatelessWidget {
       ),
     );
   }
+}
+
+class _ProgressRingDisplay extends StatelessWidget {
+  const _ProgressRingDisplay({
+    required this.progress,
+    required this.completed,
+    required this.total,
+  });
+
+  final double progress;
+  final int completed;
+  final int total;
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0, end: progress),
+      duration: const Duration(milliseconds: 800),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, _) {
+        return SizedBox(
+          width: 80,
+          height: 80,
+          child: CustomPaint(
+            painter: _RingPainter(
+              progress: value,
+              color: AppColors.habits,
+              backgroundColor: const Color(0xFFE5E7EB),
+              strokeWidth: 7,
+            ),
+            child: Center(
+              child: Text(
+                '${(value * 100).round()}%',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.habits,
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _RingPainter extends CustomPainter {
+  _RingPainter({
+    required this.progress,
+    required this.color,
+    required this.backgroundColor,
+    required this.strokeWidth,
+  });
+
+  final double progress;
+  final Color color;
+  final Color backgroundColor;
+  final double strokeWidth;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = (size.width - strokeWidth) / 2;
+
+    final bgPaint = Paint()
+      ..color = backgroundColor
+      ..strokeWidth = strokeWidth
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawCircle(center, radius, bgPaint);
+
+    if (progress > 0) {
+      final fgPaint = Paint()
+        ..color = color
+        ..strokeWidth = strokeWidth
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round;
+
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        -3.14159265358979323846 / 2,
+        2 * 3.14159265358979323846 * progress,
+        false,
+        fgPaint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_RingPainter oldDelegate) =>
+      oldDelegate.progress != progress || oldDelegate.color != color;
 }
 
 // ---------------------------------------------------------------------------
@@ -502,17 +680,20 @@ class _SectionHeader extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Widget: fila de habito
-// TODO: Extract to separate widget file
+// Widget: tarjeta de habito enriquecida
 // ---------------------------------------------------------------------------
 
-class _HabitRow extends StatelessWidget {
-  const _HabitRow({
+class _HabitCard extends StatefulWidget {
+  const _HabitCard({
     super.key,
     required this.habit,
     required this.isCompleted,
     required this.currentValue,
     required this.streakDays,
+    required this.dao,
+    required this.today,
+    required this.monthStart,
+    required this.monthEnd,
     required this.onToggle,
     this.onIncrement,
     this.onTapName,
@@ -522,15 +703,74 @@ class _HabitRow extends StatelessWidget {
   final bool isCompleted;
   final double currentValue;
   final int streakDays;
+  final HabitsDao dao;
+  final DateTime today;
+  final DateTime monthStart;
+  final DateTime monthEnd;
   final VoidCallback onToggle;
   final VoidCallback? onIncrement;
   final void Function(BuildContext ctx)? onTapName;
 
-  Color get _habitColor => Color(habit.color);
+  @override
+  State<_HabitCard> createState() => _HabitCardState();
+}
+
+class _HabitCardState extends State<_HabitCard> {
+  // Cache for week logs and monthly rate
+  List<DateTime?> _weekDays = [];
+  Set<String> _weekLogDates = {};
+  double _monthlyRate = 0.0;
+  bool _loaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadExtras();
+  }
+
+  @override
+  void didUpdateWidget(_HabitCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isCompleted != widget.isCompleted ||
+        oldWidget.currentValue != widget.currentValue) {
+      _loadExtras();
+    }
+  }
+
+  Future<void> _loadExtras() async {
+    // Last 7 days
+    final days = <DateTime?>[];
+    final logDates = <String>{};
+    for (var i = 6; i >= 0; i--) {
+      final day = widget.today.subtract(Duration(days: i));
+      days.add(day);
+      final log = await widget.dao.getLogForDate(widget.habit.id, day);
+      if (log != null) {
+        logDates.add(
+          '${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}',
+        );
+      }
+    }
+    // Monthly completion rate
+    final rate = await widget.dao.completionRate(
+      widget.habit.id,
+      widget.monthStart,
+      widget.monthEnd,
+    );
+    if (mounted) {
+      setState(() {
+        _weekDays = days;
+        _weekLogDates = logDates;
+        _monthlyRate = rate.clamp(0.0, 1.0);
+        _loaded = true;
+      });
+    }
+  }
+
+  Color get _habitColor => Color(widget.habit.color);
 
   IconData get _habitIcon {
-    // Parse stored icon name to IconData codePoint
-    final cp = int.tryParse(habit.icon);
+    final cp = int.tryParse(widget.habit.icon);
     if (cp != null) {
       return IconData(cp, fontFamily: 'MaterialIcons');
     }
@@ -540,23 +780,24 @@ class _HabitRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final habit = widget.habit;
     final isQuantitative = habit.isQuantitative;
     final target = habit.quantitativeTarget ?? 1.0;
     final progress = isQuantitative
-        ? (currentValue / target).clamp(0.0, 1.0)
+        ? (widget.currentValue / target).clamp(0.0, 1.0)
         : 0.0;
 
     final semanticLabel = '${habit.name}, '
-        '${isCompleted ? 'completado' : 'pendiente'}, '
-        'racha de $streakDays dias'
-        '${isQuantitative ? ', ${currentValue.toInt()} de ${target.toInt()} ${habit.quantitativeUnit ?? ''}' : ''}';
+        '${widget.isCompleted ? 'completado' : 'pendiente'}, '
+        'racha de ${widget.streakDays} dias'
+        '${isQuantitative ? ', ${widget.currentValue.toInt()} de ${target.toInt()} ${habit.quantitativeUnit ?? ''}' : ''}';
 
     return Semantics(
       label: semanticLabel,
       child: PressableCard(
-        onTap: isQuantitative ? onIncrement : onToggle,
+        onTap: isQuantitative ? widget.onIncrement : widget.onToggle,
         child: Container(
-          margin: const EdgeInsets.only(bottom: 8),
+          margin: const EdgeInsets.only(bottom: 10),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
@@ -569,55 +810,107 @@ class _HabitRow extends StatelessWidget {
             ],
           ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            child: Row(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-              // Icono del habito
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: _habitColor.withAlpha(25),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(_habitIcon, color: _habitColor, size: 20),
-              ),
-              const SizedBox(width: 12),
-
-              // Nombre + progreso
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                // --- Fila superior: icono + nombre + toggle ---
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    GestureDetector(
-                      onTap: onTapName != null
-                          ? () => onTapName!(context)
-                          : null,
-                      child: Text(
-                        habit.name,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          decoration: isCompleted
-                              ? TextDecoration.lineThrough
-                              : null,
-                          color: isCompleted ? theme.disabledColor : null,
+                    // Icono
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: _habitColor.withAlpha(25),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(_habitIcon, color: _habitColor, size: 20),
+                    ),
+                    const SizedBox(width: 10),
+                    // Nombre
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: widget.onTapName != null
+                            ? () => widget.onTapName!(context)
+                            : null,
+                        child: Text(
+                          habit.name,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            decoration: widget.isCompleted
+                                ? TextDecoration.lineThrough
+                                : null,
+                            color: widget.isCompleted
+                                ? AppColors.lightTextSecondary
+                                : null,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
                         ),
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 1,
                       ),
                     ),
-                    if (isQuantitative) ...[
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: ClipRRect(
+                    const SizedBox(width: 8),
+                    // Toggle / incrementar
+                    if (isQuantitative && widget.onIncrement != null && !widget.isCompleted)
+                      Semantics(
+                        label: 'Registrar progreso en ${habit.name}',
+                        button: true,
+                        child: _IncrementButton(
+                          key: ValueKey('habit-increment-${habit.id}'),
+                          color: AppColors.habits,
+                          onTap: widget.onIncrement!,
+                        ),
+                      )
+                    else
+                      Semantics(
+                        label: widget.isCompleted
+                            ? 'Marcar ${habit.name} como pendiente'
+                            : 'Marcar ${habit.name} como completado',
+                        button: true,
+                        child: _CheckToggle(
+                          key: ValueKey('habit-check-${habit.id}'),
+                          isChecked: widget.isCompleted,
+                          color: AppColors.habits,
+                          onTap: widget.onToggle,
+                        ),
+                      ),
+                  ],
+                ),
+
+                // --- Racha ---
+                if (widget.streakDays > 0) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Text('🔥', style: TextStyle(fontSize: 13)),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Racha: ${widget.streakDays} dia${widget.streakDays != 1 ? 's' : ''}',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: AppColors.habits,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+
+                // --- Progreso cuantitativo (si aplica) ---
+                if (isQuantitative) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ClipRRect(
                               borderRadius: BorderRadius.circular(4),
                               child: TweenAnimationBuilder<double>(
-                                tween:
-                                    Tween<double>(begin: 0, end: progress),
-                                duration:
-                                    const Duration(milliseconds: 400),
+                                tween: Tween<double>(begin: 0, end: progress),
+                                duration: const Duration(milliseconds: 400),
                                 curve: Curves.easeOut,
                                 builder: (context, value, _) =>
                                     LinearProgressIndicator(
@@ -625,108 +918,159 @@ class _HabitRow extends StatelessWidget {
                                   minHeight: 5,
                                   backgroundColor: const Color(0xFFE5E7EB),
                                   valueColor:
-                                      AlwaysStoppedAnimation<Color>(
-                                    _habitColor,
-                                  ),
+                                      const AlwaysStoppedAnimation<Color>(
+                                          AppColors.habits),
                                 ),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            '${currentValue.toInt()}/${target.toInt()} ${habit.quantitativeUnit ?? ''}',
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: _habitColor,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        '${widget.currentValue.toInt()}/${target.toInt()} ${habit.quantitativeUnit ?? ''}',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: AppColors.habits,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ],
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-
-              // Racha badge
-              _StreakBadge(
-                key: ValueKey('streak-badge-${habit.id}'),
-                days: streakDays,
-                color: _habitColor,
-              ),
-              const SizedBox(width: 8),
-
-              // Toggle / incrementar
-              if (isQuantitative && onIncrement != null && !isCompleted)
-                Semantics(
-                  label: 'Registrar progreso en ${habit.name}',
-                  button: true,
-                  child: _IncrementButton(
-                    key: ValueKey('habit-increment-${habit.id}'),
-                    color: _habitColor,
-                    onTap: onIncrement!,
                   ),
-                )
-              else
-                Semantics(
-                  label: isCompleted
-                      ? 'Marcar ${habit.name} como pendiente'
-                      : 'Marcar ${habit.name} como completado',
-                  button: true,
-                  child: _CheckToggle(
-                    key: ValueKey('habit-check-${habit.id}'),
-                    isChecked: isCompleted,
-                    color: _habitColor,
-                    onTap: onToggle,
+                ],
+
+                // --- Barra de completitud mensual ---
+                if (_loaded) ...[
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: LinearProgressIndicator(
+                            value: _monthlyRate,
+                            minHeight: 4,
+                            backgroundColor: const Color(0xFFE5E7EB),
+                            valueColor: const AlwaysStoppedAnimation<Color>(
+                                AppColors.habits),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '${(_monthlyRate * 100).round()}% este mes',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: AppColors.lightTextSecondary,
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-            ],
+
+                  // --- Mini vista semanal ---
+                  const SizedBox(height: 10),
+                  _WeekView(
+                    weekDays: _weekDays,
+                    logDates: _weekLogDates,
+                    today: widget.today,
+                    color: AppColors.habits,
+                  ),
+                ],
+              ],
+            ),
           ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------
-// Widget: badge de racha
+// Widget: mini vista semanal (ultimos 7 dias)
 // ---------------------------------------------------------------------------
 
-class _StreakBadge extends StatelessWidget {
-  const _StreakBadge({
-    super.key,
-    required this.days,
+class _WeekView extends StatelessWidget {
+  const _WeekView({
+    required this.weekDays,
+    required this.logDates,
+    required this.today,
     required this.color,
   });
 
-  final int days;
+  final List<DateTime?> weekDays;
+  final Set<String> logDates;
+  final DateTime today;
   final Color color;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    if (days == 0) return const SizedBox.shrink();
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withAlpha(20),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.local_fire_department, size: 12, color: color),
-          const SizedBox(width: 2),
-          Text(
-            '$days',
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: color,
-              fontWeight: FontWeight.w700,
-            ),
+    const dayNames = ['Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab', 'Dom'];
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: weekDays.asMap().entries.map((entry) {
+        final day = entry.value;
+        if (day == null) return const SizedBox(width: 32);
+
+        final dayKey =
+            '${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
+        final isFuture = day.isAfter(today);
+        final isDone = logDates.contains(dayKey);
+        final isToday = day.year == today.year &&
+            day.month == today.month &&
+            day.day == today.day;
+
+        return Expanded(
+          child: Column(
+            children: [
+              Text(
+                dayNames[day.weekday - 1],
+                style: theme.textTheme.labelSmall?.copyWith(
+                  fontSize: 9,
+                  color: isToday
+                      ? color
+                      : AppColors.lightTextSecondary,
+                  fontWeight:
+                      isToday ? FontWeight.w700 : FontWeight.w400,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 4),
+              Container(
+                width: 16,
+                height: 16,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isFuture
+                      ? Colors.transparent
+                      : isDone
+                          ? color
+                          : Colors.transparent,
+                  border: isFuture
+                      ? null
+                      : Border.all(
+                          color: isDone
+                              ? color
+                              : Colors.grey.withAlpha(100),
+                          width: 1.5,
+                        ),
+                ),
+                child: isFuture
+                    ? Center(
+                        child: Container(
+                          width: 4,
+                          height: 1.5,
+                          color: Colors.grey.withAlpha(80),
+                        ),
+                      )
+                    : isDone
+                        ? const Icon(Icons.check,
+                            size: 10, color: Colors.white)
+                        : null,
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      }).toList(),
     );
   }
 }
@@ -804,12 +1148,12 @@ class _CheckToggleState extends State<_CheckToggle>
               border: Border.all(
                 color: Color.lerp(
                   Colors.grey.withAlpha(120),
-                  widget.color,
+                  AppColors.habits,
                   filled,
                 )!,
                 width: 2,
               ),
-              color: widget.color.withAlpha((filled * 255).toInt()),
+              color: AppColors.habits.withAlpha((filled * 255).toInt()),
             ),
             child: filled > 0.5
                 ? Icon(
@@ -848,10 +1192,10 @@ class _IncrementButton extends StatelessWidget {
         height: 28,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: color.withAlpha(25),
-          border: Border.all(color: color.withAlpha(80), width: 1.5),
+          color: AppColors.habits.withAlpha(25),
+          border: Border.all(color: AppColors.habits.withAlpha(80), width: 1.5),
         ),
-        child: Icon(Icons.add, size: 16, color: color),
+        child: const Icon(Icons.add, size: 16, color: AppColors.habits),
       ),
     );
   }

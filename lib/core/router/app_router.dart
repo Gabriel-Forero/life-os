@@ -440,10 +440,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   );
 });
 
-class _AppShell extends StatelessWidget {
+class _AppShell extends StatefulWidget {
   const _AppShell({required this.child});
 
   final Widget child;
+
+  @override
+  State<_AppShell> createState() => _AppShellState();
+}
+
+class _AppShellState extends State<_AppShell> {
+  Widget get child => widget.child;
 
   // ---------------------------------------------------------------------------
   // Shared helpers
@@ -457,17 +464,57 @@ class _AppShell extends StatelessWidget {
     if (location.startsWith('/habits')) return 'Habitos';
     if (location.startsWith('/goals')) return 'Metas';
     if (location.startsWith('/settings')) return 'Configuracion';
+    if (location.startsWith('/monitoring')) return 'Progreso';
     return 'LifeOS';
   }
 
+  /// Bottom nav indices:
+  ///   0 = Home (/)
+  ///   1 = Diario  (no route — shows bottom sheet)
+  ///   2 = +       (no route — shows quick-add sheet)
+  ///   3 = Progreso (/monitoring)
+  ///   4 = Perfil  (/settings)
   int _selectedIndex(BuildContext context) {
     final location = GoRouterState.of(context).uri.path;
-    if (location.startsWith('/finance')) return 1;
-    if (location.startsWith('/gym')) return 2;
-    if (location.startsWith('/nutrition')) return 3;
-    if (location.startsWith('/habits')) return 4;
+    if (location == AppRoutes.home) return 0;
+    if (location.startsWith('/monitoring')) return 3;
+    if (location.startsWith('/settings')) return 4;
     return 0;
   }
+
+  // ---------------------------------------------------------------------------
+  // Quick-add bottom sheet
+  // ---------------------------------------------------------------------------
+
+  void _showDiarySheet(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => _DiarySheet(onNavigate: (route) {
+        Navigator.pop(ctx);
+        GoRouter.of(context).push(route);
+      }),
+    );
+  }
+
+  void _showQuickAddSheet(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => _QuickAddSheet(onNavigate: (route) {
+        Navigator.pop(ctx);
+        GoRouter.of(context).push(route);
+      }),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Drawer
+  // ---------------------------------------------------------------------------
 
   Widget _buildDrawer(BuildContext context) {
     return Drawer(
@@ -491,7 +538,7 @@ class _AppShell extends StatelessWidget {
             ),
           ),
           ListTile(
-            leading: Icon(Icons.dashboard, color: AppColors.finance),
+            leading: Icon(Icons.dashboard, color: AppColors.primary),
             title: const Text('Dashboard'),
             onTap: () { Navigator.pop(context); GoRouter.of(context).go(AppRoutes.home); },
           ),
@@ -612,49 +659,44 @@ class _AppShell extends StatelessWidget {
                   labelType: NavigationRailLabelType.all,
                   destinations: const [
                     NavigationRailDestination(
-                      icon: Icon(Icons.dashboard_outlined),
-                      selectedIcon: Icon(Icons.dashboard),
-                      label: Text('Dashboard'),
+                      icon: Icon(Icons.home_outlined),
+                      selectedIcon: Icon(Icons.home),
+                      label: Text('Home'),
                     ),
                     NavigationRailDestination(
-                      icon: Icon(Icons.account_balance_wallet_outlined),
-                      selectedIcon: Icon(Icons.account_balance_wallet),
-                      label: Text('Finanzas'),
+                      icon: Icon(Icons.book_outlined),
+                      selectedIcon: Icon(Icons.book),
+                      label: Text('Diario'),
                     ),
                     NavigationRailDestination(
-                      icon: Icon(Icons.fitness_center_outlined),
-                      selectedIcon: Icon(Icons.fitness_center),
-                      label: Text('Gym'),
+                      icon: Icon(Icons.add_circle_outline),
+                      selectedIcon: Icon(Icons.add_circle),
+                      label: Text('+'),
                     ),
                     NavigationRailDestination(
-                      icon: Icon(Icons.restaurant_outlined),
-                      selectedIcon: Icon(Icons.restaurant),
-                      label: Text('Nutricion'),
+                      icon: Icon(Icons.bar_chart_outlined),
+                      selectedIcon: Icon(Icons.bar_chart),
+                      label: Text('Progreso'),
                     ),
                     NavigationRailDestination(
-                      icon: Icon(Icons.check_circle_outline),
-                      selectedIcon: Icon(Icons.check_circle),
-                      label: Text('Habitos'),
-                    ),
-                    NavigationRailDestination(
-                      icon: Icon(Icons.grid_view_outlined),
-                      selectedIcon: Icon(Icons.grid_view),
-                      label: Text('Mas'),
+                      icon: Icon(Icons.person_outlined),
+                      selectedIcon: Icon(Icons.person),
+                      label: Text('Perfil'),
                     ),
                   ],
                   onDestinationSelected: (index) {
-                    if (index == 5) {
-                      Scaffold.of(context).openDrawer();
-                      return;
+                    switch (index) {
+                      case 0:
+                        GoRouter.of(context).go(AppRoutes.home);
+                      case 1:
+                        _showDiarySheet(context);
+                      case 2:
+                        _showQuickAddSheet(context);
+                      case 3:
+                        GoRouter.of(context).push(AppRoutes.monitoring);
+                      case 4:
+                        GoRouter.of(context).go(AppRoutes.settings);
                     }
-                    const routes = [
-                      AppRoutes.home,
-                      AppRoutes.finance,
-                      AppRoutes.gym,
-                      AppRoutes.nutrition,
-                      AppRoutes.habits,
-                    ];
-                    GoRouter.of(context).go(routes[index]);
                   },
                 ),
                 const VerticalDivider(thickness: 1, width: 1),
@@ -665,7 +707,7 @@ class _AppShell extends StatelessWidget {
         }
 
         // --------------------------------------------------------------------
-        // Phone: bottom navigation bar (original layout)
+        // Phone: bottom navigation bar (new 5-item layout)
         // --------------------------------------------------------------------
         return Scaffold(
           backgroundColor: AppColors.lightBackground,
@@ -693,55 +735,330 @@ class _AppShell extends StatelessWidget {
           drawer: _buildDrawer(context),
           bottomNavigationBar: NavigationBar(
             selectedIndex: _selectedIndex(context),
-            destinations: const [
-              NavigationDestination(
-                icon: Icon(Icons.dashboard_outlined),
-                selectedIcon: Icon(Icons.dashboard),
-                label: 'Dashboard',
+            destinations: [
+              const NavigationDestination(
+                icon: Icon(Icons.home_outlined),
+                selectedIcon: Icon(Icons.home),
+                label: 'Home',
+              ),
+              const NavigationDestination(
+                icon: Icon(Icons.book_outlined),
+                selectedIcon: Icon(Icons.book),
+                label: 'Diario',
               ),
               NavigationDestination(
-                icon: Icon(Icons.account_balance_wallet_outlined),
-                selectedIcon: Icon(Icons.account_balance_wallet),
-                label: 'Finanzas',
+                icon: Icon(
+                  Icons.add_circle,
+                  size: 32,
+                  color: AppColors.primary,
+                ),
+                selectedIcon: Icon(
+                  Icons.add_circle,
+                  size: 32,
+                  color: AppColors.primary,
+                ),
+                label: '',
               ),
-              NavigationDestination(
-                icon: Icon(Icons.fitness_center_outlined),
-                selectedIcon: Icon(Icons.fitness_center),
-                label: 'Gym',
+              const NavigationDestination(
+                icon: Icon(Icons.bar_chart_outlined),
+                selectedIcon: Icon(Icons.bar_chart),
+                label: 'Progreso',
               ),
-              NavigationDestination(
-                icon: Icon(Icons.restaurant_outlined),
-                selectedIcon: Icon(Icons.restaurant),
-                label: 'Nutricion',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.check_circle_outline),
-                selectedIcon: Icon(Icons.check_circle),
-                label: 'Habitos',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.grid_view_outlined),
-                selectedIcon: Icon(Icons.grid_view),
-                label: 'Mas',
+              const NavigationDestination(
+                icon: Icon(Icons.person_outlined),
+                selectedIcon: Icon(Icons.person),
+                label: 'Perfil',
               ),
             ],
             onDestinationSelected: (index) {
-              if (index == 5) {
-                Scaffold.of(context).openDrawer();
-                return;
+              switch (index) {
+                case 0:
+                  GoRouter.of(context).go(AppRoutes.home);
+                case 1:
+                  _showDiarySheet(context);
+                case 2:
+                  _showQuickAddSheet(context);
+                case 3:
+                  GoRouter.of(context).push(AppRoutes.monitoring);
+                case 4:
+                  GoRouter.of(context).go(AppRoutes.settings);
               }
-              const routes = [
-                AppRoutes.home,
-                AppRoutes.finance,
-                AppRoutes.gym,
-                AppRoutes.nutrition,
-                AppRoutes.habits,
-              ];
-              GoRouter.of(context).go(routes[index]);
             },
           ),
         );
       },
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Quick-add sheet widgets
+// ---------------------------------------------------------------------------
+
+class _QuickAddAction {
+  const _QuickAddAction({
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.route,
+  });
+
+  final String label;
+  final IconData icon;
+  final Color color;
+  final String route;
+}
+
+class _QuickAddSheet extends StatelessWidget {
+  const _QuickAddSheet({required this.onNavigate});
+
+  final void Function(String route) onNavigate;
+
+  static const _actions = [
+    _QuickAddAction(
+      label: '+ Transaccion',
+      icon: Icons.account_balance_wallet_outlined,
+      color: AppColors.finance,
+      route: AppRoutes.financeAdd,
+    ),
+    _QuickAddAction(
+      label: '+ Comida',
+      icon: Icons.restaurant_outlined,
+      color: AppColors.nutrition,
+      route: AppRoutes.nutritionMealLog,
+    ),
+    _QuickAddAction(
+      label: '+ Habito',
+      icon: Icons.check_circle_outline,
+      color: AppColors.habits,
+      route: AppRoutes.habits,
+    ),
+    _QuickAddAction(
+      label: '+ Workout',
+      icon: Icons.fitness_center_outlined,
+      color: AppColors.gym,
+      route: AppRoutes.gymWorkout,
+    ),
+    _QuickAddAction(
+      label: '+ Mood',
+      icon: Icons.sentiment_satisfied_outlined,
+      color: AppColors.mental,
+      route: AppRoutes.mood,
+    ),
+    _QuickAddAction(
+      label: '+ Sueno',
+      icon: Icons.bedtime_outlined,
+      color: AppColors.sleep,
+      route: AppRoutes.sleep,
+    ),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.withAlpha(80),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Agregar rapido',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 20),
+            GridView.count(
+              crossAxisCount: 3,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              childAspectRatio: 1.1,
+              children: _actions.map((action) {
+                return Semantics(
+                  label: action.label,
+                  button: true,
+                  child: InkWell(
+                    onTap: () => onNavigate(action.route),
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: action.color.withAlpha(20),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: action.color.withAlpha(60),
+                          width: 1,
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(action.icon, color: action.color, size: 28),
+                          const SizedBox(height: 6),
+                          Text(
+                            action.label,
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: action.color,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DiarySheet extends StatelessWidget {
+  const _DiarySheet({required this.onNavigate});
+
+  final void Function(String route) onNavigate;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final now = DateTime.now();
+    final weekdays = ['Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab', 'Dom'];
+    final months = [
+      'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+      'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+    ];
+
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.withAlpha(80),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Diario',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '${weekdays[now.weekday - 1]}, ${now.day} ${months[now.month - 1]} ${now.year}',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: AppColors.lightTextSecondary,
+              ),
+            ),
+            const SizedBox(height: 20),
+            _DiaryQuickLink(
+              icon: Icons.account_balance_wallet_outlined,
+              color: AppColors.finance,
+              label: 'Finanzas',
+              onTap: () => onNavigate(AppRoutes.finance),
+            ),
+            _DiaryQuickLink(
+              icon: Icons.restaurant_outlined,
+              color: AppColors.nutrition,
+              label: 'Nutricion de hoy',
+              onTap: () => onNavigate(AppRoutes.nutrition),
+            ),
+            _DiaryQuickLink(
+              icon: Icons.check_circle_outline,
+              color: AppColors.habits,
+              label: 'Habitos de hoy',
+              onTap: () => onNavigate(AppRoutes.habits),
+            ),
+            _DiaryQuickLink(
+              icon: Icons.fitness_center_outlined,
+              color: AppColors.gym,
+              label: 'Entrenamiento',
+              onTap: () => onNavigate(AppRoutes.gym),
+            ),
+            _DiaryQuickLink(
+              icon: Icons.sentiment_satisfied_outlined,
+              color: AppColors.mental,
+              label: 'Estado de animo',
+              onTap: () => onNavigate(AppRoutes.mood),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DiaryQuickLink extends StatelessWidget {
+  const _DiaryQuickLink({
+    required this.icon,
+    required this.color,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final Color color;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: color.withAlpha(25),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: color, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              label,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const Spacer(),
+            Icon(Icons.chevron_right, color: AppColors.lightTextSecondary, size: 20),
+          ],
+        ),
+      ),
     );
   }
 }
