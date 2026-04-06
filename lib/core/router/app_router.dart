@@ -313,8 +313,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.habitsDetail,
-        pageBuilder: (context, state) =>
-            fadeScaleTransition(const HabitDetailScreen(), state),
+        pageBuilder: (context, state) {
+          final habitId =
+              int.tryParse(state.uri.queryParameters['id'] ?? '');
+          return fadeScaleTransition(
+              HabitDetailScreen(habitId: habitId), state);
+        },
       ),
       GoRoute(
         path: AppRoutes.dayScore,

@@ -254,8 +254,9 @@ class _DateGroup extends StatelessWidget {
             child: Text(
               dateHeader,
               style: theme.textTheme.labelMedium?.copyWith(
-                color: theme.textTheme.bodySmall?.color,
+                color: AppColors.finance,
                 letterSpacing: 0.5,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
@@ -321,30 +322,54 @@ class _TransactionTile extends StatelessWidget {
           return true;
         },
         onDismissed: (_) => onDelete(),
-        child: ListTile(
-          key: ValueKey('transaction-item-${transaction.id}'),
-          leading: CircleAvatar(
-            backgroundColor: (isExpense
-                    ? const Color(0xFFEF4444)
-                    : AppColors.finance)
-                .withAlpha(25),
-            child: Icon(
-              Icons.receipt_outlined,
-              size: 20,
-              color: isExpense ? const Color(0xFFEF4444) : AppColors.finance,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 3, 16, 3),
+          child: Card(
+            elevation: 0,
+            margin: EdgeInsets.zero,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(
+                color: amountColor.withAlpha(30),
+              ),
             ),
-          ),
-          title: Text(
-            transaction.note ?? (isExpense ? 'Gasto' : 'Ingreso'),
-            style: theme.textTheme.bodyMedium,
-            overflow: TextOverflow.ellipsis,
-            maxLines: 1,
-          ),
-          trailing: Text(
-            formattedAmount,
-            style: theme.textTheme.titleSmall?.copyWith(
-              color: amountColor,
-              fontWeight: FontWeight.w600,
+            child: ListTile(
+              key: ValueKey('transaction-item-${transaction.id}'),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              leading: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: amountColor.withAlpha(20),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  isExpense
+                      ? Icons.arrow_downward_rounded
+                      : Icons.arrow_upward_rounded,
+                  size: 20,
+                  color: amountColor,
+                ),
+              ),
+              title: Text(
+                transaction.note ?? (isExpense ? 'Gasto' : 'Ingreso'),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w500,
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
+              trailing: Text(
+                formattedAmount,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  color: amountColor,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ),
           ),
         ),

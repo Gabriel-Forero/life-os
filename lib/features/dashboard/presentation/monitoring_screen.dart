@@ -33,6 +33,11 @@ class _MonitoringScreenState extends ConsumerState<MonitoringScreen> {
   _MentalMetrics? _mental;
   _GoalsMetrics? _goals;
 
+  // Ultima valoracion por modulo (dias desde el ultimo snapshot)
+  int? _gymValuationDays;
+  int? _financeValuationDays;
+  int? _nutritionValuationDays;
+
   bool _isLoading = true;
   String? _error;
 
@@ -54,6 +59,7 @@ class _MonitoringScreenState extends ConsumerState<MonitoringScreen> {
         _fetchSleep(now),
         _fetchMental(now),
         _fetchGoals(),
+        _fetchValuationDays(now),
       ]);
       if (mounted) {
         setState(() {
@@ -64,6 +70,10 @@ class _MonitoringScreenState extends ConsumerState<MonitoringScreen> {
           _sleep = results[4] as _SleepMetrics;
           _mental = results[5] as _MentalMetrics;
           _goals = results[6] as _GoalsMetrics;
+          final valuationDays = results[7] as _ValuationDays;
+          _gymValuationDays = valuationDays.gym;
+          _financeValuationDays = valuationDays.finance;
+          _nutritionValuationDays = valuationDays.nutrition;
           _isLoading = false;
         });
       }
@@ -307,6 +317,31 @@ class _MonitoringScreenState extends ConsumerState<MonitoringScreen> {
     );
   }
 
+  Future<_ValuationDays> _fetchValuationDays(DateTime now) async {
+    final dao = ref.read(dashboardDaoProvider);
+    final snapshots = await dao.getAllSnapshots();
+
+    int? lastDays(String moduleKey) {
+      // Find snapshots that contain the specified moduleKey in their JSON
+      for (final snap in snapshots) {
+        try {
+          final decoded = snap.metricsJson;
+          if (decoded.contains('"moduleKey":"$moduleKey"') ||
+              decoded.contains('"moduleKey": "$moduleKey"')) {
+            return now.difference(snap.createdAt).inDays;
+          }
+        } catch (_) {}
+      }
+      return null;
+    }
+
+    return _ValuationDays(
+      gym: lastDays('gym'),
+      finance: lastDays('finance'),
+      nutrition: lastDays('nutrition'),
+    );
+  }
+
   // ---------------------------------------------------------------------------
   // Build
   // ---------------------------------------------------------------------------
@@ -390,6 +425,74 @@ class _MonitoringScreenState extends ConsumerState<MonitoringScreen> {
                     key: const ValueKey('monitoring-list'),
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
                     children: [
+                      // --- Seccion Valoraciones ---
+                      const SizedBox(height: 16),
+                      Semantics(
+                        header: true,
+                        child: Text(
+                          'Valoraciones',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _ValuationCard(
+                              key: const ValueKey('valuation-card-gym'),
+                              icon: Icons.fitness_center,
+                              color: AppColors.gym,
+                              moduleName: 'Gym',
+                              daysSinceLast: _gymValuationDays,
+                              onTap: () => GoRouter.of(context)
+                                  .push(AppRoutes.gymValuation),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _ValuationCard(
+                              key: const ValueKey('valuation-card-finance'),
+                              icon: Icons.account_balance_wallet_outlined,
+                              color: AppColors.finance,
+                              moduleName: 'Finanzas',
+                              daysSinceLast: _financeValuationDays,
+                              onTap: () => GoRouter.of(context)
+                                  .push(AppRoutes.financeValuation),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _ValuationCard(
+                              key: const ValueKey('valuation-card-nutrition'),
+                              icon: Icons.restaurant_outlined,
+                              color: AppColors.nutrition,
+                              moduleName: 'Nutricion',
+                              daysSinceLast: _nutritionValuationDays,
+                              onTap: () => GoRouter.of(context)
+                                  .push(AppRoutes.nutritionValuation),
+                            ),
+                          ),
+                        ],
+                      ),
+                      // --- Link a DayScore ---
+                      const SizedBox(height: 8),
+                      OutlinedButton.icon(
+                        key: const ValueKey('monitoring-dayscose-button'),
+                        onPressed: () =>
+                            GoRouter.of(context).push(AppRoutes.dayScore),
+                        icon: const Icon(Icons.stars_outlined, size: 18),
+                        label: const Text('Ver DayScore del dia'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.dayScore,
+                          side: const BorderSide(color: AppColors.dayScore),
+                          minimumSize: const Size.fromHeight(40),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      const Divider(height: 1),
+
                       if (_gym != null) ...[
                         const SizedBox(height: 12),
                         _MonitoringSection(
@@ -633,6 +736,109 @@ class _MonitoringScreenState extends ConsumerState<MonitoringScreen> {
           (m) => '${m[1]}.',
         );
     return '${negative ? '-' : ''}\$$formatted';
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Valuation data models
+// ---------------------------------------------------------------------------
+
+class _ValuationDays {
+  _ValuationDays({this.gym, this.finance, this.nutrition});
+  final int? gym;
+  final int? finance;
+  final int? nutrition;
+}
+
+// ---------------------------------------------------------------------------
+// Widget: tarjeta de valoracion de modulo
+// ---------------------------------------------------------------------------
+
+class _ValuationCard extends StatelessWidget {
+  const _ValuationCard({
+    super.key,
+    required this.icon,
+    required this.color,
+    required this.moduleName,
+    required this.daysSinceLast,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final Color color;
+  final String moduleName;
+  final int? daysSinceLast;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final lastLabel = daysSinceLast != null
+        ? daysSinceLast == 0
+            ? 'Hoy'
+            : 'hace $daysSinceLast ${daysSinceLast == 1 ? 'dia' : 'dias'}'
+        : 'Sin registro';
+
+    return Semantics(
+      label: 'Valoracion $moduleName, $lastLabel. Toca para valorarte.',
+      button: true,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Card(
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: color.withAlpha(60)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, color: color, size: 22),
+                const SizedBox(height: 6),
+                Text(
+                  moduleName,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Ultima: $lastLabel',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurface.withAlpha(140),
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 2,
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: onTap,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: color,
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      textStyle: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    child: const Text('Valorarme'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 

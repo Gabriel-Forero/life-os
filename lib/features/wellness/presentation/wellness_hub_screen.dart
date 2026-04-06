@@ -209,7 +209,14 @@ class _QuickAction extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: color.withAlpha(60)),
-            color: color.withAlpha(15),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                color.withAlpha(30),
+                color.withAlpha(8),
+              ],
+            ),
           ),
           padding: const EdgeInsets.all(14),
           child: Column(
@@ -218,8 +225,18 @@ class _QuickAction extends StatelessWidget {
             children: [
               Icon(icon, color: color, size: 28),
               const Spacer(),
-              Text(label, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
-              Text(subtitle, style: theme.textTheme.bodySmall?.copyWith(color: theme.textTheme.bodySmall?.color)),
+              Text(
+                label,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              Text(
+                subtitle,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurface.withAlpha(160),
+                ),
+              ),
             ],
           ),
         ),

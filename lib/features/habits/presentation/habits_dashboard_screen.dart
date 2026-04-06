@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:life_os/core/constants/app_colors.dart';
 import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
+import 'package:life_os/core/router/app_router.dart';
 import 'package:life_os/features/habits/database/habits_dao.dart';
 import 'package:life_os/core/widgets/animated_list_item.dart';
 import 'package:life_os/core/widgets/pressable_card.dart';
@@ -215,6 +216,8 @@ class _HabitsDashboardBody extends ConsumerWidget {
                                   status?.currentValue ?? 0,
                                 )
                             : null,
+                        onTapName: (ctx) => GoRouter.of(ctx)
+                            .push('${AppRoutes.habitsDetail}?id=${habit.id}'),
                       ),
                     );
                   },
@@ -245,6 +248,8 @@ class _HabitsDashboardBody extends ConsumerWidget {
                         streakDays: status?.streak ?? 0,
                         onToggle: () => onToggle(habit, true),
                         onIncrement: null,
+                        onTapName: (ctx) => GoRouter.of(ctx)
+                            .push('${AppRoutes.habitsDetail}?id=${habit.id}'),
                       ),
                     );
                   },
@@ -501,6 +506,7 @@ class _HabitRow extends StatelessWidget {
     required this.streakDays,
     required this.onToggle,
     this.onIncrement,
+    this.onTapName,
   });
 
   final Habit habit;
@@ -509,6 +515,7 @@ class _HabitRow extends StatelessWidget {
   final int streakDays;
   final VoidCallback onToggle;
   final VoidCallback? onIncrement;
+  final void Function(BuildContext ctx)? onTapName;
 
   Color get _habitColor => Color(habit.color);
 
@@ -540,7 +547,12 @@ class _HabitRow extends StatelessWidget {
       child: PressableCard(
         onTap: isQuantitative ? onIncrement : onToggle,
         child: Card(
+          elevation: 0,
           margin: const EdgeInsets.only(bottom: 8),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: _habitColor.withAlpha(30)),
+          ),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             child: Row(
@@ -562,17 +574,22 @@ class _HabitRow extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      habit.name,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        decoration: isCompleted
-                            ? TextDecoration.lineThrough
-                            : null,
-                        color: isCompleted ? theme.disabledColor : null,
+                    GestureDetector(
+                      onTap: onTapName != null
+                          ? () => onTapName!(context)
+                          : null,
+                      child: Text(
+                        habit.name,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          decoration: isCompleted
+                              ? TextDecoration.lineThrough
+                              : null,
+                          color: isCompleted ? theme.disabledColor : null,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
                       ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
                     ),
                     if (isQuantitative) ...[
                       const SizedBox(height: 4),

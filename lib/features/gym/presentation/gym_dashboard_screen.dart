@@ -488,10 +488,28 @@ class _RecentWorkoutCard extends StatelessWidget {
 
         return Card(
           margin: EdgeInsets.zero,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: AppColors.gym.withAlpha(30)),
+          ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             child: Row(
               children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.gym.withAlpha(20),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.fitness_center,
+                    color: AppColors.gym,
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

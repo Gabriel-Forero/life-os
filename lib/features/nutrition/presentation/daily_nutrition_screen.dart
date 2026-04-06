@@ -614,18 +614,36 @@ class _MacroRingsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: macros
-              .map(
-                (macro) => _MacroRing(
-                  key: ValueKey('macro-ring-${macro.label}'),
-                  macro: macro,
-                ),
-              )
-              .toList(),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: AppColors.nutrition.withAlpha(40)),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              AppColors.nutrition.withAlpha(25),
+              AppColors.darkCard,
+            ],
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: macros
+                .map(
+                  (macro) => _MacroRing(
+                    key: ValueKey('macro-ring-${macro.label}'),
+                    macro: macro,
+                  ),
+                )
+                .toList(),
+          ),
         ),
       ),
     );

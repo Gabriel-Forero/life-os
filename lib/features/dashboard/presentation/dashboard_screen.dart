@@ -225,12 +225,19 @@ class _DayScoreCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
+    return Container(
+      decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: AppColors.dayScore.withAlpha(80),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.dayScore.withAlpha(40),
+            AppColors.darkCard,
+          ],
+        ),
+        border: Border.all(
+          color: AppColors.dayScore.withAlpha(60),
           width: 1.5,
         ),
       ),
@@ -238,13 +245,16 @@ class _DayScoreCard extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         child: Row(
           children: [
-            // Anillo de puntuacion
-            Hero(
-              tag: 'day-score-ring',
-              child: _ScoreRing(
-                key: const ValueKey('day-score-ring'),
-                score: score,
-                isLoading: isLoading,
+            // Anillo de puntuacion — toca para ver desglose
+            GestureDetector(
+              onTap: () => GoRouter.of(context).push(AppRoutes.dayScore),
+              child: Hero(
+                tag: 'day-score-ring',
+                child: _ScoreRing(
+                  key: const ValueKey('day-score-ring'),
+                  score: score,
+                  isLoading: isLoading,
+                ),
               ),
             ),
             const SizedBox(width: 20),
@@ -432,12 +442,19 @@ class _ModuleCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return PressableCard(
       onTap: () => GoRouter.of(context).go('/${data.moduleKey}'),
-      child: Card(
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: BorderSide(
-            color: data.color.withAlpha(60),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              data.color.withAlpha(30),
+              AppColors.darkCard,
+            ],
+          ),
+          border: Border.all(
+            color: data.color.withAlpha(50),
             width: 1,
           ),
         ),
@@ -599,15 +616,15 @@ class _QuickActionItem extends StatelessWidget {
     return Semantics(
       label: label,
       button: true,
-      child: Card(
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: color.withAlpha(50)),
-        ),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            color: color.withAlpha(20),
+            border: Border.all(color: color.withAlpha(50)),
+          ),
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 16),
             child: Column(

@@ -258,7 +258,7 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
     if (wId != null) {
       await ref.read(gymNotifierProvider).discardWorkout(wId);
     }
-    if (mounted) GoRouter.of(context).go(AppRoutes.gym);
+    if (mounted) Navigator.of(context).pop();
   }
 
   Future<void> _finishWorkout() async {
@@ -305,15 +305,19 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.pop(ctx);
-              GoRouter.of(context).go(AppRoutes.gym);
+              // Close dialog, then pop workout screen back to gym dashboard
+              Navigator.of(ctx).pop(); // close dialog
+              if (context.mounted) Navigator.of(context).pop(); // pop workout
             },
             child: const Text('Ir al Dashboard'),
           ),
           FilledButton(
             onPressed: () {
-              Navigator.pop(ctx);
-              GoRouter.of(context).push(AppRoutes.gymHistory);
+              // Close dialog, pop workout, then push history
+              final router = GoRouter.of(context);
+              Navigator.of(ctx).pop(); // close dialog
+              if (context.mounted) Navigator.of(context).pop(); // pop workout
+              router.push(AppRoutes.gymHistory);
             },
             style: FilledButton.styleFrom(backgroundColor: AppColors.gym),
             child: const Text('Ver Historial'),
