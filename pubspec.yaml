@@ -16,7 +16,7 @@ dependencies:
   flutter_riverpod: ^2.6.1
 
   # Database
-  drift: ^2.22.1
+  drift: ^2.32.1
   sqlite3_flutter_libs: ^0.5.28
 
   # Routing

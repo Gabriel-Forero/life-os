@@ -82,12 +82,48 @@ Future<void> _initializeApp(ProviderContainer container) async {
 // ---------------------------------------------------------------------------
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  // Capture ALL errors and show on screen
+  final List<String> errors = [];
+
+  void showErrorApp(String msg) {
+    runApp(MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        backgroundColor: Colors.black,
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('LifeOS - Debug', style: TextStyle(color: Colors.green, fontSize: 20, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 16),
+                ...errors.map((e) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(e, style: const TextStyle(color: Colors.red, fontSize: 12, fontFamily: 'monospace')),
+                )),
+                Text(msg, style: const TextStyle(color: Colors.yellow, fontSize: 12, fontFamily: 'monospace')),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ));
+  }
+
+  try {
+    WidgetsFlutterBinding.ensureInitialized();
+  } catch (e) {
+    errors.add('WidgetsBinding failed: $e');
+    showErrorApp('Crash in WidgetsBinding');
+    return;
+  }
 
   final logger = AppLogger(tag: 'Main');
 
-  // Global error handlers
+  // Global error handlers — show on screen
   FlutterError.onError = (details) {
+    errors.add('FlutterError: ${details.exceptionAsString()}');
     logger.error(
       'Flutter framework error: ${details.exceptionAsString()}',
       error: details.exception,
@@ -96,6 +132,7 @@ void main() async {
   };
 
   PlatformDispatcher.instance.onError = (error, stack) {
+    errors.add('PlatformError: $error');
     logger.error(
       'Unhandled platform error: $error',
       error: error,
@@ -104,39 +141,27 @@ void main() async {
     return true;
   };
 
-  // Error widget for production-style error display
+  // Error widget shows REAL error text
   ErrorWidget.builder = (FlutterErrorDetails details) {
     return Material(
-      child: Center(
+      color: Colors.black,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
         child: Text(
-          'Algo salio mal',
-          style: const TextStyle(color: Colors.red),
+          'WIDGET ERROR:\n${details.exceptionAsString()}\n\n${details.stack?.toString().split('\n').take(10).join('\n') ?? ''}',
+          style: const TextStyle(color: Colors.red, fontSize: 11, fontFamily: 'monospace'),
         ),
       ),
     );
   };
 
-  // Create a ProviderContainer so we can run async initialization before
-  // runApp, then hand it to UncontrolledProviderScope.
   try {
     final container = ProviderContainer();
     runApp(_SplashWrapper(container: container));
   } catch (e, st) {
-    logger.error('Fatal startup error: $e', error: e, stackTrace: st);
-    runApp(MaterialApp(
-      home: Scaffold(
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(32),
-            child: Text(
-              'Error al iniciar: $e',
-              style: const TextStyle(color: Colors.red, fontSize: 14),
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ),
-      ),
-    ));
+    errors.add('Fatal: $e');
+    errors.add('Stack: ${st.toString().split('\n').take(5).join('\n')}');
+    showErrorApp('CRASH in main()');
   }
 }
 
