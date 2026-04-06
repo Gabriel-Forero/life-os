@@ -263,14 +263,64 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
 
   Future<void> _finishWorkout() async {
     final wId = _workoutId;
-    if (wId != null) {
-      await ref.read(gymNotifierProvider).finishWorkout(wId);
-    }
-    if (mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Entrenamiento guardado!')));
-      GoRouter.of(context).go(AppRoutes.gym);
-    }
+    if (wId == null) return;
+
+    await ref.read(gymNotifierProvider).finishWorkout(wId);
+
+    if (!mounted) return;
+
+    // Gather summary data
+    final dao = ref.read(gymDaoProvider);
+    final sets = await dao.watchWorkoutSets(wId).first;
+    final workSets = sets.where((s) => !s.isWarmup).toList();
+    final totalSets = sets.length;
+    final totalVolume = workSets
+        .where((s) => s.weightKg != null)
+        .fold<double>(0, (sum, s) => sum + s.weightKg! * s.reps);
+    final exerciseCount = sets.map((s) => s.exerciseId).toSet().length;
+    final duration = _elapsed;
+
+    // Show summary dialog
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.emoji_events, color: AppColors.gym, size: 28),
+            const SizedBox(width: 8),
+            const Text('Entrenamiento Completado!'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _SummaryRow(icon: Icons.timer, label: 'Duracion', value: '${duration.inMinutes} min'),
+            _SummaryRow(icon: Icons.fitness_center, label: 'Ejercicios', value: '$exerciseCount'),
+            _SummaryRow(icon: Icons.format_list_numbered, label: 'Series totales', value: '$totalSets'),
+            _SummaryRow(icon: Icons.monitor_weight, label: 'Volumen total', value: '${totalVolume.toStringAsFixed(0)} kg'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              GoRouter.of(context).go(AppRoutes.gym);
+            },
+            child: const Text('Ir al Dashboard'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              GoRouter.of(context).push(AppRoutes.gymHistory);
+            },
+            style: FilledButton.styleFrom(backgroundColor: AppColors.gym),
+            child: const Text('Ver Historial'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -1261,6 +1311,40 @@ class _RestTimerOverlay extends ConsumerWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _SummaryRow extends StatelessWidget {
+  const _SummaryRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Icon(icon, color: AppColors.gym, size: 20),
+          const SizedBox(width: 12),
+          Text(label, style: Theme.of(context).textTheme.bodyMedium),
+          const Spacer(),
+          Text(
+            value,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: AppColors.gym,
+                  fontWeight: FontWeight.bold,
+                ),
+          ),
+        ],
       ),
     );
   }
