@@ -169,7 +169,7 @@ Future<double> _calculateFinanceScore(Ref ref) async {
     final now = DateTime.now();
     // Get total budget and total expenses this month
     final budgets = await dao.watchBudgets(now.month, now.year).first;
-    if (budgets.isEmpty) return 50.0;
+    if (budgets.isEmpty) return 0.0;
     int totalBudgetCents = 0;
     int totalSpentCents = 0;
     for (final budget in budgets) {
@@ -180,12 +180,12 @@ Future<double> _calculateFinanceScore(Ref ref) async {
         now.year,
       );
     }
-    if (totalBudgetCents <= 0) return 50.0;
+    if (totalBudgetCents <= 0) return 0.0;
     // Lower spending ratio = higher score (inverted)
     final utilizationRatio = totalSpentCents / totalBudgetCents;
     return ((1.0 - utilizationRatio.clamp(0.0, 1.0)) * 100.0).clamp(0.0, 100.0);
   } on Exception {
-    return 50.0;
+    return 0.0;
   }
 }
 
@@ -205,7 +205,7 @@ Future<double> _calculateGymScore(Ref ref) async {
       w.finishedAt!.isAfter(weekStart));
     return workedOutThisWeek ? 50.0 : 0.0;
   } on Exception {
-    return 50.0;
+    return 0.0;
   }
 }
 
@@ -215,7 +215,7 @@ Future<double> _calculateNutritionScore(Ref ref) async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final goal = await dao.getActiveGoal(today);
-    if (goal == null || goal.caloriesKcal <= 0) return 50.0;
+    if (goal == null || goal.caloriesKcal <= 0) return 0.0;
     final mealLogs = await dao.watchMealLogs(today).first;
     if (mealLogs.isEmpty) return 0.0;
     double totalCal = 0;
@@ -230,7 +230,7 @@ Future<double> _calculateNutritionScore(Ref ref) async {
     }
     return ((totalCal / goal.caloriesKcal) * 100.0).clamp(0.0, 100.0);
   } on Exception {
-    return 50.0;
+    return 0.0;
   }
 }
 
@@ -240,7 +240,7 @@ Future<double> _calculateHabitsScore(Ref ref) async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final activeHabits = await dao.watchActiveHabits().first;
-    if (activeHabits.isEmpty) return 50.0;
+    if (activeHabits.isEmpty) return 0.0;
     int completedToday = 0;
     for (final habit in activeHabits) {
       final log = await dao.getLogForDate(habit.id, today);
@@ -248,7 +248,7 @@ Future<double> _calculateHabitsScore(Ref ref) async {
     }
     return (completedToday / activeHabits.length * 100.0).clamp(0.0, 100.0);
   } on Exception {
-    return 50.0;
+    return 0.0;
   }
 }
 
@@ -262,7 +262,7 @@ final dayScoreNotifierProvider = ChangeNotifierProvider<DayScoreNotifier>((ref) 
         'gym' => await _calculateGymScore(ref),
         'nutrition' => await _calculateNutritionScore(ref),
         'habits' => await _calculateHabitsScore(ref),
-        _ => 50.0,
+        _ => 0.0,
       };
     },
   );
