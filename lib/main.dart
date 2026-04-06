@@ -1,5 +1,6 @@
 import 'dart:ui';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_os/app.dart';
@@ -48,9 +49,11 @@ Future<void> _initializeApp(ProviderContainer container) async {
       logger: logger,
     );
 
-    // 6. Initialize notification scheduler
-    logger.info('Initializing notification scheduler...');
-    await container.read(notificationSchedulerProvider).initialize();
+    // 6. Initialize notification scheduler (not available on web)
+    if (!kIsWeb) {
+      logger.info('Initializing notification scheduler...');
+      await container.read(notificationSchedulerProvider).initialize();
+    }
 
     // 7. Process any overdue recurring transactions
     logger.info('Processing recurring transactions...');
