@@ -20,17 +20,44 @@ jobs:
       - name: Generate Drift code
         run: dart run build_runner build --delete-conflicting-outputs
 
-      - name: Build Flutter iOS (ignore signing error)
+      - name: Build Flutter iOS
         run: flutter build ios --release --no-codesign 2>&1 || true
+
+      - name: Find Runner.app location
+        run: |
+          echo "=== Searching for Runner.app ==="
+          find build/ios -name "Runner.app" -type d 2>/dev/null || echo "No Runner.app found"
+          echo "=== build/ios contents ==="
+          ls -la build/ios/ 2>/dev/null || echo "build/ios does not exist"
+          echo "=== build/ios subdirs ==="
+          find build/ios -maxdepth 3 -type d 2>/dev/null || echo "No subdirs"
+
+      - name: Build with xcodebuild (unsigned)
+        run: |
+          cd ios
+          xcodebuild build \
+            -workspace Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath ../build/ios/xc \
+            -destination 'generic/platform=iOS' \
+            ARCHS=arm64 \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=- \
+            AD_HOC_CODE_SIGNING_ALLOWED=YES \
+            COMPILER_INDEX_STORE_ENABLE=NO
 
       - name: Package unsigned IPA
         run: |
-          APP_PATH="build/ios/iphoneos/Runner.app"
-          if [ ! -d "$APP_PATH" ]; then
-            echo "ERROR: Runner.app not found at $APP_PATH"
-            ls -la build/ios/iphoneos/ 2>/dev/null || echo "Directory does not exist"
+          APP_PATH=$(find build/ios -name "Runner.app" -type d | head -1)
+          if [ -z "$APP_PATH" ]; then
+            echo "ERROR: Runner.app not found anywhere"
+            find build/ios -maxdepth 5 -type d
             exit 1
           fi
+          echo "Found Runner.app at: $APP_PATH"
           mkdir -p build/ios/ipa/Payload
           cp -r "$APP_PATH" build/ios/ipa/Payload/
           cd build/ios/ipa
