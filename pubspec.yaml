@@ -62,7 +62,7 @@ dependencies:
   # Charts
   fl_chart: ^0.70.0
   shared_preferences: ^2.5.5
-  sqlite3: ^3.3.0
+  sqlite3: '>=2.9.0 <3.0.0'
 
 dev_dependencies:
   flutter_test:
