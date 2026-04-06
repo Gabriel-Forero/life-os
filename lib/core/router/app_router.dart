@@ -538,11 +538,6 @@ class _AppShellState extends State<_AppShell> {
             ),
           ),
           ListTile(
-            leading: Icon(Icons.dashboard, color: AppColors.primary),
-            title: const Text('Dashboard'),
-            onTap: () { Navigator.pop(context); GoRouter.of(context).go(AppRoutes.home); },
-          ),
-          ListTile(
             leading: Icon(Icons.account_balance_wallet, color: AppColors.finance),
             title: const Text('Finanzas'),
             onTap: () { Navigator.pop(context); GoRouter.of(context).go(AppRoutes.finance); },
