@@ -45,25 +45,25 @@ Future<void> _initializeApp(ProviderContainer container) async {
       nutritionDao: db.nutritionDao,
       dayScoreNotifier: container.read(dayScoreNotifierProvider),
       dashboardNotifier: container.read(dashboardNotifierProvider),
-      notificationScheduler: container.read(notificationSchedulerProvider),
+      notificationScheduler: kIsWeb ? null : container.read(notificationSchedulerProvider),
       logger: logger,
     );
 
-    // 6. Initialize notification scheduler (not available on web)
     if (!kIsWeb) {
+      // 6. Initialize notification scheduler (not available on web)
       logger.info('Initializing notification scheduler...');
       await container.read(notificationSchedulerProvider).initialize();
-    }
 
-    // 7. Process any overdue recurring transactions
-    logger.info('Processing recurring transactions...');
-    final recurringResult =
-        await container.read(financeNotifierProvider).processRecurringTransactions();
-    final recurringCreated = recurringResult.valueOrNull ?? 0;
-    if (recurringCreated > 0) {
-      logger.info('Created $recurringCreated recurring transaction(s).');
-      container.read(recurringCreatedCountProvider.notifier).state =
-          recurringCreated;
+      // 7. Process any overdue recurring transactions
+      logger.info('Processing recurring transactions...');
+      final recurringResult =
+          await container.read(financeNotifierProvider).processRecurringTransactions();
+      final recurringCreated = recurringResult.valueOrNull ?? 0;
+      if (recurringCreated > 0) {
+        logger.info('Created $recurringCreated recurring transaction(s).');
+        container.read(recurringCreatedCountProvider.notifier).state =
+            recurringCreated;
+      }
     }
 
     logger.info('App initialization complete.');
@@ -118,9 +118,26 @@ void main() async {
 
   // Create a ProviderContainer so we can run async initialization before
   // runApp, then hand it to UncontrolledProviderScope.
-  final container = ProviderContainer();
-
-  runApp(_SplashWrapper(container: container));
+  try {
+    final container = ProviderContainer();
+    runApp(_SplashWrapper(container: container));
+  } catch (e, st) {
+    logger.error('Fatal startup error: $e', error: e, stackTrace: st);
+    runApp(MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Text(
+              'Error al iniciar: $e',
+              style: const TextStyle(color: Colors.red, fontSize: 14),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      ),
+    ));
+  }
 }
 
 // ---------------------------------------------------------------------------

@@ -20,7 +20,7 @@ List<void Function()> wireEventBus({
   required NutritionDao nutritionDao,
   required DayScoreNotifier dayScoreNotifier,
   required DashboardNotifier dashboardNotifier,
-  required NotificationScheduler notificationScheduler,
+  NotificationScheduler? notificationScheduler,
   AppLogger? logger,
 }) {
   final log = logger ?? AppLogger(tag: 'EventWiring');
@@ -76,7 +76,7 @@ List<void Function()> wireEventBus({
       );
       await dashboardNotifier.refresh();
       final pct = (event.percentage * 100).round();
-      await notificationScheduler.showImmediate(
+      await notificationScheduler?.showImmediate(
         id: 1000 + event.budgetId,
         title: 'Alerta de presupuesto',
         body:
