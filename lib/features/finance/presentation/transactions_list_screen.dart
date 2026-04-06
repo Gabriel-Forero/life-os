@@ -254,9 +254,9 @@ class _DateGroup extends StatelessWidget {
             child: Text(
               dateHeader,
               style: theme.textTheme.labelMedium?.copyWith(
-                color: AppColors.finance,
+                color: AppColors.lightTextSecondary,
                 letterSpacing: 0.5,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -324,14 +324,17 @@ class _TransactionTile extends StatelessWidget {
         onDismissed: (_) => onDelete(),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 3, 16, 3),
-          child: Card(
-            elevation: 0,
-            margin: EdgeInsets.zero,
-            shape: RoundedRectangleBorder(
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
               borderRadius: BorderRadius.circular(16),
-              side: BorderSide(
-                color: amountColor.withAlpha(30),
-              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withAlpha(8),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: ListTile(
               key: ValueKey('transaction-item-${transaction.id}'),

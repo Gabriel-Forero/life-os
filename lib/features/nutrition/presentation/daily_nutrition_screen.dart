@@ -613,114 +613,219 @@ class _MacroRingsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: AppColors.nutrition.withAlpha(40)),
-      ),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              AppColors.nutrition.withAlpha(25),
-              AppColors.darkCard,
-            ],
+    // Separate calorie macro from the rest
+    final calorieMacro = macros.isNotEmpty ? macros[0] : null;
+    final otherMacros = macros.length > 1 ? macros.sublist(1) : <_Macro>[];
+
+    return Column(
+      children: [
+        // Top card: large calorie ring + summary
+        if (calorieMacro != null)
+          _CalorieCard(
+            key: const ValueKey('nutrition-calorie-card'),
+            macro: calorieMacro,
           ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: macros
-                .map(
-                  (macro) => _MacroRing(
-                    key: ValueKey('macro-ring-${macro.label}'),
-                    macro: macro,
-                  ),
-                )
-                .toList(),
+        const SizedBox(height: 12),
+        // Bottom card: horizontal progress bars for protein/carbs/fat
+        if (otherMacros.isNotEmpty)
+          _MacroProgressCard(
+            key: const ValueKey('nutrition-macro-progress-card'),
+            macros: otherMacros,
           ),
-        ),
-      ),
+      ],
     );
   }
 }
 
-class _MacroRing extends StatelessWidget {
-  const _MacroRing({
-    super.key,
-    required this.macro,
-  });
+/// Large calorie ring card — resembles reference design with big ring + remaining text.
+class _CalorieCard extends StatelessWidget {
+  const _CalorieCard({super.key, required this.macro});
 
   final _Macro macro;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final remaining = (macro.goal - macro.current).clamp(0.0, macro.goal);
+    final pct = (macro.progress * 100).round();
 
-    return Semantics(
-      label:
-          '${macro.label}: ${macro.current.toStringAsFixed(0)} de ${macro.goal.toStringAsFixed(0)} ${macro.unit}, ${(macro.progress * 100).round()}%',
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            width: 68,
-            height: 68,
-            child: TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0.0, end: macro.progress),
-              duration: const Duration(milliseconds: 800),
-              curve: Curves.easeOutCubic,
-              builder: (context, value, child) => CustomPaint(
-                painter: _RingPainter(
-                  progress: value,
-                  color: macro.color,
-                  backgroundColor: theme.dividerColor.withAlpha(60),
-                ),
-                child: child,
-              ),
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      macro.current.toStringAsFixed(0),
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: macro.color,
-                      ),
-                    ),
-                    Text(
-                      macro.unit,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        fontSize: 9,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            macro.label,
-            style: theme.textTheme.labelSmall?.copyWith(
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          Text(
-            'meta: ${macro.goal.toStringAsFixed(0)}',
-            style: theme.textTheme.labelSmall?.copyWith(
-              fontSize: 10,
-              color: theme.textTheme.bodySmall?.color,
-            ),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(8),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
           ),
         ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Row(
+          children: [
+            // Large circular ring
+            SizedBox(
+              width: 96,
+              height: 96,
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.0, end: macro.progress),
+                duration: const Duration(milliseconds: 900),
+                curve: Curves.easeOutCubic,
+                builder: (context, value, child) => CustomPaint(
+                  painter: _RingPainter(
+                    progress: value,
+                    color: macro.color,
+                    backgroundColor: const Color(0xFFE5E7EB),
+                  ),
+                  child: child,
+                ),
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '$pct%',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: macro.color,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 20),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    macro.current.toStringAsFixed(0),
+                    style: theme.textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.lightTextPrimary,
+                    ),
+                  ),
+                  Text(
+                    'kcal consumidas',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: AppColors.lightTextSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '${remaining.toStringAsFixed(0)} restantes de ${macro.goal.toStringAsFixed(0)}',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: macro.color,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Card with horizontal progress bars for protein, carbs, fat.
+class _MacroProgressCard extends StatelessWidget {
+  const _MacroProgressCard({super.key, required this.macros});
+
+  final List<_Macro> macros;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(8),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Macronutrientes',
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: AppColors.lightTextPrimary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            ...macros.map((m) => _MacroProgressRow(macro: m)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MacroProgressRow extends StatelessWidget {
+  const _MacroProgressRow({super.key, required this.macro});
+
+  final _Macro macro;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Semantics(
+        label: '${macro.label}: ${macro.current.toStringAsFixed(0)} de ${macro.goal.toStringAsFixed(0)} ${macro.unit}',
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Text(
+                  macro.label,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.lightTextPrimary,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  '${macro.current.toStringAsFixed(0)} / ${macro.goal.toStringAsFixed(0)}${macro.unit}',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: macro.color,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            TweenAnimationBuilder<double>(
+              tween: Tween<double>(begin: 0, end: macro.progress),
+              duration: const Duration(milliseconds: 700),
+              curve: Curves.easeOutCubic,
+              builder: (context, value, _) => ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: value,
+                  minHeight: 8,
+                  backgroundColor: const Color(0xFFE5E7EB),
+                  valueColor: AlwaysStoppedAnimation<Color>(macro.color),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

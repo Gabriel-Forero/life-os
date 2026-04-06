@@ -471,19 +471,22 @@ class _AppShell extends StatelessWidget {
 
   Widget _buildDrawer(BuildContext context) {
     return Drawer(
+      backgroundColor: Colors.white,
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
           DrawerHeader(
-            decoration: BoxDecoration(color: AppColors.darkSurface),
+            decoration: BoxDecoration(
+              color: AppColors.primary,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                Icon(Icons.shield_outlined, color: AppColors.finance, size: 40),
+                const Icon(Icons.shield_outlined, color: Colors.white, size: 40),
                 const SizedBox(height: 8),
-                Text('LifeOS', style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: Colors.white)),
-                Text('Todos los modulos', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.darkTextSecondary)),
+                Text('LifeOS', style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
+                Text('Todos los modulos', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white70)),
               ],
             ),
           ),
@@ -581,9 +584,11 @@ class _AppShell extends StatelessWidget {
           // ------------------------------------------------------------------
           final selectedIndex = _selectedIndex(context);
           return Scaffold(
+            backgroundColor: AppColors.lightBackground,
             appBar: AppBar(
-              backgroundColor: Colors.transparent,
+              backgroundColor: Colors.white,
               elevation: 0,
+              surfaceTintColor: Colors.white,
               leading: Builder(
                 builder: (ctx) => IconButton(
                   icon: const Icon(Icons.menu),
@@ -593,7 +598,10 @@ class _AppShell extends StatelessWidget {
               ),
               title: Text(
                 _titleForLocation(context),
-                style: Theme.of(context).textTheme.titleLarge,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.lightTextPrimary,
+                ),
               ),
             ),
             drawer: _buildDrawer(context),
@@ -660,9 +668,12 @@ class _AppShell extends StatelessWidget {
         // Phone: bottom navigation bar (original layout)
         // --------------------------------------------------------------------
         return Scaffold(
+          backgroundColor: AppColors.lightBackground,
           appBar: AppBar(
-            backgroundColor: Colors.transparent,
+            backgroundColor: Colors.white,
             elevation: 0,
+            surfaceTintColor: Colors.white,
+            shadowColor: Colors.black.withAlpha(20),
             leading: Builder(
               builder: (ctx) => IconButton(
                 icon: const Icon(Icons.menu),
@@ -672,7 +683,10 @@ class _AppShell extends StatelessWidget {
             ),
             title: Text(
               _titleForLocation(context),
-              style: Theme.of(context).textTheme.titleLarge,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: AppColors.lightTextPrimary,
+              ),
             ),
           ),
           body: child,

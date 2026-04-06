@@ -22,7 +22,7 @@ class ThemeState {
 class ThemeNotifier extends StateNotifier<ThemeState> {
   ThemeNotifier()
       : super(
-          const ThemeState(themeMode: ThemeMode.dark, highContrast: false),
+          const ThemeState(themeMode: ThemeMode.light, highContrast: false),
         );
 
   void setThemeMode(ThemeMode mode) {
@@ -31,9 +31,9 @@ class ThemeNotifier extends StateNotifier<ThemeState> {
 
   void setThemeModeFromString(String mode) {
     final themeMode = switch (mode) {
-      'light' => ThemeMode.light,
+      'dark' => ThemeMode.dark,
       'system' => ThemeMode.system,
-      _ => ThemeMode.dark,
+      _ => ThemeMode.light,
     };
     state = state.copyWith(themeMode: themeMode);
   }
@@ -65,14 +65,62 @@ class ThemeNotifier extends StateNotifier<ThemeState> {
     return ThemeData(
       brightness: Brightness.light,
       scaffoldBackgroundColor: AppColors.lightBackground,
-      colorScheme: const ColorScheme.light(
-        surface: AppColors.lightSurface,
+      colorScheme: ColorScheme.light(
+        surface: Colors.white,
         surfaceContainerHighest: AppColors.lightSurfaceVariant,
-        primary: AppColors.finance,
+        primary: AppColors.primary,
+        secondary: AppColors.finance,
         error: AppColors.error,
+        onSurface: AppColors.lightTextPrimary,
       ),
-      cardColor: AppColors.lightCard,
+      cardTheme: CardThemeData(
+        color: Colors.white,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: AppColors.lightBorder),
+        ),
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Colors.white,
+        foregroundColor: AppColors.lightTextPrimary,
+        elevation: 0,
+        centerTitle: false,
+        titleTextStyle: TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.w700,
+          color: AppColors.lightTextPrimary,
+        ),
+      ),
+      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+        backgroundColor: Colors.white,
+        elevation: 8,
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: Colors.white,
+        indicatorColor: AppColors.primary.withAlpha(25),
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: AppColors.primary,
+            );
+          }
+          return TextStyle(
+            fontSize: 11,
+            color: AppColors.lightTextSecondary,
+          );
+        }),
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return const IconThemeData(color: AppColors.primary);
+          }
+          return IconThemeData(color: AppColors.lightTextSecondary);
+        }),
+      ),
       dividerColor: AppColors.lightBorder,
+      cardColor: Colors.white,
       textTheme: textTheme,
       useMaterial3: true,
     );

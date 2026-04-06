@@ -317,12 +317,22 @@ class _RoutineCard extends StatelessWidget {
           button: true,
           child: PressableCard(
             onTap: onTap,
-            child: Card(
-              margin: EdgeInsets.zero,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withAlpha(8),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
               child: InkWell(
                 key: ValueKey('routine-card-tap-${routine.id}'),
                 onTap: onTap,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
                 child: Padding(
                   padding: const EdgeInsets.all(14),
                   child: Column(
@@ -486,12 +496,17 @@ class _RecentWorkoutCard extends StatelessWidget {
             .fold<double>(
                 0.0, (sum, s) => sum + s.weightKg! * s.reps);
 
-        return Card(
-          margin: EdgeInsets.zero,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: AppColors.gym.withAlpha(30)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withAlpha(8),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),

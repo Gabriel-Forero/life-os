@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
 abstract final class AppColors {
+  // Primary accent (blue — matches reference calorie tracking design)
+  static const Color primary = Color(0xFF3B82F6);
+
   // Module accent colors (fixed, same in dark and light)
   static const Color finance = Color(0xFF10B981);
   static const Color gym = Color(0xFFF59E0B);
@@ -23,12 +26,12 @@ abstract final class AppColors {
   static const Color lightSurface = Color(0xFFFFFFFF);
   static const Color lightSurfaceVariant = Color(0xFFF1F3F5);
   static const Color lightCard = Color(0xFFFFFFFF);
-  static const Color lightBorder = Color(0xFFE0E0E0);
+  static const Color lightBorder = Color(0xFFE5E7EB);
 
   // Text colors
   static const Color darkTextPrimary = Color(0xFFF5F5F5);
   static const Color darkTextSecondary = Color(0xFF9CA3AF);
-  static const Color lightTextPrimary = Color(0xFF1A1A1A);
+  static const Color lightTextPrimary = Color(0xFF1A1A2E);
   static const Color lightTextSecondary = Color(0xFF6B7280);
 
   // High contrast overrides

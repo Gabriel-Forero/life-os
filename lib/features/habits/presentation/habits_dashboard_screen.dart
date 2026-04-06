@@ -339,9 +339,15 @@ class _DayProgressHeader extends StatelessWidget {
         key: const ValueKey('habits-progress-container'),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.habits.withAlpha(20),
+          color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.habits.withAlpha(40)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(8),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -352,12 +358,13 @@ class _DayProgressHeader extends StatelessWidget {
                   'Hoy',
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
+                    color: AppColors.lightTextPrimary,
                   ),
                 ),
                 const Spacer(),
                 Text(
-                  '$completed / $total',
-                  style: theme.textTheme.titleMedium?.copyWith(
+                  '$completed / $total completados',
+                  style: theme.textTheme.bodySmall?.copyWith(
                     color: AppColors.habits,
                     fontWeight: FontWeight.w700,
                   ),
@@ -366,7 +373,7 @@ class _DayProgressHeader extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             ClipRRect(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(4),
               child: TweenAnimationBuilder<double>(
                 tween: Tween<double>(begin: 0, end: progress),
                 duration: const Duration(milliseconds: 600),
@@ -374,8 +381,8 @@ class _DayProgressHeader extends StatelessWidget {
                 builder: (context, value, _) => LinearProgressIndicator(
                   key: const ValueKey('habits-day-progress-bar'),
                   value: value,
-                  minHeight: 10,
-                  backgroundColor: AppColors.habits.withAlpha(30),
+                  minHeight: 8,
+                  backgroundColor: const Color(0xFFE5E7EB),
                   valueColor:
                       const AlwaysStoppedAnimation<Color>(AppColors.habits),
                 ),
@@ -405,13 +412,15 @@ class _CelebrationBanner extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              AppColors.habits.withAlpha(40),
-              AppColors.success.withAlpha(40),
-            ],
-          ),
+          color: Colors.white,
           borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(8),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
           border: Border.all(color: AppColors.habits.withAlpha(60)),
         ),
         child: Row(
@@ -546,12 +555,18 @@ class _HabitRow extends StatelessWidget {
       label: semanticLabel,
       child: PressableCard(
         onTap: isQuantitative ? onIncrement : onToggle,
-        child: Card(
-          elevation: 0,
+        child: Container(
           margin: const EdgeInsets.only(bottom: 8),
-          shape: RoundedRectangleBorder(
+          decoration: BoxDecoration(
+            color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: _habitColor.withAlpha(30)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withAlpha(8),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -608,8 +623,7 @@ class _HabitRow extends StatelessWidget {
                                     LinearProgressIndicator(
                                   value: value,
                                   minHeight: 5,
-                                  backgroundColor:
-                                      _habitColor.withAlpha(25),
+                                  backgroundColor: const Color(0xFFE5E7EB),
                                   valueColor:
                                       AlwaysStoppedAnimation<Color>(
                                     _habitColor,

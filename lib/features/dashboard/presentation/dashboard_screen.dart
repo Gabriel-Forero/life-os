@@ -227,18 +227,20 @@ class _DayScoreCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppColors.dayScore.withAlpha(40),
-            AppColors.darkCard,
-          ],
-        ),
-        border: Border.all(
-          color: AppColors.dayScore.withAlpha(60),
-          width: 1.5,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(8),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+        border: Border(
+          left: BorderSide(
+            color: AppColors.dayScore,
+            width: 4,
+          ),
         ),
       ),
       child: Padding(
@@ -444,18 +446,17 @@ class _ModuleCard extends StatelessWidget {
       onTap: () => GoRouter.of(context).go('/${data.moduleKey}'),
       child: Container(
         decoration: BoxDecoration(
+          color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              data.color.withAlpha(30),
-              AppColors.darkCard,
-            ],
-          ),
-          border: Border.all(
-            color: data.color.withAlpha(50),
-            width: 1,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(8),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+          border: Border(
+            left: BorderSide(color: data.color, width: 3),
           ),
         ),
         child: Padding(
@@ -621,9 +622,16 @@ class _QuickActionItem extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         child: Container(
           decoration: BoxDecoration(
+            color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            color: color.withAlpha(20),
-            border: Border.all(color: color.withAlpha(50)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withAlpha(8),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
+              ),
+            ],
+            border: Border.all(color: color.withAlpha(60)),
           ),
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 16),
