@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:life_os/core/constants/app_colors.dart';
 import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
+import 'package:life_os/core/router/app_router.dart';
 import 'package:life_os/features/goals/domain/goals_input.dart';
 
 // ---------------------------------------------------------------------------
@@ -80,7 +82,7 @@ class _AddEditGoalScreenState extends ConsumerState<AddEditGoalScreen> {
     super.dispose();
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
     final input = GoalInput(
@@ -97,8 +99,13 @@ class _AddEditGoalScreenState extends ConsumerState<AddEditGoalScreen> {
     if (widget.onSaveGoal != null) {
       widget.onSaveGoal!(input);
     } else {
-      ref.read(goalsNotifierProvider).addGoal(input);
-      Navigator.of(context).pop();
+      await ref.read(goalsNotifierProvider).addGoal(input);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Meta creada!')),
+        );
+        GoRouter.of(context).go(AppRoutes.goals);
+      }
     }
   }
 
