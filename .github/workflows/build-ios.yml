@@ -24,24 +24,26 @@ jobs:
         run: |
           flutter build ios --release --no-codesign --config-only
           cd ios
-          xcodebuild -workspace Runner.xcworkspace \
+          xcodebuild archive \
+            -workspace Runner.xcworkspace \
             -scheme Runner \
             -configuration Release \
             -sdk iphoneos \
-            -derivedDataPath ../build/ios/DerivedData \
+            -archivePath ../build/ios/Runner.xcarchive \
+            -destination 'generic/platform=iOS' \
+            ARCHS=arm64 \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY="" \
-            DEVELOPMENT_TEAM="" \
-            PROVISIONING_PROFILE_SPECIFIER=""
+            CODE_SIGN_IDENTITY=- \
+            AD_HOC_CODE_SIGNING_ALLOWED=YES
 
       - name: Create unsigned IPA
         run: |
           mkdir -p build/ios/ipa
-          cd build/ios/DerivedData/Build/Products/Release-iphoneos
+          cd build/ios/Runner.xcarchive/Products/Applications
           mkdir Payload
           cp -r Runner.app Payload/
-          zip -r ../../../../ipa/LifeOS.ipa Payload
+          zip -r ../../../ipa/LifeOS.ipa Payload
           rm -rf Payload
 
       - name: Upload IPA artifact
