@@ -127,6 +127,17 @@ class _TransactionsListScreenState
             onPressed: () => GoRouter.of(context).push('/finance/savings'),
             tooltip: 'Metas de ahorro',
           ),
+          Semantics(
+            label: 'Ver valoracion de finanzas',
+            button: true,
+            child: IconButton(
+              key: const ValueKey('transactions-valuation-button'),
+              icon: const Icon(Icons.assessment_outlined),
+              onPressed: () =>
+                  GoRouter.of(context).push(AppRoutes.financeValuation),
+              tooltip: 'Valoracion',
+            ),
+          ),
         ],
       ),
       body: Column(

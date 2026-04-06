@@ -201,6 +201,27 @@ class DashboardDao extends DatabaseAccessor<AppDatabase>
             ..orderBy([(s) => OrderingTerm.desc(s.date)]))
           .get();
 
+  /// Inserts a manual valuation snapshot for a specific module.
+  ///
+  /// Unlike [insertLifeSnapshot], this method does NOT normalize to midnight
+  /// and does NOT enforce uniqueness — multiple valuations per day are allowed.
+  /// The [moduleKey] and [data] are stored inside the JSON blob so that the
+  /// screen can filter by module.
+  Future<void> insertValuationSnapshot({
+    required String moduleKey,
+    required Map<String, dynamic> data,
+  }) async {
+    final now = DateTime.now();
+    await into(lifeSnapshots).insert(
+      LifeSnapshotsCompanion.insert(
+        date: now,
+        totalScore: 0,
+        metricsJson: jsonEncode({'moduleKey': moduleKey, 'data': data}),
+        createdAt: now,
+      ),
+    );
+  }
+
   // ---------------------------------------------------------------------------
   // Helpers
   // ---------------------------------------------------------------------------

@@ -67,6 +67,13 @@ class GymDashboardScreen extends ConsumerWidget {
                     onTap: () =>
                         GoRouter.of(context).push(AppRoutes.gymMeasurements),
                   ),
+                  _QuickActionChip(
+                    key: const ValueKey('gym-quick-valuation'),
+                    icon: Icons.assessment_outlined,
+                    label: 'Valoracion',
+                    onTap: () =>
+                        GoRouter.of(context).push(AppRoutes.gymValuation),
+                  ),
                 ],
               ),
             ),

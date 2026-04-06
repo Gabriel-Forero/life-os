@@ -206,6 +206,18 @@ class _DailyNutritionScreenState
               tooltip: 'Metas',
             ),
           ),
+          // Valuation
+          Semantics(
+            label: 'Ver valoracion de nutricion',
+            button: true,
+            child: IconButton(
+              key: const ValueKey('nutrition-valuation-button'),
+              icon: const Icon(Icons.assessment_outlined),
+              onPressed: () =>
+                  GoRouter.of(context).push(AppRoutes.nutritionValuation),
+              tooltip: 'Valoracion',
+            ),
+          ),
         ],
       ),
       floatingActionButton: Semantics(

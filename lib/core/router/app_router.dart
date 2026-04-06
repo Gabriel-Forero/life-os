@@ -22,8 +22,10 @@ import 'package:life_os/features/gym/presentation/active_workout_screen.dart';
 import 'package:life_os/features/gym/presentation/body_measurements_screen.dart';
 import 'package:life_os/features/gym/presentation/exercise_library_screen.dart';
 import 'package:life_os/features/gym/presentation/gym_dashboard_screen.dart';
+import 'package:life_os/features/gym/presentation/gym_valuation_screen.dart';
 import 'package:life_os/features/gym/presentation/routine_builder_screen.dart';
 import 'package:life_os/features/gym/presentation/workout_history_screen.dart';
+import 'package:life_os/features/finance/presentation/finance_valuation_screen.dart';
 import 'package:life_os/features/habits/presentation/add_edit_habit_screen.dart';
 import 'package:life_os/features/habits/presentation/habit_detail_screen.dart';
 import 'package:life_os/features/habits/presentation/habits_dashboard_screen.dart';
@@ -43,8 +45,10 @@ import 'package:life_os/features/nutrition/presentation/meal_log_screen.dart';
 import 'package:life_os/features/nutrition/presentation/nutrition_goals_screen.dart';
 import 'package:life_os/features/nutrition/presentation/barcode_scanner_screen.dart';
 import 'package:life_os/features/nutrition/presentation/manual_food_entry_screen.dart';
+import 'package:life_os/features/nutrition/presentation/nutrition_valuation_screen.dart';
 import 'package:life_os/features/nutrition/presentation/photo_analysis_screen.dart';
 import 'package:life_os/features/onboarding/presentation/onboarding_shell.dart';
+import 'package:life_os/features/wellness/presentation/wellness_hub_screen.dart';
 import 'package:life_os/features/settings/presentation/backup_screen.dart';
 import 'package:life_os/features/settings/presentation/settings_screen.dart';
 import 'package:life_os/features/sleep/presentation/circadian_screen.dart';
@@ -73,6 +77,10 @@ abstract final class AppRoutes {
   static const String gymWorkout = '/gym/workout';
   static const String gymHistory = '/gym/history';
   static const String gymMeasurements = '/gym/measurements';
+  static const String gymValuation = '/gym/valuation';
+
+  // Finance (valuacion)
+  static const String financeValuation = '/finance/valuation';
 
   // Nutrition
   static const String nutrition = '/nutrition';
@@ -82,9 +90,13 @@ abstract final class AppRoutes {
   static const String barcodeScanner = '/nutrition/scan';
   static const String photoAnalysis = '/nutrition/photo';
   static const String manualFoodEntry = '/nutrition/manual';
+  static const String nutritionValuation = '/nutrition/valuation';
 
   // Settings
   static const String backup = '/settings/backup';
+
+  // Wellness (unified)
+  static const String wellness = '/wellness';
 
   // Habits
   static const String habits = '/habits';
@@ -180,6 +192,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: AppRoutes.goals,
             builder: (context, state) => const GoalsOverviewScreen(),
           ),
+          // Wellness hub
+          GoRoute(
+            path: AppRoutes.wellness,
+            builder: (context, state) => const WellnessHubScreen(),
+          ),
           // Settings
           GoRoute(
             path: AppRoutes.settings,
@@ -240,6 +257,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             fadeScaleTransition(const BodyMeasurementsScreen(), state),
       ),
       GoRoute(
+        path: AppRoutes.gymValuation,
+        pageBuilder: (context, state) =>
+            fadeScaleTransition(const GymValuationScreen(), state),
+      ),
+      GoRoute(
+        path: AppRoutes.financeValuation,
+        pageBuilder: (context, state) =>
+            fadeScaleTransition(const FinanceValuationScreen(), state),
+      ),
+      GoRoute(
         path: AppRoutes.nutritionSearch,
         pageBuilder: (context, state) =>
             slideUpTransition(const FoodSearchScreen(), state),
@@ -268,6 +295,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.manualFoodEntry,
         pageBuilder: (context, state) =>
             slideUpTransition(const ManualFoodEntryScreen(), state),
+      ),
+      GoRoute(
+        path: AppRoutes.nutritionValuation,
+        pageBuilder: (context, state) =>
+            fadeScaleTransition(const NutritionValuationScreen(), state),
       ),
       GoRoute(
         path: AppRoutes.backup,
@@ -478,24 +510,10 @@ class _AppShell extends StatelessWidget {
           ),
           const Divider(),
           ListTile(
-            leading: Icon(Icons.bedtime_outlined, color: AppColors.sleep),
-            title: const Text('Sueno'),
-            onTap: () { Navigator.pop(context); GoRouter.of(context).push(AppRoutes.sleep); },
-          ),
-          ListTile(
-            leading: Icon(Icons.psychology_outlined, color: AppColors.mental),
-            title: const Text('Bienestar Mental'),
-            onTap: () { Navigator.pop(context); GoRouter.of(context).push(AppRoutes.mood); },
-          ),
-          ListTile(
-            leading: Icon(Icons.self_improvement_outlined, color: AppColors.mental),
-            title: const Text('Respiracion'),
-            onTap: () { Navigator.pop(context); GoRouter.of(context).push(AppRoutes.breathing); },
-          ),
-          ListTile(
-            leading: Icon(Icons.favorite_outline, color: AppColors.mental),
-            title: const Text('Gratitud'),
-            onTap: () { Navigator.pop(context); GoRouter.of(context).push(AppRoutes.gratitude); },
+            leading: Icon(Icons.spa, color: AppColors.mental),
+            title: const Text('Bienestar'),
+            subtitle: const Text('Sueno, mood, respiracion, gratitud'),
+            onTap: () { Navigator.pop(context); GoRouter.of(context).go(AppRoutes.wellness); },
           ),
           ListTile(
             leading: Icon(Icons.auto_awesome, color: AppColors.mental),
@@ -508,19 +526,10 @@ class _AppShell extends StatelessWidget {
             onTap: () { Navigator.pop(context); GoRouter.of(context).go(AppRoutes.goals); },
           ),
           ListTile(
-            leading: Icon(Icons.auto_awesome, color: AppColors.dayScore),
-            title: const Text('DayScore'),
-            onTap: () { Navigator.pop(context); GoRouter.of(context).push(AppRoutes.dayScore); },
-          ),
-          ListTile(
-            leading: Icon(Icons.monitor_heart_outlined, color: AppColors.dayScore),
-            title: const Text('Monitoreo'),
+            leading: Icon(Icons.insights, color: AppColors.dayScore),
+            title: const Text('Mi Progreso'),
+            subtitle: const Text('DayScore, monitoreo, evolucion'),
             onTap: () { Navigator.pop(context); GoRouter.of(context).push(AppRoutes.monitoring); },
-          ),
-          ListTile(
-            leading: Icon(Icons.timeline_outlined, color: AppColors.dayScore),
-            title: const Text('Evolucion'),
-            onTap: () { Navigator.pop(context); GoRouter.of(context).push(AppRoutes.evolution); },
           ),
           const Divider(),
           ListTile(
