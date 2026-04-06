@@ -354,7 +354,7 @@ class _AddEditGoalScreenState extends ConsumerState<AddEditGoalScreen> {
     double weight = 0.0;
     showDialog<void>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogCtx) => AlertDialog(
         key: const ValueKey('add_sub_goal_dialog'),
         title: const Text('Agregar sub-objetivo'),
         content: Column(
@@ -389,7 +389,7 @@ class _AddEditGoalScreenState extends ConsumerState<AddEditGoalScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogCtx),
             child: const Text('Cancelar'),
           ),
           TextButton(
@@ -400,7 +400,7 @@ class _AddEditGoalScreenState extends ConsumerState<AddEditGoalScreen> {
                       name: nameCtrl.text.trim(),
                       weight: weight,
                     )));
-                Navigator.pop(context);
+                Navigator.pop(dialogCtx);
               }
             },
             child: const Text(

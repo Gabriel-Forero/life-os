@@ -74,10 +74,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final dashboardNotifier = ref.watch(dashboardNotifierProvider);
-    ref.watch(dayScoreNotifierProvider);
+    final dayScoreNotifier = ref.watch(dayScoreNotifierProvider);
     final dashState = dashboardNotifier.state;
     final greeting = dashboardNotifier.greeting();
-    final score = dashState.dayScore;
+    final score = dayScoreNotifier.state.todayScore ?? dashState.dayScore;
 
     return Scaffold(
       key: const ValueKey('dashboard-screen'),
