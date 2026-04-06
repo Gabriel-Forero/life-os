@@ -20,9 +20,11 @@ jobs:
       - name: Generate Drift code
         run: dart run build_runner build --delete-conflicting-outputs
 
-      - name: Build iOS unsigned with xcodebuild
+      - name: Build Flutter iOS framework
+        run: flutter build ios --release --no-codesign || true
+
+      - name: Re-build with xcodebuild (unsigned)
         run: |
-          flutter build ios --release --no-codesign --config-only
           cd ios
           xcodebuild archive \
             -workspace Runner.xcworkspace \
