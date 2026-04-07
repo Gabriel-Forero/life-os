@@ -99,7 +99,7 @@ class _DesktopDashboard extends StatelessWidget {
           title: 'Sueno anoche',
           value: hasData ? '${hours.toStringAsFixed(1)}h' : '—',
           subtitle: hasData ? 'Score $score/100' : 'Sin registro',
-          onTap: () => GoRouter.of(context).go(AppRoutes.sleepHistory),
+          onTap: () => GoRouter.of(context).push(AppRoutes.sleepHistory),
         );
       },
     );
@@ -119,7 +119,7 @@ class _DesktopDashboard extends StatelessWidget {
           title: 'Mood hoy',
           value: emoji,
           subtitle: hasData ? 'Valence ${logs.first.valence}/5 • Energia ${logs.first.energy}/5' : 'Sin registro',
-          onTap: () => GoRouter.of(context).go(AppRoutes.mentalHistory),
+          onTap: () => GoRouter.of(context).push(AppRoutes.mentalHistory),
         );
       },
     );
@@ -154,7 +154,7 @@ class _DesktopDashboard extends StatelessWidget {
           title: 'Mood — ultimos 7 dias',
           icon: Icons.mood,
           color: AppColors.mental,
-          onTitleTap: () => GoRouter.of(context).go(AppRoutes.mentalHistory),
+          onTitleTap: () => GoRouter.of(context).push(AppRoutes.mentalHistory),
           child: logs.isEmpty
               ? const _EmptyHint(text: 'Registra tu mood para ver tendencias')
               : _MoodWeekBars(logs: logs, today: today),
@@ -173,7 +173,7 @@ class _DesktopDashboard extends StatelessWidget {
           title: 'Sueno — ultimos 7 dias',
           icon: Icons.bedtime,
           color: AppColors.sleep,
-          onTitleTap: () => GoRouter.of(context).go(AppRoutes.sleepHistory),
+          onTitleTap: () => GoRouter.of(context).push(AppRoutes.sleepHistory),
           child: logs.isEmpty
               ? const _EmptyHint(text: 'Registra tu sueno para ver tendencias')
               : _SleepWeekBars(logs: logs, today: today),
@@ -223,7 +223,7 @@ class _PhoneLayout extends StatelessWidget {
         _NavCard(icon: Icons.favorite, label: 'Gratitud', sub: '3 cosas buenas', color: AppColors.mental, onTap: () => GoRouter.of(context).push(AppRoutes.gratitude)),
         _NavCard(icon: Icons.bedtime, label: 'Sueno', sub: 'Registrar noche', color: AppColors.sleep, onTap: () => GoRouter.of(context).push(AppRoutes.sleep)),
         _NavCard(icon: Icons.bolt, label: 'Energia', sub: 'Check-in rapido', color: AppColors.gym, onTap: () => GoRouter.of(context).push(AppRoutes.energy)),
-        _NavCard(icon: Icons.psychology, label: 'Patrones IA', sub: 'Analisis cruzado', color: AppColors.goals, onTap: () => GoRouter.of(context).go(AppRoutes.mentalInsights)),
+        _NavCard(icon: Icons.psychology, label: 'Patrones IA', sub: 'Analisis cruzado', color: AppColors.goals, onTap: () => GoRouter.of(context).push(AppRoutes.mentalInsights)),
       ]),
       const SizedBox(height: 24),
       Text('Resumen de hoy', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
@@ -234,9 +234,9 @@ class _PhoneLayout extends StatelessWidget {
       const SizedBox(height: 24),
       Text('Historiales', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
       const SizedBox(height: 12),
-      ListTile(leading: Icon(Icons.nights_stay, color: AppColors.sleep), title: const Text('Historial de sueno'), trailing: const Icon(Icons.chevron_right), onTap: () => GoRouter.of(context).go(AppRoutes.sleepHistory)),
-      ListTile(leading: Icon(Icons.show_chart, color: AppColors.sleep), title: const Text('Ritmo circadiano'), trailing: const Icon(Icons.chevron_right), onTap: () => GoRouter.of(context).go(AppRoutes.circadian)),
-      ListTile(leading: Icon(Icons.calendar_month, color: AppColors.mental), title: const Text('Calendario emocional'), trailing: const Icon(Icons.chevron_right), onTap: () => GoRouter.of(context).go(AppRoutes.mentalHistory)),
+      ListTile(leading: Icon(Icons.nights_stay, color: AppColors.sleep), title: const Text('Historial de sueno'), trailing: const Icon(Icons.chevron_right), onTap: () => GoRouter.of(context).push(AppRoutes.sleepHistory)),
+      ListTile(leading: Icon(Icons.show_chart, color: AppColors.sleep), title: const Text('Ritmo circadiano'), trailing: const Icon(Icons.chevron_right), onTap: () => GoRouter.of(context).push(AppRoutes.circadian)),
+      ListTile(leading: Icon(Icons.calendar_month, color: AppColors.mental), title: const Text('Calendario emocional'), trailing: const Icon(Icons.chevron_right), onTap: () => GoRouter.of(context).push(AppRoutes.mentalHistory)),
     ]);
   }
 
@@ -248,7 +248,7 @@ class _PhoneLayout extends StatelessWidget {
         if (logs.isEmpty) return _SummaryTile(icon: Icons.bedtime, color: AppColors.sleep, title: 'Sueno', value: 'Sin registro', onTap: () => GoRouter.of(ctx).push(AppRoutes.sleep));
         final l = logs.first;
         final h = l.wakeTime.difference(l.bedTime).inMinutes / 60;
-        return _SummaryTile(icon: Icons.bedtime, color: AppColors.sleep, title: 'Sueno anoche', value: '${h.toStringAsFixed(1)}h — Score ${l.sleepScore}/100', onTap: () => GoRouter.of(ctx).go(AppRoutes.sleepHistory));
+        return _SummaryTile(icon: Icons.bedtime, color: AppColors.sleep, title: 'Sueno anoche', value: '${h.toStringAsFixed(1)}h — Score ${l.sleepScore}/100', onTap: () => GoRouter.of(ctx).push(AppRoutes.sleepHistory));
       },
     );
   }
@@ -261,7 +261,7 @@ class _PhoneLayout extends StatelessWidget {
         if (logs.isEmpty) return _SummaryTile(icon: Icons.mood, color: AppColors.mental, title: 'Mood', value: 'Sin registro hoy', onTap: () => GoRouter.of(ctx).push(AppRoutes.mood));
         final l = logs.first;
         final e = ['', '😫', '😔', '😐', '😊', '🔥'][l.valence.clamp(1, 5)];
-        return _SummaryTile(icon: Icons.mood, color: AppColors.mental, title: 'Mood hoy', value: '$e ${l.valence}/5', onTap: () => GoRouter.of(ctx).go(AppRoutes.mentalHistory));
+        return _SummaryTile(icon: Icons.mood, color: AppColors.mental, title: 'Mood hoy', value: '$e ${l.valence}/5', onTap: () => GoRouter.of(ctx).push(AppRoutes.mentalHistory));
       },
     );
   }
