@@ -214,32 +214,81 @@ class _PhoneLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final weekAgo = today.subtract(const Duration(days: 7));
     return ListView(padding: const EdgeInsets.all(16), children: [
-      Text('Acciones rapidas', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-      const SizedBox(height: 12),
-      GridView.count(crossAxisCount: 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), mainAxisSpacing: 12, crossAxisSpacing: 12, childAspectRatio: 1.4, children: [
-        _NavCard(icon: Icons.mood, label: 'Estado de animo', sub: 'Registrar mood', color: AppColors.mental, onTap: () => GoRouter.of(context).push(AppRoutes.mood)),
-        _NavCard(icon: Icons.self_improvement, label: 'Respiracion', sub: 'Ejercicio guiado', color: AppColors.mental, onTap: () => GoRouter.of(context).push(AppRoutes.breathing)),
-        _NavCard(icon: Icons.favorite, label: 'Gratitud', sub: '3 cosas buenas', color: AppColors.mental, onTap: () => GoRouter.of(context).push(AppRoutes.gratitude)),
-        _NavCard(icon: Icons.bedtime, label: 'Sueno', sub: 'Registrar noche', color: AppColors.sleep, onTap: () => GoRouter.of(context).push(AppRoutes.sleep)),
-        _NavCard(icon: Icons.bolt, label: 'Energia', sub: 'Check-in rapido', color: AppColors.gym, onTap: () => GoRouter.of(context).push(AppRoutes.energy)),
-        _NavCard(icon: Icons.psychology, label: 'Patrones IA', sub: 'Analisis cruzado', color: AppColors.goals, onTap: () => GoRouter.of(context).push(AppRoutes.mentalInsights)),
+      // Stat cards row (same as desktop, adapted to 2 columns)
+      Row(children: [
+        Expanded(child: _phoneSleepCard(context)),
+        const SizedBox(width: 8),
+        Expanded(child: _phoneMoodCard(context)),
       ]),
-      const SizedBox(height: 24),
-      Text('Resumen de hoy', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+      const SizedBox(height: 16),
+      // Quick actions as compact chips
+      Wrap(spacing: 8, runSpacing: 8, children: [
+        _NavChip(icon: Icons.mood, label: 'Mood', color: AppColors.mental, onTap: () => GoRouter.of(context).push(AppRoutes.mood)),
+        _NavChip(icon: Icons.favorite, label: 'Gratitud', color: AppColors.mental, onTap: () => GoRouter.of(context).push(AppRoutes.gratitude)),
+        _NavChip(icon: Icons.bedtime, label: 'Sueno', color: AppColors.sleep, onTap: () => GoRouter.of(context).push(AppRoutes.sleep)),
+        _NavChip(icon: Icons.bolt, label: 'Energia', color: AppColors.gym, onTap: () => GoRouter.of(context).push(AppRoutes.energy)),
+        _NavChip(icon: Icons.self_improvement, label: 'Respiracion', color: AppColors.mental, onTap: () => GoRouter.of(context).push(AppRoutes.breathing)),
+      ]),
+      const SizedBox(height: 20),
+      // Mood week bars
+      _DashCard(
+        title: 'Mood — 7 dias', icon: Icons.mood, color: AppColors.mental,
+        onTitleTap: () => GoRouter.of(context).push(AppRoutes.mentalHistory),
+        child: StreamBuilder<List<MoodLog>>(
+          stream: mentalDao.watchMoodLogs(weekAgo, today.add(const Duration(days: 1))),
+          builder: (_, snap) {
+            final logs = snap.data ?? [];
+            return logs.isEmpty ? const _EmptyHint(text: 'Registra tu mood') : _MoodWeekBars(logs: logs, today: today);
+          },
+        ),
+      ),
       const SizedBox(height: 12),
-      _buildSleepSummary(context, sleepDao, today),
-      const SizedBox(height: 8),
-      _buildMoodSummary(context, mentalDao, today),
-      const SizedBox(height: 24),
-      Text('Historiales', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+      // Sleep week bars
+      _DashCard(
+        title: 'Sueno — 7 dias', icon: Icons.bedtime, color: AppColors.sleep,
+        onTitleTap: () => GoRouter.of(context).push(AppRoutes.sleepHistory),
+        child: StreamBuilder<List<SleepLog>>(
+          stream: sleepDao.watchSleepLogs(weekAgo, today),
+          builder: (_, snap) {
+            final logs = snap.data ?? [];
+            return logs.isEmpty ? const _EmptyHint(text: 'Registra tu sueno') : _SleepWeekBars(logs: logs, today: today);
+          },
+        ),
+      ),
       const SizedBox(height: 12),
-      ListTile(leading: Icon(Icons.nights_stay, color: AppColors.sleep), title: const Text('Historial de sueno'), trailing: const Icon(Icons.chevron_right), onTap: () => GoRouter.of(context).push(AppRoutes.sleepHistory)),
+      // History links
       ListTile(leading: Icon(Icons.show_chart, color: AppColors.sleep), title: const Text('Ritmo circadiano'), trailing: const Icon(Icons.chevron_right), onTap: () => GoRouter.of(context).push(AppRoutes.circadian)),
-      ListTile(leading: Icon(Icons.calendar_month, color: AppColors.mental), title: const Text('Calendario emocional'), trailing: const Icon(Icons.chevron_right), onTap: () => GoRouter.of(context).push(AppRoutes.mentalHistory)),
+      ListTile(leading: Icon(Icons.psychology, color: AppColors.goals), title: const Text('Patrones IA'), trailing: const Icon(Icons.chevron_right), onTap: () => GoRouter.of(context).push(AppRoutes.mentalInsights)),
     ]);
   }
 
+  Widget _phoneSleepCard(BuildContext context) {
+    return StreamBuilder<List<SleepLog>>(
+      stream: sleepDao.watchSleepLogs(today.subtract(const Duration(days: 1)), today),
+      builder: (_, snap) {
+        final logs = snap.data ?? [];
+        final has = logs.isNotEmpty;
+        final h = has ? logs.first.wakeTime.difference(logs.first.bedTime).inMinutes / 60 : 0.0;
+        return _StatCard(icon: Icons.bedtime, color: AppColors.sleep, title: 'Sueno', value: has ? '${h.toStringAsFixed(1)}h' : '—', subtitle: has ? 'Score ${logs.first.sleepScore}/100' : 'Sin registro', onTap: () => GoRouter.of(context).push(AppRoutes.sleepHistory));
+      },
+    );
+  }
+
+  Widget _phoneMoodCard(BuildContext context) {
+    return StreamBuilder<List<MoodLog>>(
+      stream: mentalDao.watchMoodLogs(today, today.add(const Duration(days: 1))),
+      builder: (_, snap) {
+        final logs = snap.data ?? [];
+        final has = logs.isNotEmpty;
+        final emoji = has ? ['', '😫', '😔', '😐', '😊', '🔥'][logs.first.valence.clamp(1, 5)] : '—';
+        return _StatCard(icon: Icons.mood, color: AppColors.mental, title: 'Mood', value: emoji, subtitle: has ? '${logs.first.valence}/5' : 'Sin registro', onTap: () => GoRouter.of(context).push(AppRoutes.mentalHistory));
+      },
+    );
+  }
+
+  // Keep this for backward compat but redirect to new card-based approach
   Widget _buildSleepSummary(BuildContext ctx, SleepDao dao, DateTime todayStart) {
     return StreamBuilder<List<SleepLog>>(
       stream: dao.watchSleepLogs(todayStart.subtract(const Duration(days: 1)), todayStart),
@@ -478,6 +527,13 @@ class _EnergyWeekBars extends StatelessWidget {
 // =============================================================================
 // Small widgets
 // =============================================================================
+
+class _NavChip extends StatelessWidget {
+  const _NavChip({required this.icon, required this.label, required this.color, required this.onTap});
+  final IconData icon; final String label; final Color color; final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => ActionChip(avatar: Icon(icon, color: color, size: 18), label: Text(label), onPressed: onTap, side: BorderSide(color: color.withAlpha(60)), backgroundColor: color.withAlpha(10));
+}
 
 class _NavCard extends StatelessWidget {
   const _NavCard({required this.icon, required this.label, required this.sub, required this.color, required this.onTap});
