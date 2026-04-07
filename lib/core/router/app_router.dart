@@ -963,8 +963,8 @@ class _AppShellState extends State<_AppShell> {
                           color: _colorForLocation(context),
                         ),
                       ),
-                      const Spacer(),
-                      if (actions.isNotEmpty)
+                      if (actions.isNotEmpty) ...[
+                        const SizedBox(width: 16),
                         ...actions.map((btn) {
                           final iconBtn = btn as IconButton;
                           return Padding(
@@ -980,6 +980,8 @@ class _AppShellState extends State<_AppShell> {
                             ),
                           );
                         }),
+                      ],
+                      const Spacer(),
                     ],
                   ),
                 ),
