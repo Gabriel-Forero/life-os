@@ -731,13 +731,13 @@ class _AppShellState extends State<_AppShell> {
             leading: Icon(Icons.insights, color: AppColors.dayScore),
             title: const Text('Mi Progreso'),
             subtitle: const Text('DayScore, monitoreo, evolucion'),
-            onTap: () { Navigator.pop(context); GoRouter.of(context).push(AppRoutes.monitoring); },
+            onTap: () { Navigator.pop(context); GoRouter.of(context).go(AppRoutes.monitoring); },
           ),
           const Divider(),
           ListTile(
             leading: const Icon(Icons.smart_toy_outlined),
             title: const Text('Asistente AI'),
-            onTap: () { Navigator.pop(context); GoRouter.of(context).push(AppRoutes.aiConversations); },
+            onTap: () { Navigator.pop(context); GoRouter.of(context).go(AppRoutes.aiConversations); },
           ),
           ListTile(
             leading: const Icon(Icons.settings_outlined),
@@ -885,23 +885,7 @@ class _AppShellState extends State<_AppShell> {
                   selected: _isRouteActive(context, AppRoutes.settings),
                   onTap: () => GoRouter.of(context).go(AppRoutes.settings),
                 ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      icon: const Icon(Icons.add, size: 18),
-                      label: const Text('Agregar'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      onPressed: () => _showQuickAddSheet(context),
-                    ),
-                  ),
-                ),
+                const SizedBox(height: 16),
               ],
             ),
           ),
@@ -1007,7 +991,7 @@ class _AppShellState extends State<_AppShell> {
                 case 0: GoRouter.of(context).go(AppRoutes.home);
                 case 1: _showDiarySheet(context);
                 case 2: _showQuickAddSheet(context);
-                case 3: GoRouter.of(context).push(AppRoutes.monitoring);
+                case 3: GoRouter.of(context).go(AppRoutes.monitoring);
                 case 4: GoRouter.of(context).go(AppRoutes.settings);
               }
             },
@@ -1096,7 +1080,7 @@ class _AppShellState extends State<_AppShell> {
             case 0: GoRouter.of(context).go(AppRoutes.home);
             case 1: _showDiarySheet(context);
             case 2: _showQuickAddSheet(context);
-            case 3: GoRouter.of(context).push(AppRoutes.monitoring);
+            case 3: GoRouter.of(context).go(AppRoutes.monitoring);
             case 4: GoRouter.of(context).go(AppRoutes.settings);
           }
         },
