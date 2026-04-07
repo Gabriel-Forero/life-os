@@ -449,6 +449,18 @@ class _AppShellState extends State<_AppShell> {
           tooltip: 'DayScore',
         ),
         IconButton(
+          key: const ValueKey('habits-action-history'),
+          icon: Icon(Icons.history, color: AppColors.habits),
+          onPressed: () => GoRouter.of(context).go(AppRoutes.scoreHistory),
+          tooltip: 'Historial',
+        ),
+        IconButton(
+          key: const ValueKey('habits-action-monitoring'),
+          icon: Icon(Icons.bar_chart, color: AppColors.habits),
+          onPressed: () => GoRouter.of(context).go(AppRoutes.monitoring),
+          tooltip: 'Monitoreo',
+        ),
+        IconButton(
           key: const ValueKey('habits-action-evolution'),
           icon: Icon(Icons.trending_up, color: AppColors.habits),
           onPressed: () => GoRouter.of(context).go(AppRoutes.evolution),
