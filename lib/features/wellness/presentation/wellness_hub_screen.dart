@@ -7,480 +7,480 @@ import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
 import 'package:life_os/core/router/app_router.dart';
 import 'package:life_os/features/mental/database/mental_dao.dart';
-import 'package:life_os/features/mental/domain/mental_input.dart';
 import 'package:life_os/features/sleep/database/sleep_dao.dart';
-import 'package:life_os/features/sleep/domain/sleep_input.dart';
 
-class WellnessHubScreen extends ConsumerStatefulWidget {
+/// Wellness hub — desktop shows a dashboard with mood/sleep/energy history.
+/// Action buttons in the header handle navigation to input forms.
+/// Phone layout shows quick action cards for navigation.
+class WellnessHubScreen extends ConsumerWidget {
   const WellnessHubScreen({super.key});
 
   @override
-  ConsumerState<WellnessHubScreen> createState() => _WellnessHubScreenState();
-}
-
-class _WellnessHubScreenState extends ConsumerState<WellnessHubScreen> {
-  // --- Mood state ---
-  int _valence = 3;
-  int _energy = 3;
-  final _moodTags = <String>{};
-  bool _moodSaved = false;
-  bool _moodSaving = false;
-
-  // --- Gratitude state ---
-  final _g1 = TextEditingController();
-  final _g2 = TextEditingController();
-  final _g3 = TextEditingController();
-  bool _gratSaved = false;
-  bool _gratSaving = false;
-
-  // --- Energy state ---
-  int? _eMorning;
-  int? _eAfternoon;
-  int? _eEvening;
-  bool _energySaved = false;
-  bool _energySaving = false;
-
-  static const _tags = ['Feliz', 'Motivado', 'Tranquilo', 'Enfocado', 'Agradecido', 'Cansado', 'Estresado', 'Ansioso', 'Triste', 'Enojado'];
-
-  @override
-  void dispose() {
-    _g1.dispose();
-    _g2.dispose();
-    _g3.dispose();
-    super.dispose();
-  }
-
-  // --- Mood helpers ---
-  String get _moodQuadrant {
-    if (_valence >= 3 && _energy >= 3) return 'Activo y Positivo';
-    if (_valence >= 3 && _energy < 3) return 'Tranquilo y Positivo';
-    if (_valence < 3 && _energy >= 3) return 'Activo y Negativo';
-    return 'Bajo y Negativo';
-  }
-
-  Color get _moodColor {
-    final s = ((_valence - 1) / 4.0 * 50 + (_energy - 1) / 4.0 * 50).round();
-    if (s >= 75) return AppColors.success;
-    if (s >= 50) return AppColors.mental;
-    if (s >= 25) return AppColors.warning;
-    return AppColors.error;
-  }
-
-  Future<void> _saveMood() async {
-    setState(() => _moodSaving = true);
-    await ref.read(mentalNotifierProvider).logMood(MoodInput(date: DateTime.now(), valence: _valence, energy: _energy, tags: _moodTags.toList()));
-    if (mounted) setState(() { _moodSaving = false; _moodSaved = true; });
-  }
-
-  Future<void> _saveGratitude() async {
-    final t1 = _g1.text.trim(), t2 = _g2.text.trim(), t3 = _g3.text.trim();
-    if (t1.isEmpty && t2.isEmpty && t3.isEmpty) return;
-    setState(() => _gratSaving = true);
-    final lines = <String>[];
-    if (t1.isNotEmpty) lines.add('1. $t1');
-    if (t2.isNotEmpty) lines.add('2. $t2');
-    if (t3.isNotEmpty) lines.add('3. $t3');
-    await ref.read(mentalNotifierProvider).logMood(MoodInput(date: DateTime.now(), valence: 4, energy: 3, tags: const ['gratitud'], journalNote: lines.join('\n')));
-    if (mounted) setState(() { _gratSaving = false; _gratSaved = true; });
-  }
-
-  Future<void> _saveEnergy() async {
-    if (_eMorning == null && _eAfternoon == null && _eEvening == null) return;
-    setState(() => _energySaving = true);
-    final notifier = ref.read(sleepNotifierProvider);
-    final now = DateTime.now();
-    final date = DateTime(now.year, now.month, now.day);
-    if (_eMorning != null) await notifier.logEnergy(EnergyInput(date: date, timeOfDay: 'morning', level: _eMorning!));
-    if (_eAfternoon != null) await notifier.logEnergy(EnergyInput(date: date, timeOfDay: 'afternoon', level: _eAfternoon!));
-    if (_eEvening != null) await notifier.logEnergy(EnergyInput(date: date, timeOfDay: 'evening', level: _eEvening!));
-    if (mounted) setState(() { _energySaving = false; _energySaved = true; });
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final sleepDao = ref.watch(sleepDaoProvider);
     final mentalDao = ref.watch(mentalDaoProvider);
-    final today = DateTime.now();
-    final todayStart = DateTime(today.year, today.month, today.day);
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final weekAgo = today.subtract(const Duration(days: 7));
 
     return Scaffold(
       body: LayoutBuilder(
         builder: (context, constraints) {
           if (constraints.maxWidth >= AppBreakpoints.compact) {
-            return _desktopLayout(context, theme, sleepDao, mentalDao, todayStart);
+            return _DesktopDashboard(theme: theme, sleepDao: sleepDao, mentalDao: mentalDao, today: today, weekAgo: weekAgo);
           }
-          return _phoneLayout(context, theme, sleepDao, mentalDao, todayStart);
+          return _PhoneLayout(theme: theme, sleepDao: sleepDao, mentalDao: mentalDao, today: today);
         },
       ),
     );
   }
+}
 
-  // ===========================================================================
-  // DESKTOP — inline cards stacked vertically in two columns
-  // ===========================================================================
+// =============================================================================
+// DESKTOP — Dashboard with charts and history
+// =============================================================================
 
-  Widget _desktopLayout(BuildContext ctx, ThemeData theme, SleepDao sleepDao, MentalDao mentalDao, DateTime todayStart) {
+class _DesktopDashboard extends StatelessWidget {
+  const _DesktopDashboard({required this.theme, required this.sleepDao, required this.mentalDao, required this.today, required this.weekAgo});
+  final ThemeData theme;
+  final SleepDao sleepDao;
+  final MentalDao mentalDao;
+  final DateTime today;
+  final DateTime weekAgo;
+
+  @override
+  Widget build(BuildContext context) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // LEFT: inline cards
-          Expanded(
-            flex: 3,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _moodCard(theme),
-                const SizedBox(height: 16),
-                _gratitudeCard(theme),
-                const SizedBox(height: 16),
-                _energyCard(theme),
-                const SizedBox(height: 20),
-                Text('Necesitan pantalla completa', style: theme.textTheme.labelMedium?.copyWith(color: AppColors.lightTextSecondary)),
-                const SizedBox(height: 8),
-                Wrap(spacing: 10, runSpacing: 10, children: [
-                  _NavChip(icon: Icons.self_improvement, label: 'Respiracion', color: AppColors.mental, onTap: () => GoRouter.of(ctx).push(AppRoutes.breathing)),
-                  _NavChip(icon: Icons.bedtime, label: 'Registrar sueno', color: AppColors.sleep, onTap: () => GoRouter.of(ctx).push(AppRoutes.sleep)),
-                ]),
-              ],
-            ),
+          // --- Top row: 3 stat cards ---
+          Row(
+            children: [
+              Expanded(child: _sleepTodayCard(context)),
+              const SizedBox(width: 12),
+              Expanded(child: _moodTodayCard(context)),
+              const SizedBox(width: 12),
+              Expanded(child: _breathingTodayCard(context)),
+            ],
           ),
-          const SizedBox(width: 20),
-          // RIGHT: summary + history
-          Expanded(
-            flex: 2,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Resumen de hoy', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 12),
-                _sleepSummary(ctx, sleepDao, todayStart),
-                const SizedBox(height: 8),
-                _moodSummary(ctx, mentalDao, todayStart),
-                const SizedBox(height: 24),
-                Text('Historiales', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 12),
-                _histTile(Icons.nights_stay, AppColors.sleep, 'Historial de sueno', () => GoRouter.of(ctx).go(AppRoutes.sleepHistory)),
-                _histTile(Icons.show_chart, AppColors.sleep, 'Ritmo circadiano', () => GoRouter.of(ctx).go(AppRoutes.circadian)),
-                _histTile(Icons.calendar_month, AppColors.mental, 'Calendario emocional', () => GoRouter.of(ctx).go(AppRoutes.mentalHistory)),
-                _histTile(Icons.psychology, AppColors.goals, 'Patrones IA', () => GoRouter.of(ctx).go(AppRoutes.mentalInsights)),
-              ],
-            ),
+          const SizedBox(height: 20),
+          // --- Two columns: mood history + sleep history ---
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: _moodWeekCard(context)),
+              const SizedBox(width: 16),
+              Expanded(child: _sleepWeekCard(context)),
+            ],
           ),
+          const SizedBox(height: 16),
+          // --- Energy week ---
+          _energyWeekCard(context),
         ],
       ),
     );
   }
 
-  // ===========================================================================
-  // INLINE CARDS
-  // ===========================================================================
-
-  Widget _cardShell({required Widget child, required Color accent}) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        color: Colors.white,
-        border: Border.all(color: accent.withAlpha(50)),
-        boxShadow: [BoxShadow(color: Colors.black.withAlpha(8), blurRadius: 10, offset: const Offset(0, 2))],
-      ),
-      child: child,
-    );
-  }
-
-  Widget _savedBanner(String text, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), color: color.withAlpha(15), border: Border.all(color: color.withAlpha(60))),
-      child: Row(children: [
-        Icon(Icons.check_circle, color: color, size: 28),
-        const SizedBox(width: 10),
-        Text(text, style: TextStyle(fontWeight: FontWeight.w700, color: color)),
-      ]),
-    );
-  }
-
-  // --- MOOD ---
-  Widget _moodCard(ThemeData theme) {
-    if (_moodSaved) return _savedBanner('Mood registrado — $_moodQuadrant', _moodColor);
-    return _cardShell(
-      accent: AppColors.mental,
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Icon(Icons.mood, color: AppColors.mental, size: 22),
-          const SizedBox(width: 8),
-          Text('Como te sientes?', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-          const Spacer(),
-          _badge(_moodQuadrant, _moodColor),
-        ]),
-        const SizedBox(height: 14),
-        _emojiRow('Animo', ['😫', '😔', '😐', '😊', '🔥'], _valence, (v) => setState(() => _valence = v), theme),
-        const SizedBox(height: 8),
-        _emojiRow('Energia', ['🔋', '🔋', '🔋', '🔋', '🔋'], _energy, (v) => setState(() => _energy = v), theme, useOpacity: true),
-        const SizedBox(height: 12),
-        _tagChips(),
-        const SizedBox(height: 14),
-        _saveBtn('Registrar mood', AppColors.mental, _moodSaving, _saveMood),
-      ]),
-    );
-  }
-
-  // --- GRATITUDE ---
-  Widget _gratitudeCard(ThemeData theme) {
-    if (_gratSaved) return _savedBanner('Gratitud registrada', AppColors.mental);
-    return _cardShell(
-      accent: AppColors.mental,
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Icon(Icons.favorite, color: AppColors.mental, size: 22),
-          const SizedBox(width: 8),
-          Text('Gratitud', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-          const Spacer(),
-          Text('3 cosas buenas de hoy', style: theme.textTheme.bodySmall?.copyWith(color: AppColors.lightTextSecondary)),
-        ]),
-        const SizedBox(height: 14),
-        _gratField(_g1, '1. Estoy agradecido por...'),
-        const SizedBox(height: 8),
-        _gratField(_g2, '2. Estoy agradecido por...'),
-        const SizedBox(height: 8),
-        _gratField(_g3, '3. Estoy agradecido por...'),
-        const SizedBox(height: 14),
-        _saveBtn('Guardar gratitud', AppColors.mental, _gratSaving, _saveGratitude),
-      ]),
-    );
-  }
-
-  Widget _gratField(TextEditingController ctrl, String hint) {
-    return TextField(
-      controller: ctrl,
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: TextStyle(color: AppColors.lightTextSecondary.withAlpha(120), fontSize: 13),
-        filled: true,
-        fillColor: AppColors.lightSurfaceVariant,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        isDense: true,
-      ),
-      style: const TextStyle(fontSize: 13),
-    );
-  }
-
-  // --- ENERGY ---
-  Widget _energyCard(ThemeData theme) {
-    if (_energySaved) return _savedBanner('Energia registrada', AppColors.gym);
-    return _cardShell(
-      accent: AppColors.gym,
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Icon(Icons.bolt, color: AppColors.gym, size: 22),
-          const SizedBox(width: 8),
-          Text('Energia del dia', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-        ]),
-        const SizedBox(height: 14),
-        _energySlot('☀️ Manana', _eMorning, (v) => setState(() => _eMorning = v), theme),
-        const SizedBox(height: 8),
-        _energySlot('🌤️ Tarde', _eAfternoon, (v) => setState(() => _eAfternoon = v), theme),
-        const SizedBox(height: 8),
-        _energySlot('🌙 Noche', _eEvening, (v) => setState(() => _eEvening = v), theme),
-        const SizedBox(height: 14),
-        _saveBtn('Guardar energia', AppColors.gym, _energySaving, _saveEnergy),
-      ]),
-    );
-  }
-
-  Widget _energySlot(String label, int? value, ValueChanged<int> onChanged, ThemeData theme) {
-    return Row(children: [
-      SizedBox(width: 80, child: Text(label, style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600))),
-      ...List.generate(5, (i) {
-        final level = (i + 1) * 2; // 2,4,6,8,10
-        final selected = value == level;
-        return Padding(
-          padding: const EdgeInsets.only(right: 6),
-          child: GestureDetector(
-            onTap: () => onChanged(level),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              width: 36, height: 36,
-              decoration: BoxDecoration(
-                color: selected ? AppColors.gym.withAlpha(25) : Colors.transparent,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: selected ? AppColors.gym : AppColors.lightBorder, width: selected ? 2 : 1),
-              ),
-              alignment: Alignment.center,
-              child: Text('${i + 1}', style: TextStyle(fontSize: 14, fontWeight: selected ? FontWeight.w700 : FontWeight.w400, color: selected ? AppColors.gym : AppColors.lightTextSecondary)),
-            ),
-          ),
+  // --- Stat card: Sleep today ---
+  Widget _sleepTodayCard(BuildContext context) {
+    return StreamBuilder<List<SleepLog>>(
+      stream: sleepDao.watchSleepLogs(today.subtract(const Duration(days: 1)), today),
+      builder: (ctx, snap) {
+        final logs = snap.data ?? [];
+        final hasData = logs.isNotEmpty;
+        final hours = hasData ? logs.first.wakeTime.difference(logs.first.bedTime).inMinutes / 60 : 0.0;
+        final score = hasData ? logs.first.sleepScore : 0;
+        return _StatCard(
+          icon: Icons.bedtime,
+          color: AppColors.sleep,
+          title: 'Sueno anoche',
+          value: hasData ? '${hours.toStringAsFixed(1)}h' : '—',
+          subtitle: hasData ? 'Score $score/100' : 'Sin registro',
+          onTap: () => GoRouter.of(context).go(AppRoutes.sleepHistory),
         );
-      }),
-    ]);
-  }
-
-  // ===========================================================================
-  // Shared inline helpers
-  // ===========================================================================
-
-  Widget _badge(String text, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(color: color.withAlpha(20), borderRadius: BorderRadius.circular(8)),
-      child: Text(text, style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600)),
+      },
     );
   }
 
-  Widget _emojiRow(String label, List<String> emojis, int value, ValueChanged<int> onChanged, ThemeData theme, {bool useOpacity = false}) {
-    return Row(children: [
-      SizedBox(width: 60, child: Text(label, style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600))),
-      ...List.generate(5, (i) {
-        final v = i + 1;
-        final selected = value == v;
-        return Padding(
-          padding: const EdgeInsets.only(right: 6),
-          child: GestureDetector(
-            onTap: () => onChanged(v),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              width: 40, height: 40,
-              decoration: BoxDecoration(
-                color: selected ? _moodColor.withAlpha(25) : Colors.transparent,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: selected ? _moodColor : AppColors.lightBorder, width: selected ? 2 : 1),
-              ),
-              alignment: Alignment.center,
-              child: useOpacity
-                  ? Opacity(opacity: selected ? 1.0 : 0.3 + (i * 0.15), child: Text(emojis[i], style: TextStyle(fontSize: selected ? 18 : 14)))
-                  : Text(emojis[i], style: TextStyle(fontSize: selected ? 20 : 16)),
-            ),
-          ),
+  // --- Stat card: Mood today ---
+  Widget _moodTodayCard(BuildContext context) {
+    return StreamBuilder<List<MoodLog>>(
+      stream: mentalDao.watchMoodLogs(today, today.add(const Duration(days: 1))),
+      builder: (ctx, snap) {
+        final logs = snap.data ?? [];
+        final hasData = logs.isNotEmpty;
+        final emoji = hasData ? ['', '😫', '😔', '😐', '😊', '🔥'][logs.first.valence.clamp(1, 5)] : '—';
+        return _StatCard(
+          icon: Icons.mood,
+          color: AppColors.mental,
+          title: 'Mood hoy',
+          value: emoji,
+          subtitle: hasData ? 'Valence ${logs.first.valence}/5 • Energia ${logs.first.energy}/5' : 'Sin registro',
+          onTap: () => GoRouter.of(context).go(AppRoutes.mentalHistory),
         );
-      }),
-    ]);
-  }
-
-  Widget _tagChips() {
-    return Wrap(spacing: 6, runSpacing: 6, children: _tags.map((t) {
-      final sel = _moodTags.contains(t);
-      return FilterChip(
-        label: Text(t, style: TextStyle(fontSize: 12, color: sel ? Colors.white : null)),
-        selected: sel,
-        onSelected: (_) => setState(() { if (sel) { _moodTags.remove(t); } else if (_moodTags.length < 5) { _moodTags.add(t); } }),
-        selectedColor: AppColors.mental,
-        checkmarkColor: Colors.white,
-        side: BorderSide(color: sel ? AppColors.mental : AppColors.lightBorder),
-        padding: const EdgeInsets.symmetric(horizontal: 4),
-        visualDensity: VisualDensity.compact,
-      );
-    }).toList());
-  }
-
-  Widget _saveBtn(String label, Color color, bool loading, VoidCallback onPressed) {
-    return SizedBox(
-      width: double.infinity,
-      child: FilledButton.icon(
-        icon: loading ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.check, size: 18),
-        label: Text(loading ? 'Guardando...' : label),
-        style: FilledButton.styleFrom(backgroundColor: color, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-        onPressed: loading ? null : onPressed,
-      ),
+      },
     );
   }
 
-  // ===========================================================================
-  // PHONE layout (unchanged — cards navigate to full screens)
-  // ===========================================================================
+  // --- Stat card: Breathing today ---
+  Widget _breathingTodayCard(BuildContext context) {
+    return StreamBuilder<List<BreathingSession>>(
+      stream: mentalDao.watchBreathingSessions(today, today.add(const Duration(days: 1))),
+      builder: (ctx, snap) {
+        final sessions = snap.data ?? [];
+        final totalMin = sessions.fold<int>(0, (sum, s) => sum + s.durationSeconds) ~/ 60;
+        return _StatCard(
+          icon: Icons.self_improvement,
+          color: AppColors.mental,
+          title: 'Respiracion hoy',
+          value: sessions.isEmpty ? '—' : '${totalMin}min',
+          subtitle: sessions.isEmpty ? 'Sin sesiones' : '${sessions.length} sesion(es)',
+          onTap: () => GoRouter.of(context).push(AppRoutes.breathing),
+        );
+      },
+    );
+  }
 
-  Widget _phoneLayout(BuildContext ctx, ThemeData theme, SleepDao sleepDao, MentalDao mentalDao, DateTime todayStart) {
+  // --- Mood week chart card ---
+  Widget _moodWeekCard(BuildContext context) {
+    return StreamBuilder<List<MoodLog>>(
+      stream: mentalDao.watchMoodLogs(weekAgo, today.add(const Duration(days: 1))),
+      builder: (ctx, snap) {
+        final logs = snap.data ?? [];
+        return _DashCard(
+          title: 'Mood — ultimos 7 dias',
+          icon: Icons.mood,
+          color: AppColors.mental,
+          onTitleTap: () => GoRouter.of(context).go(AppRoutes.mentalHistory),
+          child: logs.isEmpty
+              ? const _EmptyHint(text: 'Registra tu mood para ver tendencias')
+              : _MoodWeekBars(logs: logs, today: today),
+        );
+      },
+    );
+  }
+
+  // --- Sleep week chart card ---
+  Widget _sleepWeekCard(BuildContext context) {
+    return StreamBuilder<List<SleepLog>>(
+      stream: sleepDao.watchSleepLogs(weekAgo, today),
+      builder: (ctx, snap) {
+        final logs = snap.data ?? [];
+        return _DashCard(
+          title: 'Sueno — ultimos 7 dias',
+          icon: Icons.bedtime,
+          color: AppColors.sleep,
+          onTitleTap: () => GoRouter.of(context).go(AppRoutes.sleepHistory),
+          child: logs.isEmpty
+              ? const _EmptyHint(text: 'Registra tu sueno para ver tendencias')
+              : _SleepWeekBars(logs: logs, today: today),
+        );
+      },
+    );
+  }
+
+  // --- Energy week card ---
+  Widget _energyWeekCard(BuildContext context) {
+    return StreamBuilder<List<EnergyLog>>(
+      stream: sleepDao.watchEnergyLogs(weekAgo, today.add(const Duration(days: 1))),
+      builder: (ctx, snap) {
+        final logs = snap.data ?? [];
+        return _DashCard(
+          title: 'Energia — ultimos 7 dias',
+          icon: Icons.bolt,
+          color: AppColors.gym,
+          child: logs.isEmpty
+              ? const _EmptyHint(text: 'Registra tu energia para ver tendencias')
+              : _EnergyWeekBars(logs: logs, today: today),
+        );
+      },
+    );
+  }
+}
+
+// =============================================================================
+// PHONE layout — navigation cards (unchanged)
+// =============================================================================
+
+class _PhoneLayout extends StatelessWidget {
+  const _PhoneLayout({required this.theme, required this.sleepDao, required this.mentalDao, required this.today});
+  final ThemeData theme;
+  final SleepDao sleepDao;
+  final MentalDao mentalDao;
+  final DateTime today;
+
+  @override
+  Widget build(BuildContext context) {
     return ListView(padding: const EdgeInsets.all(16), children: [
       Text('Acciones rapidas', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
       const SizedBox(height: 12),
       GridView.count(crossAxisCount: 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), mainAxisSpacing: 12, crossAxisSpacing: 12, childAspectRatio: 1.4, children: [
-        _PhoneCard(icon: Icons.mood, label: 'Estado de animo', sub: 'Registrar mood', color: AppColors.mental, onTap: () => GoRouter.of(ctx).push(AppRoutes.mood)),
-        _PhoneCard(icon: Icons.self_improvement, label: 'Respiracion', sub: 'Ejercicio guiado', color: AppColors.mental, onTap: () => GoRouter.of(ctx).push(AppRoutes.breathing)),
-        _PhoneCard(icon: Icons.favorite, label: 'Gratitud', sub: '3 cosas buenas', color: AppColors.mental, onTap: () => GoRouter.of(ctx).push(AppRoutes.gratitude)),
-        _PhoneCard(icon: Icons.bedtime, label: 'Sueno', sub: 'Registrar noche', color: AppColors.sleep, onTap: () => GoRouter.of(ctx).push(AppRoutes.sleep)),
-        _PhoneCard(icon: Icons.bolt, label: 'Energia', sub: 'Check-in rapido', color: AppColors.gym, onTap: () => GoRouter.of(ctx).push(AppRoutes.energy)),
-        _PhoneCard(icon: Icons.psychology, label: 'Patrones IA', sub: 'Analisis cruzado', color: AppColors.goals, onTap: () => GoRouter.of(ctx).go(AppRoutes.mentalInsights)),
+        _NavCard(icon: Icons.mood, label: 'Estado de animo', sub: 'Registrar mood', color: AppColors.mental, onTap: () => GoRouter.of(context).push(AppRoutes.mood)),
+        _NavCard(icon: Icons.self_improvement, label: 'Respiracion', sub: 'Ejercicio guiado', color: AppColors.mental, onTap: () => GoRouter.of(context).push(AppRoutes.breathing)),
+        _NavCard(icon: Icons.favorite, label: 'Gratitud', sub: '3 cosas buenas', color: AppColors.mental, onTap: () => GoRouter.of(context).push(AppRoutes.gratitude)),
+        _NavCard(icon: Icons.bedtime, label: 'Sueno', sub: 'Registrar noche', color: AppColors.sleep, onTap: () => GoRouter.of(context).push(AppRoutes.sleep)),
+        _NavCard(icon: Icons.bolt, label: 'Energia', sub: 'Check-in rapido', color: AppColors.gym, onTap: () => GoRouter.of(context).push(AppRoutes.energy)),
+        _NavCard(icon: Icons.psychology, label: 'Patrones IA', sub: 'Analisis cruzado', color: AppColors.goals, onTap: () => GoRouter.of(context).go(AppRoutes.mentalInsights)),
       ]),
       const SizedBox(height: 24),
       Text('Resumen de hoy', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
       const SizedBox(height: 12),
-      _sleepSummary(ctx, sleepDao, todayStart),
+      _buildSleepSummary(context, sleepDao, today),
       const SizedBox(height: 8),
-      _moodSummary(ctx, mentalDao, todayStart),
+      _buildMoodSummary(context, mentalDao, today),
       const SizedBox(height: 24),
       Text('Historiales', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
       const SizedBox(height: 12),
-      _histTile(Icons.nights_stay, AppColors.sleep, 'Historial de sueno', () => GoRouter.of(ctx).go(AppRoutes.sleepHistory)),
-      _histTile(Icons.show_chart, AppColors.sleep, 'Ritmo circadiano', () => GoRouter.of(ctx).go(AppRoutes.circadian)),
-      _histTile(Icons.calendar_month, AppColors.mental, 'Calendario emocional', () => GoRouter.of(ctx).go(AppRoutes.mentalHistory)),
+      ListTile(leading: Icon(Icons.nights_stay, color: AppColors.sleep), title: const Text('Historial de sueno'), trailing: const Icon(Icons.chevron_right), onTap: () => GoRouter.of(context).go(AppRoutes.sleepHistory)),
+      ListTile(leading: Icon(Icons.show_chart, color: AppColors.sleep), title: const Text('Ritmo circadiano'), trailing: const Icon(Icons.chevron_right), onTap: () => GoRouter.of(context).go(AppRoutes.circadian)),
+      ListTile(leading: Icon(Icons.calendar_month, color: AppColors.mental), title: const Text('Calendario emocional'), trailing: const Icon(Icons.chevron_right), onTap: () => GoRouter.of(context).go(AppRoutes.mentalHistory)),
     ]);
   }
 
-  // ===========================================================================
-  // Summary widgets (shared)
-  // ===========================================================================
-
-  Widget _sleepSummary(BuildContext ctx, SleepDao dao, DateTime todayStart) {
+  Widget _buildSleepSummary(BuildContext ctx, SleepDao dao, DateTime todayStart) {
     return StreamBuilder<List<SleepLog>>(
       stream: dao.watchSleepLogs(todayStart.subtract(const Duration(days: 1)), todayStart),
-      builder: (ctx2, snap) {
+      builder: (_, snap) {
         final logs = snap.data ?? [];
-        if (logs.isEmpty) return _summaryCard(Icons.bedtime, AppColors.sleep, 'Sueno', 'Sin registro', 'Toca para registrar', () => GoRouter.of(ctx).push(AppRoutes.sleep));
+        if (logs.isEmpty) return _SummaryTile(icon: Icons.bedtime, color: AppColors.sleep, title: 'Sueno', value: 'Sin registro', onTap: () => GoRouter.of(ctx).push(AppRoutes.sleep));
         final l = logs.first;
         final h = l.wakeTime.difference(l.bedTime).inMinutes / 60;
-        return _summaryCard(Icons.bedtime, AppColors.sleep, 'Sueno anoche', '${h.toStringAsFixed(1)}h — Score ${l.sleepScore}/100', 'Calidad: ${'⭐' * l.qualityRating}', () => GoRouter.of(ctx).go(AppRoutes.sleepHistory));
+        return _SummaryTile(icon: Icons.bedtime, color: AppColors.sleep, title: 'Sueno anoche', value: '${h.toStringAsFixed(1)}h — Score ${l.sleepScore}/100', onTap: () => GoRouter.of(ctx).go(AppRoutes.sleepHistory));
       },
     );
   }
 
-  Widget _moodSummary(BuildContext ctx, MentalDao dao, DateTime todayStart) {
+  Widget _buildMoodSummary(BuildContext ctx, MentalDao dao, DateTime todayStart) {
     return StreamBuilder<List<MoodLog>>(
       stream: dao.watchMoodLogs(todayStart, todayStart.add(const Duration(days: 1))),
-      builder: (ctx2, snap) {
+      builder: (_, snap) {
         final logs = snap.data ?? [];
-        if (logs.isEmpty) return _summaryCard(Icons.mood, AppColors.mental, 'Estado de animo', 'Sin registro hoy', 'Usa el formulario de arriba', null);
+        if (logs.isEmpty) return _SummaryTile(icon: Icons.mood, color: AppColors.mental, title: 'Mood', value: 'Sin registro hoy', onTap: () => GoRouter.of(ctx).push(AppRoutes.mood));
         final l = logs.first;
         final e = ['', '😫', '😔', '😐', '😊', '🔥'][l.valence.clamp(1, 5)];
-        return _summaryCard(Icons.mood, AppColors.mental, 'Mood hoy', '$e Valence ${l.valence}/5, Energia ${l.energy}/5', l.tags.isNotEmpty ? 'Tags: ${l.tags}' : null, () => GoRouter.of(ctx).go(AppRoutes.mentalHistory));
+        return _SummaryTile(icon: Icons.mood, color: AppColors.mental, title: 'Mood hoy', value: '$e ${l.valence}/5', onTap: () => GoRouter.of(ctx).go(AppRoutes.mentalHistory));
       },
     );
   }
-
-  Widget _summaryCard(IconData icon, Color color, String title, String value, String? sub, VoidCallback? onTap) {
-    final theme = Theme.of(context);
-    return Card(child: InkWell(onTap: onTap, borderRadius: BorderRadius.circular(12), child: Padding(padding: const EdgeInsets.all(14), child: Row(children: [
-      CircleAvatar(backgroundColor: color.withAlpha(25), child: Icon(icon, color: color, size: 20)),
-      const SizedBox(width: 12),
-      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(title, style: theme.textTheme.bodySmall),
-        Text(value, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
-        if (sub != null) Text(sub, style: theme.textTheme.bodySmall),
-      ])),
-      if (onTap != null) Icon(Icons.chevron_right, color: theme.textTheme.bodySmall?.color),
-    ]))));
-  }
-
-  Widget _histTile(IconData icon, Color color, String title, VoidCallback onTap) {
-    return ListTile(leading: Icon(icon, color: color), title: Text(title), trailing: const Icon(Icons.chevron_right), onTap: onTap);
-  }
 }
 
-// ===========================================================================
-// Small private widgets
-// ===========================================================================
+// =============================================================================
+// Shared widgets
+// =============================================================================
 
-class _NavChip extends StatelessWidget {
-  const _NavChip({required this.icon, required this.label, required this.color, required this.onTap});
-  final IconData icon; final String label; final Color color; final VoidCallback onTap;
+class _StatCard extends StatelessWidget {
+  const _StatCard({required this.icon, required this.color, required this.title, required this.value, required this.subtitle, this.onTap});
+  final IconData icon; final Color color; final String title; final String value; final String subtitle; final VoidCallback? onTap;
+
   @override
-  Widget build(BuildContext context) => ActionChip(avatar: Icon(icon, color: color, size: 18), label: Text(label), onPressed: onTap, side: BorderSide(color: color.withAlpha(60)), backgroundColor: color.withAlpha(10));
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Icon(icon, color: color, size: 20),
+              const SizedBox(width: 8),
+              Text(title, style: theme.textTheme.bodySmall?.copyWith(color: AppColors.lightTextSecondary)),
+            ]),
+            const SizedBox(height: 8),
+            Text(value, style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800, color: color)),
+            const SizedBox(height: 2),
+            Text(subtitle, style: theme.textTheme.bodySmall),
+          ]),
+        ),
+      ),
+    );
+  }
 }
 
-class _PhoneCard extends StatelessWidget {
-  const _PhoneCard({required this.icon, required this.label, required this.sub, required this.color, required this.onTap});
+class _DashCard extends StatelessWidget {
+  const _DashCard({required this.title, required this.icon, required this.color, required this.child, this.onTitleTap});
+  final String title; final IconData icon; final Color color; final Widget child; final VoidCallback? onTitleTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          InkWell(
+            onTap: onTitleTap,
+            child: Row(children: [
+              Icon(icon, color: color, size: 18),
+              const SizedBox(width: 8),
+              Text(title, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+              if (onTitleTap != null) ...[const Spacer(), Icon(Icons.open_in_new, size: 14, color: AppColors.lightTextSecondary)],
+            ]),
+          ),
+          const SizedBox(height: 16),
+          child,
+        ]),
+      ),
+    );
+  }
+}
+
+class _EmptyHint extends StatelessWidget {
+  const _EmptyHint({required this.text});
+  final String text;
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 20),
+    child: Center(child: Text(text, style: TextStyle(color: AppColors.lightTextSecondary, fontSize: 13))),
+  );
+}
+
+// =============================================================================
+// Week bar charts (simple custom widgets, no fl_chart dependency)
+// =============================================================================
+
+class _MoodWeekBars extends StatelessWidget {
+  const _MoodWeekBars({required this.logs, required this.today});
+  final List<MoodLog> logs; final DateTime today;
+
+  @override
+  Widget build(BuildContext context) {
+    final days = List.generate(7, (i) => today.subtract(Duration(days: 6 - i)));
+    final dayLabels = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+
+    return SizedBox(
+      height: 120,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: days.map((d) {
+          final dayLogs = logs.where((l) => l.date.year == d.year && l.date.month == d.month && l.date.day == d.day).toList();
+          final hasData = dayLogs.isNotEmpty;
+          final valence = hasData ? dayLogs.first.valence : 0;
+          final fraction = hasData ? valence / 5.0 : 0.0;
+          final emoji = hasData ? ['', '😫', '😔', '😐', '😊', '🔥'][valence.clamp(1, 5)] : '';
+
+          return Expanded(child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 3),
+            child: Column(mainAxisAlignment: MainAxisAlignment.end, children: [
+              if (hasData) Text(emoji, style: const TextStyle(fontSize: 14)),
+              const SizedBox(height: 4),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 400),
+                height: hasData ? 80 * fraction : 4,
+                decoration: BoxDecoration(
+                  color: hasData ? AppColors.mental.withAlpha(180) : AppColors.lightBorder,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(dayLabels[d.weekday - 1], style: TextStyle(fontSize: 11, color: AppColors.lightTextSecondary)),
+            ]),
+          ));
+        }).toList(),
+      ),
+    );
+  }
+}
+
+class _SleepWeekBars extends StatelessWidget {
+  const _SleepWeekBars({required this.logs, required this.today});
+  final List<SleepLog> logs; final DateTime today;
+
+  @override
+  Widget build(BuildContext context) {
+    final days = List.generate(7, (i) => today.subtract(Duration(days: 6 - i)));
+    final dayLabels = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+
+    return SizedBox(
+      height: 120,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: days.map((d) {
+          // Sleep logs for this night (bedTime day matches d-1 or d)
+          final dayLogs = logs.where((l) {
+            final bed = DateTime(l.bedTime.year, l.bedTime.month, l.bedTime.day);
+            final wake = DateTime(l.wakeTime.year, l.wakeTime.month, l.wakeTime.day);
+            return bed == d || wake == d || bed == d.subtract(const Duration(days: 1));
+          }).toList();
+          final hasData = dayLogs.isNotEmpty;
+          final hours = hasData ? dayLogs.first.wakeTime.difference(dayLogs.first.bedTime).inMinutes / 60.0 : 0.0;
+          final fraction = (hours / 10.0).clamp(0.0, 1.0); // 10h = full bar
+
+          return Expanded(child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 3),
+            child: Column(mainAxisAlignment: MainAxisAlignment.end, children: [
+              if (hasData) Text('${hours.toStringAsFixed(1)}h', style: TextStyle(fontSize: 10, color: AppColors.sleep, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 4),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 400),
+                height: hasData ? 80 * fraction : 4,
+                decoration: BoxDecoration(
+                  color: hasData ? AppColors.sleep.withAlpha(180) : AppColors.lightBorder,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(dayLabels[d.weekday - 1], style: TextStyle(fontSize: 11, color: AppColors.lightTextSecondary)),
+            ]),
+          ));
+        }).toList(),
+      ),
+    );
+  }
+}
+
+class _EnergyWeekBars extends StatelessWidget {
+  const _EnergyWeekBars({required this.logs, required this.today});
+  final List<EnergyLog> logs; final DateTime today;
+
+  @override
+  Widget build(BuildContext context) {
+    final days = List.generate(7, (i) => today.subtract(Duration(days: 6 - i)));
+    final dayLabels = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+
+    return SizedBox(
+      height: 120,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: days.map((d) {
+          final dayLogs = logs.where((l) => l.date.year == d.year && l.date.month == d.month && l.date.day == d.day).toList();
+          final hasData = dayLogs.isNotEmpty;
+          final avg = hasData ? dayLogs.fold<int>(0, (s, l) => s + l.level) / dayLogs.length : 0.0;
+          final fraction = (avg / 10.0).clamp(0.0, 1.0);
+
+          return Expanded(child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 3),
+            child: Column(mainAxisAlignment: MainAxisAlignment.end, children: [
+              if (hasData) Text(avg.toStringAsFixed(0), style: TextStyle(fontSize: 10, color: AppColors.gym, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 4),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 400),
+                height: hasData ? 80 * fraction : 4,
+                decoration: BoxDecoration(
+                  color: hasData ? AppColors.gym.withAlpha(180) : AppColors.lightBorder,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(dayLabels[d.weekday - 1], style: TextStyle(fontSize: 11, color: AppColors.lightTextSecondary)),
+            ]),
+          ));
+        }).toList(),
+      ),
+    );
+  }
+}
+
+// =============================================================================
+// Small widgets
+// =============================================================================
+
+class _NavCard extends StatelessWidget {
+  const _NavCard({required this.icon, required this.label, required this.sub, required this.color, required this.onTap});
   final IconData icon; final String label; final String sub; final Color color; final VoidCallback onTap;
   @override
   Widget build(BuildContext context) {
@@ -494,5 +494,23 @@ class _PhoneCard extends StatelessWidget {
         Text(sub, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withAlpha(160))),
       ]),
     ));
+  }
+}
+
+class _SummaryTile extends StatelessWidget {
+  const _SummaryTile({required this.icon, required this.color, required this.title, required this.value, this.onTap});
+  final IconData icon; final Color color; final String title; final String value; final VoidCallback? onTap;
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(child: InkWell(onTap: onTap, borderRadius: BorderRadius.circular(12), child: Padding(padding: const EdgeInsets.all(14), child: Row(children: [
+      CircleAvatar(backgroundColor: color.withAlpha(25), child: Icon(icon, color: color, size: 20)),
+      const SizedBox(width: 12),
+      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(title, style: theme.textTheme.bodySmall),
+        Text(value, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
+      ])),
+      if (onTap != null) Icon(Icons.chevron_right, color: theme.textTheme.bodySmall?.color),
+    ]))));
   }
 }
