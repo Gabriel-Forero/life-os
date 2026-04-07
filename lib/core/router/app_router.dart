@@ -271,23 +271,24 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             },
           ),
           GoRoute(path: AppRoutes.weeklySummary, builder: (context, state) => const WeeklySummaryScreen()),
+          // --- Form/modal routes (inside shell so sidebar stays on web) ---
+          GoRoute(path: AppRoutes.financeAdd, builder: (context, state) => const AddEditTransactionScreen()),
+          GoRoute(path: AppRoutes.gymRoutineBuilder, builder: (context, state) => const RoutineBuilderScreen()),
+          GoRoute(path: AppRoutes.gymWorkout, builder: (context, state) => const ActiveWorkoutScreen()),
+          GoRoute(path: AppRoutes.nutritionSearch, builder: (context, state) => const FoodSearchScreen()),
+          GoRoute(path: AppRoutes.nutritionMealLog, builder: (context, state) => const MealLogScreen()),
+          GoRoute(path: AppRoutes.manualFoodEntry, builder: (context, state) => const ManualFoodEntryScreen()),
+          GoRoute(path: AppRoutes.habitsAdd, builder: (context, state) => const AddEditHabitScreen()),
+          GoRoute(path: AppRoutes.goalsAdd, builder: (context, state) => const AddEditGoalScreen()),
+          GoRoute(path: AppRoutes.ticketScanner, builder: (context, state) => const TicketScannerScreen()),
         ],
       ),
-      // Full-screen routes (outside shell) — forms/modals that SHOULD hide sidebar
-      GoRoute(path: AppRoutes.financeAdd, pageBuilder: (context, state) => slideUpTransition(const AddEditTransactionScreen(), state)),
+      // Full-screen routes (outside shell) — mobile-only features that redirect on web
       GoRoute(path: AppRoutes.financeSmsImport, redirect: (context, state) => kIsWeb ? AppRoutes.finance : null, pageBuilder: (context, state) => slideUpTransition(const SmsImportScreen(), state)),
-      GoRoute(path: AppRoutes.gymRoutineBuilder, pageBuilder: (context, state) => slideUpTransition(const RoutineBuilderScreen(), state)),
-      GoRoute(path: AppRoutes.gymWorkout, pageBuilder: (context, state) => slideUpTransition(const ActiveWorkoutScreen(), state)),
       GoRoute(path: AppRoutes.gymMeasurements, redirect: (context, state) => kIsWeb ? AppRoutes.gym : null, pageBuilder: (context, state) => fadeScaleTransition(const BodyMeasurementsScreen(), state)),
-      GoRoute(path: AppRoutes.nutritionSearch, pageBuilder: (context, state) => slideUpTransition(const FoodSearchScreen(), state)),
-      GoRoute(path: AppRoutes.nutritionMealLog, pageBuilder: (context, state) => slideUpTransition(const MealLogScreen(), state)),
       GoRoute(path: AppRoutes.barcodeScanner, redirect: (context, state) => kIsWeb ? AppRoutes.nutrition : null, pageBuilder: (context, state) => slideUpTransition(const BarcodeScannerScreen(), state)),
       GoRoute(path: AppRoutes.photoAnalysis, redirect: (context, state) => kIsWeb ? AppRoutes.nutrition : null, pageBuilder: (context, state) => slideUpTransition(const PhotoAnalysisScreen(), state)),
-      GoRoute(path: AppRoutes.manualFoodEntry, pageBuilder: (context, state) => slideUpTransition(const ManualFoodEntryScreen(), state)),
       GoRoute(path: AppRoutes.backup, redirect: (context, state) => kIsWeb ? AppRoutes.settings : null, pageBuilder: (context, state) => fadeScaleTransition(const BackupScreen(), state)),
-      GoRoute(path: AppRoutes.habitsAdd, pageBuilder: (context, state) => slideUpTransition(const AddEditHabitScreen(), state)),
-      GoRoute(path: AppRoutes.goalsAdd, pageBuilder: (context, state) => slideUpTransition(const AddEditGoalScreen(), state)),
-      GoRoute(path: AppRoutes.ticketScanner, pageBuilder: (context, state) => slideUpTransition(const TicketScannerScreen(), state)),
     ],
   );
 });
@@ -701,6 +702,38 @@ class _AppShellState extends State<_AppShell> {
     return location.startsWith(route);
   }
 
+  /// Main hub pages that show the shell content header with actions.
+  /// Sub-pages use their own AppBar with back button instead.
+  static const _mainHubRoutes = {
+    '/', '/finance', '/gym', '/nutrition', '/habits',
+    '/goals', '/wellness', '/settings', '/monitoring',
+    '/ai/conversations',
+  };
+
+  bool _isMainHub(BuildContext context) {
+    final location = GoRouterState.of(context).uri.path;
+    return _mainHubRoutes.contains(location);
+  }
+
+  /// Routes that should be full-screen on mobile (no shell chrome).
+  /// On web/desktop these still show with the sidebar.
+  static const _mobileFullScreenRoutes = {
+    '/finance/add',
+    '/gym/routine-builder',
+    '/gym/workout',
+    '/nutrition/search',
+    '/nutrition/meal-log',
+    '/nutrition/manual',
+    '/habits/add',
+    '/goals/add',
+    '/ai/ticket',
+  };
+
+  bool _isMobileFullScreen(BuildContext context) {
+    final location = GoRouterState.of(context).uri.path;
+    return _mobileFullScreenRoutes.contains(location);
+  }
+
   // ---------------------------------------------------------------------------
   // Desktop layout (>= 1200px)
   // ---------------------------------------------------------------------------
@@ -815,41 +848,43 @@ class _AppShellState extends State<_AppShell> {
           Expanded(
             child: Column(
               children: [
-                // Content header (replaces AppBar)
-                Container(
-                  color: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                  child: Row(
-                    children: [
-                      Text(
-                        _titleForLocation(context),
-                        style: theme.textTheme.headlineMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                          color: _colorForLocation(context),
+                // Content header — only for main hub pages;
+                // sub-pages use their own AppBar with back button.
+                if (_isMainHub(context))
+                  Container(
+                    color: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                    child: Row(
+                      children: [
+                        Text(
+                          _titleForLocation(context),
+                          style: theme.textTheme.headlineMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            color: _colorForLocation(context),
+                          ),
                         ),
-                      ),
-                      if (actions.isNotEmpty) ...[
-                        const SizedBox(width: 16),
-                        ...actions.map((btn) {
-                          final iconBtn = btn as IconButton;
-                          return Padding(
-                            padding: const EdgeInsets.only(left: 4),
-                            child: TextButton.icon(
-                              icon: iconBtn.icon,
-                              label: Text(iconBtn.tooltip ?? ''),
-                              style: TextButton.styleFrom(
-                                foregroundColor: _colorForLocation(context),
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        if (actions.isNotEmpty) ...[
+                          const SizedBox(width: 16),
+                          ...actions.map((btn) {
+                            final iconBtn = btn as IconButton;
+                            return Padding(
+                              padding: const EdgeInsets.only(left: 4),
+                              child: TextButton.icon(
+                                icon: iconBtn.icon,
+                                label: Text(iconBtn.tooltip ?? ''),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: _colorForLocation(context),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                ),
+                                onPressed: iconBtn.onPressed,
                               ),
-                              onPressed: iconBtn.onPressed,
-                            ),
-                          );
-                        }),
+                            );
+                          }),
+                        ],
+                        const Spacer(),
                       ],
-                      const Spacer(),
-                    ],
+                    ),
                   ),
-                ),
                 // Scrollable content with max-width
                 Expanded(
                   child: Center(
@@ -872,6 +907,9 @@ class _AppShellState extends State<_AppShell> {
   // ---------------------------------------------------------------------------
 
   Widget _buildTabletLayout(BuildContext context) {
+    // Full-screen modal routes skip shell chrome on mobile
+    if (_isMobileFullScreen(context)) return child;
+
     final selectedIndex = _selectedIndex(context);
     return Scaffold(
       backgroundColor: AppColors.lightBackground,
@@ -950,6 +988,9 @@ class _AppShellState extends State<_AppShell> {
   // ---------------------------------------------------------------------------
 
   Widget _buildPhoneLayout(BuildContext context) {
+    // Full-screen modal routes skip shell chrome on mobile
+    if (_isMobileFullScreen(context)) return child;
+
     return Scaffold(
       backgroundColor: AppColors.lightBackground,
       appBar: AppBar(

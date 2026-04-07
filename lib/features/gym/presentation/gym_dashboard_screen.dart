@@ -32,53 +32,6 @@ class GymDashboardScreen extends ConsumerWidget {
       body: CustomScrollView(
         key: const ValueKey('gym-dashboard-scroll'),
         slivers: [
-          // --- Acciones rapidas ---
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  _QuickActionChip(
-                    key: const ValueKey('gym-quick-free-workout'),
-                    icon: Icons.play_circle_outline,
-                    label: 'Libre',
-                    onTap: () => _startFreeWorkout(context),
-                  ),
-                  _QuickActionChip(
-                    key: const ValueKey('gym-quick-history'),
-                    icon: Icons.history_outlined,
-                    label: 'Historial',
-                    onTap: () =>
-                        GoRouter.of(context).push(AppRoutes.gymHistory),
-                  ),
-                  _QuickActionChip(
-                    key: const ValueKey('gym-quick-exercises'),
-                    icon: Icons.library_books_outlined,
-                    label: 'Ejercicios',
-                    onTap: () =>
-                        GoRouter.of(context).push(AppRoutes.gymExercises),
-                  ),
-                  _QuickActionChip(
-                    key: const ValueKey('gym-quick-measurements'),
-                    icon: Icons.monitor_weight_outlined,
-                    label: 'Medidas',
-                    onTap: () =>
-                        GoRouter.of(context).push(AppRoutes.gymMeasurements),
-                  ),
-                  _QuickActionChip(
-                    key: const ValueKey('gym-quick-valuation'),
-                    icon: Icons.assessment_outlined,
-                    label: 'Valoracion',
-                    onTap: () =>
-                        GoRouter.of(context).push(AppRoutes.gymValuation),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
           // --- Seccion: Mis Programas ---
           SliverToBoxAdapter(
             child: Padding(
@@ -252,28 +205,6 @@ class GymDashboardScreen extends ConsumerWidget {
 // ---------------------------------------------------------------------------
 // Widget: chip de accion rapida
 // ---------------------------------------------------------------------------
-
-class _QuickActionChip extends StatelessWidget {
-  const _QuickActionChip({
-    super.key,
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return ActionChip(
-      avatar: Icon(icon, size: 16, color: AppColors.gym),
-      label: Text(label),
-      onPressed: onTap,
-    );
-  }
-}
 
 // ---------------------------------------------------------------------------
 // Widget: tarjeta de programa/rutina con dias
