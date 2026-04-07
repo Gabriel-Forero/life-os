@@ -9,6 +9,7 @@ import 'package:life_os/core/router/app_router.dart';
 import 'package:life_os/features/mental/database/mental_dao.dart';
 import 'package:life_os/features/mental/domain/mental_input.dart';
 import 'package:life_os/features/sleep/database/sleep_dao.dart';
+import 'package:life_os/features/sleep/domain/sleep_input.dart';
 
 class WellnessHubScreen extends ConsumerStatefulWidget {
   const WellnessHubScreen({super.key});
@@ -89,9 +90,9 @@ class _WellnessHubScreenState extends ConsumerState<WellnessHubScreen> {
     final notifier = ref.read(sleepNotifierProvider);
     final now = DateTime.now();
     final date = DateTime(now.year, now.month, now.day);
-    if (_eMorning != null) await notifier.logEnergy(date, 'morning', _eMorning!);
-    if (_eAfternoon != null) await notifier.logEnergy(date, 'afternoon', _eAfternoon!);
-    if (_eEvening != null) await notifier.logEnergy(date, 'evening', _eEvening!);
+    if (_eMorning != null) await notifier.logEnergy(EnergyInput(date: date, timeOfDay: 'morning', level: _eMorning!));
+    if (_eAfternoon != null) await notifier.logEnergy(EnergyInput(date: date, timeOfDay: 'afternoon', level: _eAfternoon!));
+    if (_eEvening != null) await notifier.logEnergy(EnergyInput(date: date, timeOfDay: 'evening', level: _eEvening!));
     if (mounted) setState(() { _energySaving = false; _energySaved = true; });
   }
 
