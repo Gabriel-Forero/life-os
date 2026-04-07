@@ -618,47 +618,6 @@ class _AppShellState extends State<_AppShell> {
       ];
     }
 
-    if (location == AppRoutes.wellness) {
-      return [
-        IconButton(
-          key: const ValueKey('wellness-action-mood'),
-          icon: Icon(Icons.mood, color: AppColors.mental),
-          onPressed: () => GoRouter.of(context).push(AppRoutes.mood),
-          tooltip: 'Mood',
-        ),
-        IconButton(
-          key: const ValueKey('wellness-action-breathing'),
-          icon: Icon(Icons.self_improvement, color: AppColors.mental),
-          onPressed: () => GoRouter.of(context).push(AppRoutes.breathing),
-          tooltip: 'Respiracion',
-        ),
-        IconButton(
-          key: const ValueKey('wellness-action-gratitude'),
-          icon: Icon(Icons.favorite, color: AppColors.mental),
-          onPressed: () => GoRouter.of(context).push(AppRoutes.gratitude),
-          tooltip: 'Gratitud',
-        ),
-        IconButton(
-          key: const ValueKey('wellness-action-sleep'),
-          icon: Icon(Icons.bedtime, color: AppColors.sleep),
-          onPressed: () => GoRouter.of(context).push(AppRoutes.sleep),
-          tooltip: 'Sueno',
-        ),
-        IconButton(
-          key: const ValueKey('wellness-action-history'),
-          icon: Icon(Icons.calendar_month, color: AppColors.mental),
-          onPressed: () => GoRouter.of(context).push(AppRoutes.mentalHistory),
-          tooltip: 'Historial',
-        ),
-        IconButton(
-          key: const ValueKey('wellness-action-insights'),
-          icon: Icon(Icons.psychology, color: AppColors.goals),
-          onPressed: () => GoRouter.of(context).push(AppRoutes.mentalInsights),
-          tooltip: 'Patrones IA',
-        ),
-      ];
-    }
-
     return [];
   }
 
