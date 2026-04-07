@@ -246,6 +246,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(path: AppRoutes.breathing, builder: (context, state) => const BreathingScreen()),
           GoRoute(path: AppRoutes.mentalHistory, builder: (context, state) => const MentalHistoryScreen()),
           GoRoute(path: AppRoutes.mentalInsights, builder: (context, state) => const InsightsScreen()),
+          // Sleep/Mental input forms (inside shell so sidebar stays on web)
+          GoRoute(path: AppRoutes.sleep, builder: (context, state) => const SleepLogScreen()),
+          GoRoute(path: AppRoutes.mood, builder: (context, state) => const MoodLogScreen()),
+          GoRoute(path: AppRoutes.gratitude, builder: (context, state) => const GratitudeScreen()),
           // Goals
           GoRoute(
             path: AppRoutes.goalsDetail,
@@ -283,9 +287,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: AppRoutes.backup, redirect: (context, state) => kIsWeb ? AppRoutes.settings : null, pageBuilder: (context, state) => fadeScaleTransition(const BackupScreen(), state)),
       GoRoute(path: AppRoutes.habitsAdd, pageBuilder: (context, state) => slideUpTransition(const AddEditHabitScreen(), state)),
       GoRoute(path: AppRoutes.goalsAdd, pageBuilder: (context, state) => slideUpTransition(const AddEditGoalScreen(), state)),
-      GoRoute(path: AppRoutes.sleep, pageBuilder: (context, state) => slideUpTransition(const SleepLogScreen(), state)),
-      GoRoute(path: AppRoutes.mood, pageBuilder: (context, state) => slideUpTransition(const MoodLogScreen(), state)),
-      GoRoute(path: AppRoutes.gratitude, pageBuilder: (context, state) => slideUpTransition(const GratitudeScreen(), state)),
       GoRoute(path: AppRoutes.ticketScanner, pageBuilder: (context, state) => slideUpTransition(const TicketScannerScreen(), state)),
     ],
   );
