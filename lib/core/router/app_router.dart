@@ -209,240 +209,84 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: AppRoutes.monitoring,
             builder: (context, state) => const MonitoringScreen(),
           ),
-          // AI Conversations (inside shell so sidebar stays visible)
+          // AI Conversations
           GoRoute(
             path: AppRoutes.aiConversations,
             builder: (context, state) => const ConversationListScreen(),
           ),
+          // --- Overview/detail screens (sidebar stays visible) ---
+          // Finance
+          GoRoute(path: AppRoutes.financeBudgets, builder: (context, state) => const BudgetOverviewScreen()),
+          GoRoute(path: AppRoutes.financeSavings, builder: (context, state) => const SavingsGoalsScreen()),
+          GoRoute(path: AppRoutes.financeDashboard, builder: (context, state) => const FinanceDashboardScreen()),
+          GoRoute(path: AppRoutes.financeValuation, builder: (context, state) => const FinanceValuationScreen()),
+          // Gym
+          GoRoute(path: AppRoutes.gymExercises, builder: (context, state) => const ExerciseLibraryScreen()),
+          GoRoute(path: AppRoutes.gymHistory, builder: (context, state) => const WorkoutHistoryScreen()),
+          GoRoute(path: AppRoutes.gymValuation, builder: (context, state) => const GymValuationScreen()),
+          // Nutrition
+          GoRoute(path: AppRoutes.nutritionGoals, builder: (context, state) => const NutritionGoalsScreen()),
+          GoRoute(path: AppRoutes.nutritionValuation, builder: (context, state) => const NutritionValuationScreen()),
+          // Habits
+          GoRoute(
+            path: AppRoutes.habitsDetail,
+            builder: (context, state) {
+              final habitId = int.tryParse(state.uri.queryParameters['id'] ?? '');
+              return HabitDetailScreen(habitId: habitId);
+            },
+          ),
+          // Dashboard/Scores
+          GoRoute(path: AppRoutes.dayScore, builder: (context, state) => const DayScoreScreen()),
+          GoRoute(path: AppRoutes.scoreHistory, builder: (context, state) => const ScoreHistoryScreen()),
+          GoRoute(path: AppRoutes.evolution, builder: (context, state) => const EvolutionScreen()),
+          // Sleep/Mental overviews
+          GoRoute(path: AppRoutes.sleepHistory, builder: (context, state) => const SleepHistoryScreen()),
+          GoRoute(path: AppRoutes.energy, builder: (context, state) => const EnergyTrackerScreen()),
+          GoRoute(path: AppRoutes.circadian, builder: (context, state) => const CircadianScreen()),
+          GoRoute(path: AppRoutes.breathing, builder: (context, state) => const BreathingScreen()),
+          GoRoute(path: AppRoutes.mentalHistory, builder: (context, state) => const MentalHistoryScreen()),
+          GoRoute(path: AppRoutes.mentalInsights, builder: (context, state) => const InsightsScreen()),
+          // Goals
+          GoRoute(
+            path: AppRoutes.goalsDetail,
+            builder: (context, state) {
+              final goalId = int.tryParse(state.uri.queryParameters['id'] ?? '');
+              if (goalId == null) return const _PlaceholderScreen(title: 'Detalle Meta');
+              return GoalDetailScreen(goalId: goalId);
+            },
+          ),
+          // AI
+          GoRoute(path: AppRoutes.aiConfig, builder: (context, state) => const AIConfigScreen()),
+          GoRoute(
+            path: AppRoutes.aiChat,
+            builder: (context, state) {
+              final conversationId = int.tryParse(state.uri.queryParameters['id'] ?? '');
+              final title = state.uri.queryParameters['title'] ?? 'Chat AI';
+              if (conversationId == null) return const _PlaceholderScreen(title: 'Chat AI');
+              return ChatScreen(conversationId: conversationId, title: title);
+            },
+          ),
+          GoRoute(path: AppRoutes.weeklySummary, builder: (context, state) => const WeeklySummaryScreen()),
         ],
       ),
-      // Full-screen routes (outside shell) — add/edit screens use slideUp,
-      // detail/overview screens use fadeScale.
-      GoRoute(
-        path: AppRoutes.financeAdd,
-        pageBuilder: (context, state) =>
-            slideUpTransition(const AddEditTransactionScreen(), state),
-      ),
-      GoRoute(
-        path: AppRoutes.financeBudgets,
-        pageBuilder: (context, state) =>
-            fadeScaleTransition(const BudgetOverviewScreen(), state),
-      ),
-      GoRoute(
-        path: AppRoutes.financeSavings,
-        pageBuilder: (context, state) =>
-            fadeScaleTransition(const SavingsGoalsScreen(), state),
-      ),
-      GoRoute(
-        path: AppRoutes.financeDashboard,
-        pageBuilder: (context, state) =>
-            fadeScaleTransition(const FinanceDashboardScreen(), state),
-      ),
-      GoRoute(
-        path: AppRoutes.financeSmsImport,
-        redirect: (context, state) => kIsWeb ? AppRoutes.finance : null,
-        pageBuilder: (context, state) =>
-            slideUpTransition(const SmsImportScreen(), state),
-      ),
-      GoRoute(
-        path: AppRoutes.gymExercises,
-        pageBuilder: (context, state) =>
-            fadeScaleTransition(const ExerciseLibraryScreen(), state),
-      ),
-      GoRoute(
-        path: AppRoutes.gymRoutineBuilder,
-        pageBuilder: (context, state) =>
-            slideUpTransition(const RoutineBuilderScreen(), state),
-      ),
-      GoRoute(
-        path: AppRoutes.gymWorkout,
-        pageBuilder: (context, state) =>
-            slideUpTransition(const ActiveWorkoutScreen(), state),
-      ),
-      GoRoute(
-        path: AppRoutes.gymHistory,
-        pageBuilder: (context, state) =>
-            fadeScaleTransition(const WorkoutHistoryScreen(), state),
-      ),
-      GoRoute(
-        path: AppRoutes.gymMeasurements,
-        redirect: (context, state) => kIsWeb ? AppRoutes.gym : null,
-        pageBuilder: (context, state) =>
-            fadeScaleTransition(const BodyMeasurementsScreen(), state),
-      ),
-      GoRoute(
-        path: AppRoutes.gymValuation,
-        pageBuilder: (context, state) =>
-            fadeScaleTransition(const GymValuationScreen(), state),
-      ),
-      GoRoute(
-        path: AppRoutes.financeValuation,
-        pageBuilder: (context, state) =>
-            fadeScaleTransition(const FinanceValuationScreen(), state),
-      ),
-      GoRoute(
-        path: AppRoutes.nutritionSearch,
-        pageBuilder: (context, state) =>
-            slideUpTransition(const FoodSearchScreen(), state),
-      ),
-      GoRoute(
-        path: AppRoutes.nutritionMealLog,
-        pageBuilder: (context, state) =>
-            slideUpTransition(const MealLogScreen(), state),
-      ),
-      GoRoute(
-        path: AppRoutes.nutritionGoals,
-        pageBuilder: (context, state) =>
-            fadeScaleTransition(const NutritionGoalsScreen(), state),
-      ),
-      GoRoute(
-        path: AppRoutes.barcodeScanner,
-        redirect: (context, state) => kIsWeb ? AppRoutes.nutrition : null,
-        pageBuilder: (context, state) =>
-            slideUpTransition(const BarcodeScannerScreen(), state),
-      ),
-      GoRoute(
-        path: AppRoutes.photoAnalysis,
-        redirect: (context, state) => kIsWeb ? AppRoutes.nutrition : null,
-        pageBuilder: (context, state) =>
-            slideUpTransition(const PhotoAnalysisScreen(), state),
-      ),
-      GoRoute(
-        path: AppRoutes.manualFoodEntry,
-        pageBuilder: (context, state) =>
-            slideUpTransition(const ManualFoodEntryScreen(), state),
-      ),
-      GoRoute(
-        path: AppRoutes.nutritionValuation,
-        pageBuilder: (context, state) =>
-            fadeScaleTransition(const NutritionValuationScreen(), state),
-      ),
-      GoRoute(
-        path: AppRoutes.backup,
-        redirect: (context, state) => kIsWeb ? AppRoutes.settings : null,
-        pageBuilder: (context, state) =>
-            fadeScaleTransition(const BackupScreen(), state),
-      ),
-      GoRoute(
-        path: AppRoutes.habitsAdd,
-        pageBuilder: (context, state) =>
-            slideUpTransition(const AddEditHabitScreen(), state),
-      ),
-      GoRoute(
-        path: AppRoutes.habitsDetail,
-        pageBuilder: (context, state) {
-          final habitId =
-              int.tryParse(state.uri.queryParameters['id'] ?? '');
-          return fadeScaleTransition(
-              HabitDetailScreen(habitId: habitId), state);
-        },
-      ),
-      GoRoute(
-        path: AppRoutes.dayScore,
-        pageBuilder: (context, state) =>
-            fadeScaleTransition(const DayScoreScreen(), state),
-      ),
-      GoRoute(
-        path: AppRoutes.scoreHistory,
-        pageBuilder: (context, state) =>
-            fadeScaleTransition(const ScoreHistoryScreen(), state),
-      ),
-      GoRoute(
-        path: AppRoutes.evolution,
-        pageBuilder: (context, state) =>
-            slideUpTransition(const EvolutionScreen(), state),
-      ),
-      GoRoute(
-        path: AppRoutes.sleep,
-        pageBuilder: (context, state) =>
-            slideUpTransition(const SleepLogScreen(), state),
-      ),
-      GoRoute(
-        path: AppRoutes.sleepHistory,
-        pageBuilder: (context, state) =>
-            fadeScaleTransition(const SleepHistoryScreen(), state),
-      ),
-      GoRoute(
-        path: AppRoutes.energy,
-        pageBuilder: (context, state) =>
-            fadeScaleTransition(const EnergyTrackerScreen(), state),
-      ),
-      GoRoute(
-        path: AppRoutes.circadian,
-        pageBuilder: (context, state) =>
-            fadeScaleTransition(const CircadianScreen(), state),
-      ),
-      GoRoute(
-        path: AppRoutes.mood,
-        pageBuilder: (context, state) =>
-            slideUpTransition(const MoodLogScreen(), state),
-      ),
-      GoRoute(
-        path: AppRoutes.breathing,
-        pageBuilder: (context, state) =>
-            fadeScaleTransition(const BreathingScreen(), state),
-      ),
-      GoRoute(
-        path: AppRoutes.mentalHistory,
-        pageBuilder: (context, state) =>
-            fadeScaleTransition(const MentalHistoryScreen(), state),
-      ),
-      GoRoute(
-        path: AppRoutes.gratitude,
-        pageBuilder: (context, state) =>
-            slideUpTransition(const GratitudeScreen(), state),
-      ),
-      GoRoute(
-        path: AppRoutes.mentalInsights,
-        pageBuilder: (context, state) =>
-            fadeScaleTransition(const InsightsScreen(), state),
-      ),
-      GoRoute(
-        path: AppRoutes.goalsAdd,
-        pageBuilder: (context, state) =>
-            slideUpTransition(const AddEditGoalScreen(), state),
-      ),
-      GoRoute(
-        path: AppRoutes.goalsDetail,
-        pageBuilder: (context, state) {
-          final goalId =
-              int.tryParse(state.uri.queryParameters['id'] ?? '');
-          if (goalId == null) {
-            return fadeScaleTransition(
-                const _PlaceholderScreen(title: 'Detalle Meta'), state);
-          }
-          return fadeScaleTransition(GoalDetailScreen(goalId: goalId), state);
-        },
-      ),
-      GoRoute(
-        path: AppRoutes.aiConfig,
-        pageBuilder: (context, state) =>
-            fadeScaleTransition(const AIConfigScreen(), state),
-      ),
-      GoRoute(
-        path: AppRoutes.aiChat,
-        pageBuilder: (context, state) {
-          final conversationId =
-              int.tryParse(state.uri.queryParameters['id'] ?? '');
-          final title = state.uri.queryParameters['title'] ?? 'Chat AI';
-          if (conversationId == null) {
-            return fadeScaleTransition(
-                const _PlaceholderScreen(title: 'Chat AI'), state);
-          }
-          return fadeScaleTransition(
-              ChatScreen(conversationId: conversationId, title: title), state);
-        },
-      ),
-      GoRoute(
-        path: AppRoutes.ticketScanner,
-        pageBuilder: (context, state) =>
-            slideUpTransition(const TicketScannerScreen(), state),
-      ),
-      GoRoute(
-        path: AppRoutes.weeklySummary,
-        pageBuilder: (context, state) =>
-            fadeScaleTransition(const WeeklySummaryScreen(), state),
-      ),
+      // Full-screen routes (outside shell) — forms/modals that SHOULD hide sidebar
+      GoRoute(path: AppRoutes.financeAdd, pageBuilder: (context, state) => slideUpTransition(const AddEditTransactionScreen(), state)),
+      GoRoute(path: AppRoutes.financeSmsImport, redirect: (context, state) => kIsWeb ? AppRoutes.finance : null, pageBuilder: (context, state) => slideUpTransition(const SmsImportScreen(), state)),
+      GoRoute(path: AppRoutes.gymRoutineBuilder, pageBuilder: (context, state) => slideUpTransition(const RoutineBuilderScreen(), state)),
+      GoRoute(path: AppRoutes.gymWorkout, pageBuilder: (context, state) => slideUpTransition(const ActiveWorkoutScreen(), state)),
+      GoRoute(path: AppRoutes.gymMeasurements, redirect: (context, state) => kIsWeb ? AppRoutes.gym : null, pageBuilder: (context, state) => fadeScaleTransition(const BodyMeasurementsScreen(), state)),
+      GoRoute(path: AppRoutes.nutritionSearch, pageBuilder: (context, state) => slideUpTransition(const FoodSearchScreen(), state)),
+      GoRoute(path: AppRoutes.nutritionMealLog, pageBuilder: (context, state) => slideUpTransition(const MealLogScreen(), state)),
+      GoRoute(path: AppRoutes.barcodeScanner, redirect: (context, state) => kIsWeb ? AppRoutes.nutrition : null, pageBuilder: (context, state) => slideUpTransition(const BarcodeScannerScreen(), state)),
+      GoRoute(path: AppRoutes.photoAnalysis, redirect: (context, state) => kIsWeb ? AppRoutes.nutrition : null, pageBuilder: (context, state) => slideUpTransition(const PhotoAnalysisScreen(), state)),
+      GoRoute(path: AppRoutes.manualFoodEntry, pageBuilder: (context, state) => slideUpTransition(const ManualFoodEntryScreen(), state)),
+      GoRoute(path: AppRoutes.backup, redirect: (context, state) => kIsWeb ? AppRoutes.settings : null, pageBuilder: (context, state) => fadeScaleTransition(const BackupScreen(), state)),
+      GoRoute(path: AppRoutes.habitsAdd, pageBuilder: (context, state) => slideUpTransition(const AddEditHabitScreen(), state)),
+      GoRoute(path: AppRoutes.goalsAdd, pageBuilder: (context, state) => slideUpTransition(const AddEditGoalScreen(), state)),
+      GoRoute(path: AppRoutes.sleep, pageBuilder: (context, state) => slideUpTransition(const SleepLogScreen(), state)),
+      GoRoute(path: AppRoutes.mood, pageBuilder: (context, state) => slideUpTransition(const MoodLogScreen(), state)),
+      GoRoute(path: AppRoutes.gratitude, pageBuilder: (context, state) => slideUpTransition(const GratitudeScreen(), state)),
+      GoRoute(path: AppRoutes.ticketScanner, pageBuilder: (context, state) => slideUpTransition(const TicketScannerScreen(), state)),
     ],
   );
 });
@@ -506,25 +350,25 @@ class _AppShellState extends State<_AppShell> {
         IconButton(
           key: const ValueKey('transactions-budget-button'),
           icon: Icon(Icons.pie_chart_outline, color: AppColors.finance),
-          onPressed: () => GoRouter.of(context).push(AppRoutes.financeBudgets),
+          onPressed: () => GoRouter.of(context).go(AppRoutes.financeBudgets),
           tooltip: 'Presupuestos',
         ),
         IconButton(
           key: const ValueKey('transactions-dashboard-button'),
           icon: Icon(Icons.bar_chart, color: AppColors.finance),
-          onPressed: () => GoRouter.of(context).push(AppRoutes.financeDashboard),
+          onPressed: () => GoRouter.of(context).go(AppRoutes.financeDashboard),
           tooltip: 'Dashboard',
         ),
         IconButton(
           key: const ValueKey('transactions-savings-button'),
           icon: Icon(Icons.savings_outlined, color: AppColors.finance),
-          onPressed: () => GoRouter.of(context).push(AppRoutes.financeSavings),
+          onPressed: () => GoRouter.of(context).go(AppRoutes.financeSavings),
           tooltip: 'Metas de ahorro',
         ),
         IconButton(
           key: const ValueKey('transactions-valuation-button'),
           icon: Icon(Icons.assessment_outlined, color: AppColors.finance),
-          onPressed: () => GoRouter.of(context).push(AppRoutes.financeValuation),
+          onPressed: () => GoRouter.of(context).go(AppRoutes.financeValuation),
           tooltip: 'Valoracion',
         ),
       ];
@@ -542,13 +386,13 @@ class _AppShellState extends State<_AppShell> {
         IconButton(
           key: const ValueKey('nutrition-goals-nav-button'),
           icon: Icon(Icons.track_changes_outlined, color: AppColors.nutrition),
-          onPressed: () => GoRouter.of(context).push(AppRoutes.nutritionGoals),
+          onPressed: () => GoRouter.of(context).go(AppRoutes.nutritionGoals),
           tooltip: 'Metas',
         ),
         IconButton(
           key: const ValueKey('nutrition-valuation-button'),
           icon: Icon(Icons.assessment_outlined, color: AppColors.nutrition),
-          onPressed: () => GoRouter.of(context).push(AppRoutes.nutritionValuation),
+          onPressed: () => GoRouter.of(context).go(AppRoutes.nutritionValuation),
           tooltip: 'Valoracion',
         ),
       ];
@@ -565,13 +409,13 @@ class _AppShellState extends State<_AppShell> {
         IconButton(
           key: const ValueKey('gym-action-history'),
           icon: Icon(Icons.history_outlined, color: AppColors.gym),
-          onPressed: () => GoRouter.of(context).push(AppRoutes.gymHistory),
+          onPressed: () => GoRouter.of(context).go(AppRoutes.gymHistory),
           tooltip: 'Historial',
         ),
         IconButton(
           key: const ValueKey('gym-action-exercises'),
           icon: Icon(Icons.library_books_outlined, color: AppColors.gym),
-          onPressed: () => GoRouter.of(context).push(AppRoutes.gymExercises),
+          onPressed: () => GoRouter.of(context).go(AppRoutes.gymExercises),
           tooltip: 'Ejercicios',
         ),
         if (!kIsWeb)
@@ -584,7 +428,7 @@ class _AppShellState extends State<_AppShell> {
         IconButton(
           key: const ValueKey('gym-action-valuation'),
           icon: Icon(Icons.assessment_outlined, color: AppColors.gym),
-          onPressed: () => GoRouter.of(context).push(AppRoutes.gymValuation),
+          onPressed: () => GoRouter.of(context).go(AppRoutes.gymValuation),
           tooltip: 'Valoracion',
         ),
       ];
@@ -597,6 +441,18 @@ class _AppShellState extends State<_AppShell> {
           icon: Icon(Icons.add_circle_outline, color: AppColors.habits),
           onPressed: () => GoRouter.of(context).push(AppRoutes.habitsAdd),
           tooltip: 'Agregar habito',
+        ),
+        IconButton(
+          key: const ValueKey('habits-action-score'),
+          icon: Icon(Icons.insights, color: AppColors.habits),
+          onPressed: () => GoRouter.of(context).go(AppRoutes.dayScore),
+          tooltip: 'DayScore',
+        ),
+        IconButton(
+          key: const ValueKey('habits-action-evolution'),
+          icon: Icon(Icons.trending_up, color: AppColors.habits),
+          onPressed: () => GoRouter.of(context).go(AppRoutes.evolution),
+          tooltip: 'Evolucion',
         ),
       ];
     }
@@ -612,7 +468,7 @@ class _AppShellState extends State<_AppShell> {
         IconButton(
           key: const ValueKey('goals-action-evolution'),
           icon: Icon(Icons.trending_up, color: AppColors.goals),
-          onPressed: () => GoRouter.of(context).push(AppRoutes.evolution),
+          onPressed: () => GoRouter.of(context).go(AppRoutes.evolution),
           tooltip: 'Evolucion',
         ),
       ];
@@ -720,7 +576,7 @@ class _AppShellState extends State<_AppShell> {
           ListTile(
             leading: Icon(Icons.auto_awesome, color: AppColors.mental),
             title: const Text('Patrones de IA'),
-            onTap: () { Navigator.pop(context); GoRouter.of(context).push(AppRoutes.mentalInsights); },
+            onTap: () { Navigator.pop(context); GoRouter.of(context).go(AppRoutes.mentalInsights); },
           ),
           ListTile(
             leading: Icon(Icons.flag_outlined, color: AppColors.goals),
@@ -748,7 +604,7 @@ class _AppShellState extends State<_AppShell> {
           ListTile(
             leading: const Icon(Icons.summarize_outlined),
             title: const Text('Resumen Semanal'),
-            onTap: () { Navigator.pop(context); GoRouter.of(context).push(AppRoutes.weeklySummary); },
+            onTap: () { Navigator.pop(context); GoRouter.of(context).go(AppRoutes.weeklySummary); },
           ),
         ],
       ),
