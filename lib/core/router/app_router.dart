@@ -786,7 +786,22 @@ class _AppShellState extends State<_AppShell> {
                   },
                 ),
                 const VerticalDivider(thickness: 1, width: 1),
-                Expanded(child: child),
+                Expanded(
+                  child: Column(
+                    children: [
+                      if (_actionsForLocation(context).isNotEmpty)
+                        Container(
+                          color: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: _actionsForLocation(context),
+                          ),
+                        ),
+                      Expanded(child: child),
+                    ],
+                  ),
+                ),
               ],
             ),
           );
