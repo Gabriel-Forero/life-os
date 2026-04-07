@@ -200,6 +200,64 @@ class _SleepLogScreenState extends ConsumerState<SleepLogScreen> {
   }
 
   // ---------------------------------------------------------------------------
+  // Manual entry — pick bed time and wake time
+  // ---------------------------------------------------------------------------
+
+  Future<void> _startManualEntry() async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    // Pick bed time
+    final bedTod = await showTimePicker(
+      context: context,
+      initialTime: const TimeOfDay(hour: 23, minute: 0),
+      helpText: 'Hora de dormir (anoche)',
+      cancelText: 'Cancelar',
+      confirmText: 'Siguiente',
+      builder: (context, child) => Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: Theme.of(context).colorScheme.copyWith(primary: AppColors.sleep),
+        ),
+        child: child!,
+      ),
+    );
+    if (bedTod == null || !mounted) return;
+
+    // Pick wake time
+    final wakeTod = await showTimePicker(
+      context: context,
+      initialTime: const TimeOfDay(hour: 7, minute: 0),
+      helpText: 'Hora de despertar (hoy)',
+      cancelText: 'Cancelar',
+      confirmText: 'Registrar',
+      builder: (context, child) => Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: Theme.of(context).colorScheme.copyWith(primary: AppColors.sleep),
+        ),
+        child: child!,
+      ),
+    );
+    if (wakeTod == null || !mounted) return;
+
+    // Build DateTimes — bed time is yesterday if it's PM, wake is today
+    final yesterday = today.subtract(const Duration(days: 1));
+    final bedDate = bedTod.hour >= 18 ? yesterday : today;
+    final bedTime = DateTime(bedDate.year, bedDate.month, bedDate.day, bedTod.hour, bedTod.minute);
+    var wakeTime = DateTime(today.year, today.month, today.day, wakeTod.hour, wakeTod.minute);
+
+    // Ensure wake is after bed
+    if (wakeTime.isBefore(bedTime)) {
+      wakeTime = wakeTime.add(const Duration(days: 1));
+    }
+
+    setState(() {
+      _bedTime = bedTime;
+      _wakeTime = wakeTime;
+      _phase = 2; // Jump to morning review
+    });
+  }
+
+  // ---------------------------------------------------------------------------
   // Feature 1: Wake time — "Ya desperte"
   // ---------------------------------------------------------------------------
 
@@ -494,7 +552,7 @@ class _SleepLogScreenState extends ConsumerState<SleepLogScreen> {
         ),
         const SizedBox(height: 24),
 
-        // "Me voy a dormir" button
+        // "Me voy a dormir" button (real-time tracking)
         FilledButton.icon(
           key: const ValueKey('go-to-sleep-button'),
           onPressed: _goToSleep,
@@ -506,6 +564,22 @@ class _SleepLogScreenState extends ConsumerState<SleepLogScreen> {
           icon: const Icon(Icons.bedtime),
           label: const Text('Me voy a dormir',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+        ),
+        const SizedBox(height: 12),
+
+        // Manual entry button
+        OutlinedButton.icon(
+          key: const ValueKey('manual-sleep-button'),
+          onPressed: _startManualEntry,
+          style: OutlinedButton.styleFrom(
+            foregroundColor: sleepColor,
+            side: BorderSide(color: sleepColor),
+            minimumSize: const Size.fromHeight(52),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          ),
+          icon: const Icon(Icons.edit_calendar),
+          label: const Text('Registro manual',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
         ),
         const SizedBox(height: 12),
 
