@@ -204,6 +204,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: AppRoutes.settings,
             builder: (context, state) => const SettingsScreen(),
           ),
+          // Monitoring (inside shell so sidebar stays visible)
+          GoRoute(
+            path: AppRoutes.monitoring,
+            builder: (context, state) => const MonitoringScreen(),
+          ),
+          // AI Conversations (inside shell so sidebar stays visible)
+          GoRoute(
+            path: AppRoutes.aiConversations,
+            builder: (context, state) => const ConversationListScreen(),
+          ),
         ],
       ),
       // Full-screen routes (outside shell) — add/edit screens use slideUp,
@@ -338,11 +348,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             fadeScaleTransition(const ScoreHistoryScreen(), state),
       ),
       GoRoute(
-        path: AppRoutes.monitoring,
-        pageBuilder: (context, state) =>
-            fadeScaleTransition(const MonitoringScreen(), state),
-      ),
-      GoRoute(
         path: AppRoutes.evolution,
         pageBuilder: (context, state) =>
             slideUpTransition(const EvolutionScreen(), state),
@@ -415,11 +420,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             fadeScaleTransition(const AIConfigScreen(), state),
       ),
       GoRoute(
-        path: AppRoutes.aiConversations,
-        pageBuilder: (context, state) =>
-            fadeScaleTransition(const ConversationListScreen(), state),
-      ),
-      GoRoute(
         path: AppRoutes.aiChat,
         pageBuilder: (context, state) {
           final conversationId =
@@ -473,6 +473,7 @@ class _AppShellState extends State<_AppShell> {
     if (location.startsWith('/settings')) return 'Configuración';
     if (location.startsWith('/monitoring')) return 'Progreso';
     if (location.startsWith('/wellness')) return 'Bienestar';
+    if (location.startsWith('/ai')) return 'Asistente AI';
     return 'LifeOS';
   }
 
@@ -484,6 +485,8 @@ class _AppShellState extends State<_AppShell> {
     if (location.startsWith('/habits')) return AppColors.habits;
     if (location.startsWith('/goals')) return AppColors.goals;
     if (location.startsWith('/wellness')) return AppColors.mental;
+    if (location.startsWith('/monitoring')) return AppColors.dayScore;
+    if (location.startsWith('/ai')) return AppColors.primary;
     if (location.startsWith('/settings')) return AppColors.lightTextPrimary;
     return AppColors.primary;
   }
@@ -551,6 +554,42 @@ class _AppShellState extends State<_AppShell> {
       ];
     }
 
+    if (location == AppRoutes.gym) {
+      return [
+        IconButton(
+          key: const ValueKey('gym-action-workout'),
+          icon: Icon(Icons.play_circle_outline, color: AppColors.gym),
+          onPressed: () => GoRouter.of(context).push(AppRoutes.gymWorkout),
+          tooltip: 'Libre',
+        ),
+        IconButton(
+          key: const ValueKey('gym-action-history'),
+          icon: Icon(Icons.history_outlined, color: AppColors.gym),
+          onPressed: () => GoRouter.of(context).push(AppRoutes.gymHistory),
+          tooltip: 'Historial',
+        ),
+        IconButton(
+          key: const ValueKey('gym-action-exercises'),
+          icon: Icon(Icons.library_books_outlined, color: AppColors.gym),
+          onPressed: () => GoRouter.of(context).push(AppRoutes.gymExercises),
+          tooltip: 'Ejercicios',
+        ),
+        if (!kIsWeb)
+          IconButton(
+            key: const ValueKey('gym-action-measurements'),
+            icon: Icon(Icons.monitor_weight_outlined, color: AppColors.gym),
+            onPressed: () => GoRouter.of(context).push(AppRoutes.gymMeasurements),
+            tooltip: 'Medidas',
+          ),
+        IconButton(
+          key: const ValueKey('gym-action-valuation'),
+          icon: Icon(Icons.assessment_outlined, color: AppColors.gym),
+          onPressed: () => GoRouter.of(context).push(AppRoutes.gymValuation),
+          tooltip: 'Valoracion',
+        ),
+      ];
+    }
+
     if (location == AppRoutes.habits) {
       return [
         IconButton(
@@ -565,10 +604,57 @@ class _AppShellState extends State<_AppShell> {
     if (location == AppRoutes.goals) {
       return [
         IconButton(
-          key: const ValueKey('add_goal_button'),
+          key: const ValueKey('goals-action-add'),
           icon: Icon(Icons.add, color: AppColors.goals),
           onPressed: () => GoRouter.of(context).push(AppRoutes.goalsAdd),
           tooltip: 'Agregar objetivo',
+        ),
+        IconButton(
+          key: const ValueKey('goals-action-evolution'),
+          icon: Icon(Icons.trending_up, color: AppColors.goals),
+          onPressed: () => GoRouter.of(context).push(AppRoutes.evolution),
+          tooltip: 'Evolucion',
+        ),
+      ];
+    }
+
+    if (location == AppRoutes.wellness) {
+      return [
+        IconButton(
+          key: const ValueKey('wellness-action-mood'),
+          icon: Icon(Icons.mood, color: AppColors.mental),
+          onPressed: () => GoRouter.of(context).push(AppRoutes.mood),
+          tooltip: 'Mood',
+        ),
+        IconButton(
+          key: const ValueKey('wellness-action-breathing'),
+          icon: Icon(Icons.self_improvement, color: AppColors.mental),
+          onPressed: () => GoRouter.of(context).push(AppRoutes.breathing),
+          tooltip: 'Respiracion',
+        ),
+        IconButton(
+          key: const ValueKey('wellness-action-gratitude'),
+          icon: Icon(Icons.favorite, color: AppColors.mental),
+          onPressed: () => GoRouter.of(context).push(AppRoutes.gratitude),
+          tooltip: 'Gratitud',
+        ),
+        IconButton(
+          key: const ValueKey('wellness-action-sleep'),
+          icon: Icon(Icons.bedtime, color: AppColors.sleep),
+          onPressed: () => GoRouter.of(context).push(AppRoutes.sleep),
+          tooltip: 'Sueno',
+        ),
+        IconButton(
+          key: const ValueKey('wellness-action-history'),
+          icon: Icon(Icons.calendar_month, color: AppColors.mental),
+          onPressed: () => GoRouter.of(context).push(AppRoutes.mentalHistory),
+          tooltip: 'Historial',
+        ),
+        IconButton(
+          key: const ValueKey('wellness-action-insights'),
+          icon: Icon(Icons.psychology, color: AppColors.goals),
+          onPressed: () => GoRouter.of(context).push(AppRoutes.mentalInsights),
+          tooltip: 'Patrones IA',
         ),
       ];
     }
