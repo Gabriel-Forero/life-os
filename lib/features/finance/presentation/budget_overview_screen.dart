@@ -26,27 +26,12 @@ class BudgetOverviewScreen extends ConsumerWidget {
 
     return Scaffold(
       key: const ValueKey('budget-overview-screen'),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        foregroundColor: AppColors.finance,
-        title: Semantics(
-          header: true,
-          child: const Text('Presupuestos'),
-        ),
-        actions: [
-          Semantics(
-            label: 'Agregar presupuesto de categoria',
-            button: true,
-            child: IconButton(
-              key: const ValueKey('budget-add-button'),
-              icon: const Icon(Icons.add_circle_outline),
-              onPressed: () => _showSetBudgetDialog(context, ref, null),
-              tooltip: 'Nuevo presupuesto',
-            ),
-          ),
-        ],
+      floatingActionButton: FloatingActionButton(
+        key: const ValueKey('budget-add-button'),
+        backgroundColor: AppColors.finance,
+        onPressed: () => _showSetBudgetDialog(context, ref, null),
+        tooltip: 'Nuevo presupuesto',
+        child: const Icon(Icons.add, color: Colors.white),
       ),
       body: StreamBuilder<List<Budget>>(
         stream: dao.watchBudgets(now.month, now.year),

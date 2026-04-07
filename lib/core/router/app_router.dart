@@ -1016,6 +1016,9 @@ class _AppShellState extends State<_AppShell> {
 
   @override
   Widget build(BuildContext context) {
+    // On web: always show permanent sidebar (desktop layout)
+    if (kIsWeb) return _buildDesktopLayout(context);
+
     return LayoutBuilder(
       builder: (context, constraints) {
         if (constraints.maxWidth >= AppBreakpoints.expanded) {

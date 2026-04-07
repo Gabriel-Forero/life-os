@@ -45,22 +45,11 @@ class ConversationListScreen extends ConsumerWidget {
 
     return Scaffold(
       key: const ValueKey('conversation_list_screen'),
-      appBar: AppBar(
-        title: const Text('Conversaciones'),
-        backgroundColor: theme.scaffoldBackgroundColor,
-        elevation: 0,
-        actions: [
-          Semantics(
-            label: 'Nueva conversacion',
-            button: true,
-            child: IconButton(
-              key: const ValueKey('new_conversation_button'),
-              icon: const Icon(Icons.add_comment_outlined),
-              tooltip: 'Nueva conversacion',
-              onPressed: newConversation,
-            ),
-          ),
-        ],
+      floatingActionButton: FloatingActionButton(
+        key: const ValueKey('new_conversation_button'),
+        onPressed: newConversation,
+        tooltip: 'Nueva conversacion',
+        child: const Icon(Icons.add_comment_outlined),
       ),
       body: StreamBuilder<List<AiConversation>>(
         stream: notifier.dao.watchAllConversations(),
