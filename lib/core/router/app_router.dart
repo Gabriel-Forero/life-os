@@ -350,25 +350,25 @@ class _AppShellState extends State<_AppShell> {
         IconButton(
           key: const ValueKey('transactions-budget-button'),
           icon: Icon(Icons.pie_chart_outline, color: AppColors.finance),
-          onPressed: () => GoRouter.of(context).go(AppRoutes.financeBudgets),
+          onPressed: () => GoRouter.of(context).push(AppRoutes.financeBudgets),
           tooltip: 'Presupuestos',
         ),
         IconButton(
           key: const ValueKey('transactions-dashboard-button'),
           icon: Icon(Icons.bar_chart, color: AppColors.finance),
-          onPressed: () => GoRouter.of(context).go(AppRoutes.financeDashboard),
+          onPressed: () => GoRouter.of(context).push(AppRoutes.financeDashboard),
           tooltip: 'Dashboard',
         ),
         IconButton(
           key: const ValueKey('transactions-savings-button'),
           icon: Icon(Icons.savings_outlined, color: AppColors.finance),
-          onPressed: () => GoRouter.of(context).go(AppRoutes.financeSavings),
+          onPressed: () => GoRouter.of(context).push(AppRoutes.financeSavings),
           tooltip: 'Metas de ahorro',
         ),
         IconButton(
           key: const ValueKey('transactions-valuation-button'),
           icon: Icon(Icons.assessment_outlined, color: AppColors.finance),
-          onPressed: () => GoRouter.of(context).go(AppRoutes.financeValuation),
+          onPressed: () => GoRouter.of(context).push(AppRoutes.financeValuation),
           tooltip: 'Valoracion',
         ),
       ];
@@ -386,13 +386,13 @@ class _AppShellState extends State<_AppShell> {
         IconButton(
           key: const ValueKey('nutrition-goals-nav-button'),
           icon: Icon(Icons.track_changes_outlined, color: AppColors.nutrition),
-          onPressed: () => GoRouter.of(context).go(AppRoutes.nutritionGoals),
+          onPressed: () => GoRouter.of(context).push(AppRoutes.nutritionGoals),
           tooltip: 'Metas',
         ),
         IconButton(
           key: const ValueKey('nutrition-valuation-button'),
           icon: Icon(Icons.assessment_outlined, color: AppColors.nutrition),
-          onPressed: () => GoRouter.of(context).go(AppRoutes.nutritionValuation),
+          onPressed: () => GoRouter.of(context).push(AppRoutes.nutritionValuation),
           tooltip: 'Valoracion',
         ),
       ];
@@ -409,13 +409,13 @@ class _AppShellState extends State<_AppShell> {
         IconButton(
           key: const ValueKey('gym-action-history'),
           icon: Icon(Icons.history_outlined, color: AppColors.gym),
-          onPressed: () => GoRouter.of(context).go(AppRoutes.gymHistory),
+          onPressed: () => GoRouter.of(context).push(AppRoutes.gymHistory),
           tooltip: 'Historial',
         ),
         IconButton(
           key: const ValueKey('gym-action-exercises'),
           icon: Icon(Icons.library_books_outlined, color: AppColors.gym),
-          onPressed: () => GoRouter.of(context).go(AppRoutes.gymExercises),
+          onPressed: () => GoRouter.of(context).push(AppRoutes.gymExercises),
           tooltip: 'Ejercicios',
         ),
         if (!kIsWeb)
@@ -428,7 +428,7 @@ class _AppShellState extends State<_AppShell> {
         IconButton(
           key: const ValueKey('gym-action-valuation'),
           icon: Icon(Icons.assessment_outlined, color: AppColors.gym),
-          onPressed: () => GoRouter.of(context).go(AppRoutes.gymValuation),
+          onPressed: () => GoRouter.of(context).push(AppRoutes.gymValuation),
           tooltip: 'Valoracion',
         ),
       ];
@@ -445,13 +445,13 @@ class _AppShellState extends State<_AppShell> {
         IconButton(
           key: const ValueKey('habits-action-score'),
           icon: Icon(Icons.insights, color: AppColors.habits),
-          onPressed: () => GoRouter.of(context).go(AppRoutes.dayScore),
+          onPressed: () => GoRouter.of(context).push(AppRoutes.dayScore),
           tooltip: 'DayScore',
         ),
         IconButton(
           key: const ValueKey('habits-action-history'),
           icon: Icon(Icons.history, color: AppColors.habits),
-          onPressed: () => GoRouter.of(context).go(AppRoutes.scoreHistory),
+          onPressed: () => GoRouter.of(context).push(AppRoutes.scoreHistory),
           tooltip: 'Historial',
         ),
         IconButton(
@@ -463,7 +463,7 @@ class _AppShellState extends State<_AppShell> {
         IconButton(
           key: const ValueKey('habits-action-evolution'),
           icon: Icon(Icons.trending_up, color: AppColors.habits),
-          onPressed: () => GoRouter.of(context).go(AppRoutes.evolution),
+          onPressed: () => GoRouter.of(context).push(AppRoutes.evolution),
           tooltip: 'Evolucion',
         ),
       ];
@@ -480,7 +480,7 @@ class _AppShellState extends State<_AppShell> {
         IconButton(
           key: const ValueKey('goals-action-evolution'),
           icon: Icon(Icons.trending_up, color: AppColors.goals),
-          onPressed: () => GoRouter.of(context).go(AppRoutes.evolution),
+          onPressed: () => GoRouter.of(context).push(AppRoutes.evolution),
           tooltip: 'Evolucion',
         ),
       ];
@@ -521,19 +521,19 @@ class _AppShellState extends State<_AppShell> {
         IconButton(
           key: const ValueKey('wellness-action-history'),
           icon: Icon(Icons.calendar_month, color: AppColors.mental),
-          onPressed: () => GoRouter.of(context).go(AppRoutes.mentalHistory),
+          onPressed: () => GoRouter.of(context).push(AppRoutes.mentalHistory),
           tooltip: 'Historial',
         ),
         IconButton(
           key: const ValueKey('wellness-action-circadian'),
           icon: Icon(Icons.show_chart, color: AppColors.sleep),
-          onPressed: () => GoRouter.of(context).go(AppRoutes.circadian),
+          onPressed: () => GoRouter.of(context).push(AppRoutes.circadian),
           tooltip: 'Circadiano',
         ),
         IconButton(
           key: const ValueKey('wellness-action-insights'),
           icon: Icon(Icons.psychology, color: AppColors.goals),
-          onPressed: () => GoRouter.of(context).go(AppRoutes.mentalInsights),
+          onPressed: () => GoRouter.of(context).push(AppRoutes.mentalInsights),
           tooltip: 'Patrones IA',
         ),
       ];
@@ -641,7 +641,7 @@ class _AppShellState extends State<_AppShell> {
           ListTile(
             leading: Icon(Icons.auto_awesome, color: AppColors.mental),
             title: const Text('Patrones de IA'),
-            onTap: () { Navigator.pop(context); GoRouter.of(context).go(AppRoutes.mentalInsights); },
+            onTap: () { Navigator.pop(context); GoRouter.of(context).push(AppRoutes.mentalInsights); },
           ),
           ListTile(
             leading: Icon(Icons.flag_outlined, color: AppColors.goals),
@@ -669,7 +669,7 @@ class _AppShellState extends State<_AppShell> {
           ListTile(
             leading: const Icon(Icons.summarize_outlined),
             title: const Text('Resumen Semanal'),
-            onTap: () { Navigator.pop(context); GoRouter.of(context).go(AppRoutes.weeklySummary); },
+            onTap: () { Navigator.pop(context); GoRouter.of(context).push(AppRoutes.weeklySummary); },
           ),
         ],
       ),
