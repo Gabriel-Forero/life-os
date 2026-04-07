@@ -655,9 +655,11 @@ class _MilestonesTimelineContent extends ConsumerWidget {
   ) {
     showDialog<void>(
       context: context,
-      builder: (_) => _MilestoneActionDialog(
+      barrierDismissible: true,
+      builder: (dialogContext) => _MilestoneActionDialog(
         milestone: milestone,
         ref: ref,
+        onClose: () => Navigator.of(dialogContext).pop(),
       ),
     );
   }
@@ -844,10 +846,12 @@ class _AddMilestoneButton extends ConsumerWidget {
   void _showAddMilestoneDialog(BuildContext context, WidgetRef ref) {
     showDialog<void>(
       context: context,
-      builder: (_) => _AddMilestoneDialog(
+      barrierDismissible: true,
+      builder: (dialogContext) => _AddMilestoneDialog(
         goalId: goalId,
         sortOrder: milestoneCount,
         ref: ref,
+        onClose: () => Navigator.of(dialogContext).pop(),
       ),
     );
   }
@@ -861,10 +865,12 @@ class _MilestoneActionDialog extends StatelessWidget {
   const _MilestoneActionDialog({
     required this.milestone,
     required this.ref,
+    required this.onClose,
   });
 
   final GoalMilestone milestone;
   final WidgetRef ref;
+  final VoidCallback onClose;
 
   @override
   Widget build(BuildContext context) {
@@ -881,7 +887,7 @@ class _MilestoneActionDialog extends StatelessWidget {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: onClose,
           child: const Text('Cerrar'),
         ),
         if (!milestone.isCompleted)
@@ -896,7 +902,7 @@ class _MilestoneActionDialog extends StatelessWidget {
             onPressed: () async {
               final goalsNotifier = ref.read(goalsNotifierProvider);
               await goalsNotifier.completeMilestone(milestone.id);
-              if (context.mounted) Navigator.pop(context);
+              onClose();
             },
           ),
       ],
@@ -913,11 +919,13 @@ class _AddMilestoneDialog extends StatefulWidget {
     required this.goalId,
     required this.sortOrder,
     required this.ref,
+    required this.onClose,
   });
 
   final int goalId;
   final int sortOrder;
   final WidgetRef ref;
+  final VoidCallback onClose;
 
   @override
   State<_AddMilestoneDialog> createState() => _AddMilestoneDialogState();
@@ -962,7 +970,7 @@ class _AddMilestoneDialogState extends State<_AddMilestoneDialog> {
         sortOrder: widget.sortOrder,
       ),
     );
-    if (mounted) Navigator.pop(context);
+    widget.onClose();
   }
 
   @override
@@ -1033,7 +1041,7 @@ class _AddMilestoneDialogState extends State<_AddMilestoneDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: _saving ? null : () => Navigator.pop(context),
+          onPressed: _saving ? null : widget.onClose,
           child: const Text('Cancelar'),
         ),
         ElevatedButton(
