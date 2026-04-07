@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -228,6 +229,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.financeSmsImport,
+        redirect: (context, state) => kIsWeb ? AppRoutes.finance : null,
         pageBuilder: (context, state) =>
             slideUpTransition(const SmsImportScreen(), state),
       ),
@@ -253,6 +255,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.gymMeasurements,
+        redirect: (context, state) => kIsWeb ? AppRoutes.gym : null,
         pageBuilder: (context, state) =>
             fadeScaleTransition(const BodyMeasurementsScreen(), state),
       ),
@@ -283,11 +286,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.barcodeScanner,
+        redirect: (context, state) => kIsWeb ? AppRoutes.nutrition : null,
         pageBuilder: (context, state) =>
             slideUpTransition(const BarcodeScannerScreen(), state),
       ),
       GoRoute(
         path: AppRoutes.photoAnalysis,
+        redirect: (context, state) => kIsWeb ? AppRoutes.nutrition : null,
         pageBuilder: (context, state) =>
             slideUpTransition(const PhotoAnalysisScreen(), state),
       ),
@@ -303,6 +308,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.backup,
+        redirect: (context, state) => kIsWeb ? AppRoutes.settings : null,
         pageBuilder: (context, state) =>
             fadeScaleTransition(const BackupScreen(), state),
       ),
@@ -486,12 +492,13 @@ class _AppShellState extends State<_AppShell> {
 
     if (location == AppRoutes.finance) {
       return [
-        IconButton(
-          key: const ValueKey('transactions-sms-import-button'),
-          icon: Icon(Icons.sms_outlined, color: AppColors.finance),
-          onPressed: () => GoRouter.of(context).push(AppRoutes.financeSmsImport),
-          tooltip: 'Importar SMS',
-        ),
+        if (!kIsWeb)
+          IconButton(
+            key: const ValueKey('transactions-sms-import-button'),
+            icon: Icon(Icons.sms_outlined, color: AppColors.finance),
+            onPressed: () => GoRouter.of(context).push(AppRoutes.financeSmsImport),
+            tooltip: 'Importar SMS',
+          ),
         IconButton(
           key: const ValueKey('transactions-budget-button'),
           icon: Icon(Icons.pie_chart_outline, color: AppColors.finance),
@@ -521,12 +528,13 @@ class _AppShellState extends State<_AppShell> {
 
     if (location == AppRoutes.nutrition) {
       return [
-        IconButton(
-          key: const ValueKey('nutrition-photo-analysis-button'),
-          icon: Icon(Icons.camera_alt_outlined, color: AppColors.nutrition),
-          onPressed: () => GoRouter.of(context).push(AppRoutes.photoAnalysis),
-          tooltip: 'Analizar foto',
-        ),
+        if (!kIsWeb)
+          IconButton(
+            key: const ValueKey('nutrition-photo-analysis-button'),
+            icon: Icon(Icons.camera_alt_outlined, color: AppColors.nutrition),
+            onPressed: () => GoRouter.of(context).push(AppRoutes.photoAnalysis),
+            tooltip: 'Analizar foto',
+          ),
         IconButton(
           key: const ValueKey('nutrition-goals-nav-button'),
           icon: Icon(Icons.track_changes_outlined, color: AppColors.nutrition),
