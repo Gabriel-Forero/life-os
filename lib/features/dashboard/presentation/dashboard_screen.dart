@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:life_os/core/constants/app_breakpoints.dart';
 import 'package:life_os/core/constants/app_colors.dart';
 import 'package:life_os/core/providers/providers.dart';
 import 'package:life_os/core/router/app_router.dart';
@@ -384,28 +385,33 @@ class _ModuleCardGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 1.4,
-      ),
-      itemCount: cards.length,
-      itemBuilder: (context, index) {
-        final card = cards[index];
-        return AnimatedListItem(
-          index: index,
-          child: Semantics(
-            label: '${card.title}: ${card.subtitle}. Toca para ver detalles.',
-            button: true,
-            child: _ModuleCard(
-              key: ValueKey('module-card-${card.moduleKey}'),
-              data: card,
-            ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = AppBreakpoints.gridColumns(constraints.maxWidth);
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: columns,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 1.4,
           ),
+          itemCount: cards.length,
+          itemBuilder: (context, index) {
+            final card = cards[index];
+            return AnimatedListItem(
+              index: index,
+              child: Semantics(
+                label: '${card.title}: ${card.subtitle}. Toca para ver detalles.',
+                button: true,
+                child: _ModuleCard(
+                  key: ValueKey('module-card-${card.moduleKey}'),
+                  data: card,
+                ),
+              ),
+            );
+          },
         );
       },
     );

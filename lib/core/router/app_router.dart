@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:life_os/core/constants/app_breakpoints.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:life_os/core/constants/app_colors.dart';
@@ -710,6 +711,353 @@ class _AppShellState extends State<_AppShell> {
   }
 
   // ---------------------------------------------------------------------------
+  // Sidebar item data
+  // ---------------------------------------------------------------------------
+
+  static const _sidebarModules = [
+    (icon: Icons.account_balance_wallet, label: 'Finanzas', route: AppRoutes.finance, color: AppColors.finance),
+    (icon: Icons.fitness_center, label: 'Gimnasio', route: AppRoutes.gym, color: AppColors.gym),
+    (icon: Icons.restaurant, label: 'Nutricion', route: AppRoutes.nutrition, color: AppColors.nutrition),
+    (icon: Icons.check_circle, label: 'Habitos', route: AppRoutes.habits, color: AppColors.habits),
+  ];
+
+  static const _sidebarMore = [
+    (icon: Icons.spa, label: 'Bienestar', route: AppRoutes.wellness, color: AppColors.mental),
+    (icon: Icons.flag_outlined, label: 'Metas', route: AppRoutes.goals, color: AppColors.goals),
+    (icon: Icons.insights, label: 'Mi Progreso', route: '/monitoring', color: AppColors.dayScore),
+    (icon: Icons.smart_toy_outlined, label: 'Asistente AI', route: '/ai/conversations', color: AppColors.primary),
+  ];
+
+  bool _isRouteActive(BuildContext context, String route) {
+    final location = GoRouterState.of(context).uri.path;
+    if (route == '/') return location == '/';
+    return location.startsWith(route);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Desktop layout (>= 1200px)
+  // ---------------------------------------------------------------------------
+
+  Widget _buildDesktopLayout(BuildContext context) {
+    final theme = Theme.of(context);
+    final location = GoRouterState.of(context).uri.path;
+    final actions = _actionsForLocation(context);
+
+    return Scaffold(
+      backgroundColor: AppColors.lightBackground,
+      body: Row(
+        children: [
+          // --- Permanent sidebar ---
+          Container(
+            width: 260,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border(right: BorderSide(color: AppColors.lightBorder, width: 1)),
+            ),
+            child: Column(
+              children: [
+                // Header
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 28, 20, 24),
+                  child: Row(
+                    children: [
+                      Icon(Icons.shield_outlined, size: 28, color: AppColors.primary),
+                      const SizedBox(width: 10),
+                      Text('LifeOS', style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.primary,
+                        letterSpacing: 0.5,
+                      )),
+                    ],
+                  ),
+                ),
+                // Home
+                _SidebarItem(
+                  icon: Icons.home_outlined,
+                  selectedIcon: Icons.home,
+                  label: 'Home',
+                  color: AppColors.primary,
+                  selected: location == '/',
+                  onTap: () => GoRouter.of(context).go(AppRoutes.home),
+                ),
+                _SidebarItem(
+                  icon: Icons.book_outlined,
+                  selectedIcon: Icons.book,
+                  label: 'Diario',
+                  color: AppColors.primary,
+                  selected: false,
+                  onTap: () => _showDiarySheet(context),
+                ),
+                const SizedBox(height: 8),
+                // Section: Modules
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text('MODULOS', style: theme.textTheme.labelSmall?.copyWith(
+                      color: AppColors.lightTextSecondary,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.2,
+                    )),
+                  ),
+                ),
+                for (final mod in _sidebarModules)
+                  _SidebarItem(
+                    icon: mod.icon,
+                    label: mod.label,
+                    color: mod.color,
+                    selected: _isRouteActive(context, mod.route),
+                    onTap: () => GoRouter.of(context).go(mod.route),
+                  ),
+                const SizedBox(height: 8),
+                // Section: More
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text('MAS', style: theme.textTheme.labelSmall?.copyWith(
+                      color: AppColors.lightTextSecondary,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.2,
+                    )),
+                  ),
+                ),
+                for (final item in _sidebarMore)
+                  _SidebarItem(
+                    icon: item.icon,
+                    label: item.label,
+                    color: item.color,
+                    selected: _isRouteActive(context, item.route),
+                    onTap: () => GoRouter.of(context).go(item.route),
+                  ),
+                const Spacer(),
+                // Bottom actions
+                const Divider(height: 1),
+                _SidebarItem(
+                  icon: Icons.settings_outlined,
+                  label: 'Configuracion',
+                  color: AppColors.lightTextSecondary,
+                  selected: _isRouteActive(context, AppRoutes.settings),
+                  onTap: () => GoRouter.of(context).go(AppRoutes.settings),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      icon: const Icon(Icons.add, size: 18),
+                      label: const Text('Agregar'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: () => _showQuickAddSheet(context),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // --- Content area ---
+          Expanded(
+            child: Column(
+              children: [
+                // Content header (replaces AppBar)
+                Container(
+                  color: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                  child: Row(
+                    children: [
+                      Text(
+                        _titleForLocation(context),
+                        style: theme.textTheme.headlineMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: _colorForLocation(context),
+                        ),
+                      ),
+                      const Spacer(),
+                      if (actions.isNotEmpty)
+                        ...actions.map((btn) {
+                          final iconBtn = btn as IconButton;
+                          return Padding(
+                            padding: const EdgeInsets.only(left: 4),
+                            child: TextButton.icon(
+                              icon: iconBtn.icon,
+                              label: Text(iconBtn.tooltip ?? ''),
+                              style: TextButton.styleFrom(
+                                foregroundColor: _colorForLocation(context),
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              ),
+                              onPressed: iconBtn.onPressed,
+                            ),
+                          );
+                        }),
+                    ],
+                  ),
+                ),
+                // Scrollable content with max-width
+                Expanded(
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: AppBreakpoints.maxContentWidth),
+                      child: child,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Tablet layout (600–1199px)
+  // ---------------------------------------------------------------------------
+
+  Widget _buildTabletLayout(BuildContext context) {
+    final selectedIndex = _selectedIndex(context);
+    return Scaffold(
+      backgroundColor: AppColors.lightBackground,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        surfaceTintColor: Colors.white,
+        centerTitle: true,
+        leading: Builder(
+          builder: (ctx) => IconButton(
+            icon: const Icon(Icons.menu),
+            onPressed: () => Scaffold.of(ctx).openDrawer(),
+            tooltip: 'Menu',
+          ),
+        ),
+        title: Text(
+          _titleForLocation(context),
+          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+            fontWeight: FontWeight.w800,
+            color: _colorForLocation(context),
+          ),
+        ),
+      ),
+      drawer: _buildDrawer(context),
+      body: Row(
+        children: [
+          NavigationRail(
+            selectedIndex: selectedIndex,
+            labelType: NavigationRailLabelType.all,
+            destinations: const [
+              NavigationRailDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: Text('Home')),
+              NavigationRailDestination(icon: Icon(Icons.book_outlined), selectedIcon: Icon(Icons.book), label: Text('Diario')),
+              NavigationRailDestination(icon: Icon(Icons.add_circle_outline), selectedIcon: Icon(Icons.add_circle), label: Text('+')),
+              NavigationRailDestination(icon: Icon(Icons.bar_chart_outlined), selectedIcon: Icon(Icons.bar_chart), label: Text('Progreso')),
+              NavigationRailDestination(icon: Icon(Icons.person_outlined), selectedIcon: Icon(Icons.person), label: Text('Perfil')),
+            ],
+            onDestinationSelected: (index) {
+              switch (index) {
+                case 0: GoRouter.of(context).go(AppRoutes.home);
+                case 1: _showDiarySheet(context);
+                case 2: _showQuickAddSheet(context);
+                case 3: GoRouter.of(context).push(AppRoutes.monitoring);
+                case 4: GoRouter.of(context).go(AppRoutes.settings);
+              }
+            },
+          ),
+          const VerticalDivider(thickness: 1, width: 1),
+          Expanded(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: AppBreakpoints.maxContentWidthMedium),
+                child: Column(
+                  children: [
+                    if (_actionsForLocation(context).isNotEmpty)
+                      Container(
+                        color: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: _actionsForLocation(context),
+                        ),
+                      ),
+                    Expanded(child: child),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Phone layout (< 600px)
+  // ---------------------------------------------------------------------------
+
+  Widget _buildPhoneLayout(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.lightBackground,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        surfaceTintColor: Colors.white,
+        shadowColor: Colors.black.withAlpha(20),
+        centerTitle: true,
+        leading: Builder(
+          builder: (ctx) => IconButton(
+            icon: const Icon(Icons.menu),
+            onPressed: () => Scaffold.of(ctx).openDrawer(),
+            tooltip: 'Menu',
+          ),
+        ),
+        title: Text(
+          _titleForLocation(context),
+          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+            fontWeight: FontWeight.w800,
+            color: _colorForLocation(context),
+          ),
+        ),
+      ),
+      body: Column(
+        children: [
+          if (_actionsForLocation(context).isNotEmpty)
+            Container(
+              color: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: _actionsForLocation(context),
+              ),
+            ),
+          Expanded(child: child),
+        ],
+      ),
+      drawer: _buildDrawer(context),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _selectedIndex(context),
+        destinations: [
+          const NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Home'),
+          const NavigationDestination(icon: Icon(Icons.book_outlined), selectedIcon: Icon(Icons.book), label: 'Diario'),
+          NavigationDestination(icon: Icon(Icons.add_circle, size: 32, color: AppColors.primary), selectedIcon: Icon(Icons.add_circle, size: 32, color: AppColors.primary), label: ''),
+          const NavigationDestination(icon: Icon(Icons.bar_chart_outlined), selectedIcon: Icon(Icons.bar_chart), label: 'Progreso'),
+          const NavigationDestination(icon: Icon(Icons.person_outlined), selectedIcon: Icon(Icons.person), label: 'Perfil'),
+        ],
+        onDestinationSelected: (index) {
+          switch (index) {
+            case 0: GoRouter.of(context).go(AppRoutes.home);
+            case 1: _showDiarySheet(context);
+            case 2: _showQuickAddSheet(context);
+            case 3: GoRouter.of(context).push(AppRoutes.monitoring);
+            case 4: GoRouter.of(context).go(AppRoutes.settings);
+          }
+        },
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
   // Build
   // ---------------------------------------------------------------------------
 
@@ -717,199 +1065,78 @@ class _AppShellState extends State<_AppShell> {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        if (constraints.maxWidth > 600) {
-          // ------------------------------------------------------------------
-          // Tablet: permanent NavigationRail on the left, no bottom bar
-          // ------------------------------------------------------------------
-          final selectedIndex = _selectedIndex(context);
-          return Scaffold(
-            backgroundColor: AppColors.lightBackground,
-            appBar: AppBar(
-              backgroundColor: Colors.white,
-              elevation: 0,
-              surfaceTintColor: Colors.white,
-              centerTitle: true,
-              leading: Builder(
-                builder: (ctx) => IconButton(
-                  icon: const Icon(Icons.menu),
-                  onPressed: () => Scaffold.of(ctx).openDrawer(),
-                  tooltip: 'Menu',
-                ),
-              ),
-              title: Text(
-                _titleForLocation(context),
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: _colorForLocation(context),
-                ),
-              ),
-              // Actions moved to body — keeps title centered and unclipped
+        if (constraints.maxWidth >= AppBreakpoints.expanded) {
+          return _buildDesktopLayout(context);
+        }
+        if (constraints.maxWidth >= AppBreakpoints.compact) {
+          return _buildTabletLayout(context);
+        }
+        return _buildPhoneLayout(context);
+      },
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Desktop sidebar item
+// ---------------------------------------------------------------------------
+
+class _SidebarItem extends StatelessWidget {
+  const _SidebarItem({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.selected,
+    required this.onTap,
+    this.selectedIcon,
+  });
+
+  final IconData icon;
+  final IconData? selectedIcon;
+  final String label;
+  final Color color;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 1),
+      child: Material(
+        color: selected ? color.withAlpha(20) : Colors.transparent,
+        borderRadius: BorderRadius.circular(10),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              border: selected
+                  ? Border(left: BorderSide(color: color, width: 3))
+                  : null,
+              borderRadius: BorderRadius.circular(10),
             ),
-            drawer: _buildDrawer(context),
-            body: Row(
+            child: Row(
               children: [
-                NavigationRail(
-                  selectedIndex: selectedIndex,
-                  labelType: NavigationRailLabelType.all,
-                  destinations: const [
-                    NavigationRailDestination(
-                      icon: Icon(Icons.home_outlined),
-                      selectedIcon: Icon(Icons.home),
-                      label: Text('Home'),
-                    ),
-                    NavigationRailDestination(
-                      icon: Icon(Icons.book_outlined),
-                      selectedIcon: Icon(Icons.book),
-                      label: Text('Diario'),
-                    ),
-                    NavigationRailDestination(
-                      icon: Icon(Icons.add_circle_outline),
-                      selectedIcon: Icon(Icons.add_circle),
-                      label: Text('+'),
-                    ),
-                    NavigationRailDestination(
-                      icon: Icon(Icons.bar_chart_outlined),
-                      selectedIcon: Icon(Icons.bar_chart),
-                      label: Text('Progreso'),
-                    ),
-                    NavigationRailDestination(
-                      icon: Icon(Icons.person_outlined),
-                      selectedIcon: Icon(Icons.person),
-                      label: Text('Perfil'),
-                    ),
-                  ],
-                  onDestinationSelected: (index) {
-                    switch (index) {
-                      case 0:
-                        GoRouter.of(context).go(AppRoutes.home);
-                      case 1:
-                        _showDiarySheet(context);
-                      case 2:
-                        _showQuickAddSheet(context);
-                      case 3:
-                        GoRouter.of(context).push(AppRoutes.monitoring);
-                      case 4:
-                        GoRouter.of(context).go(AppRoutes.settings);
-                    }
-                  },
+                Icon(
+                  selected ? (selectedIcon ?? icon) : icon,
+                  size: 20,
+                  color: selected ? color : AppColors.lightTextSecondary,
                 ),
-                const VerticalDivider(thickness: 1, width: 1),
-                Expanded(
-                  child: Column(
-                    children: [
-                      if (_actionsForLocation(context).isNotEmpty)
-                        Container(
-                          color: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: _actionsForLocation(context),
-                          ),
-                        ),
-                      Expanded(child: child),
-                    ],
+                const SizedBox(width: 12),
+                Text(
+                  label,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                    color: selected ? color : AppColors.lightTextPrimary,
                   ),
                 ),
               ],
             ),
-          );
-        }
-
-        // --------------------------------------------------------------------
-        // Phone: bottom navigation bar (new 5-item layout)
-        // --------------------------------------------------------------------
-        return Scaffold(
-          backgroundColor: AppColors.lightBackground,
-          appBar: AppBar(
-            backgroundColor: Colors.white,
-            elevation: 0,
-            surfaceTintColor: Colors.white,
-            shadowColor: Colors.black.withAlpha(20),
-            centerTitle: true,
-            leading: Builder(
-              builder: (ctx) => IconButton(
-                icon: const Icon(Icons.menu),
-                onPressed: () => Scaffold.of(ctx).openDrawer(),
-                tooltip: 'Menu',
-              ),
-            ),
-            title: Text(
-              _titleForLocation(context),
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.w800,
-                color: _colorForLocation(context),
-              ),
-            ),
           ),
-          body: Column(
-            children: [
-              if (_actionsForLocation(context).isNotEmpty)
-                Container(
-                  color: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: _actionsForLocation(context),
-                  ),
-                ),
-              Expanded(child: child),
-            ],
-          ),
-          drawer: _buildDrawer(context),
-          bottomNavigationBar: NavigationBar(
-            selectedIndex: _selectedIndex(context),
-            destinations: [
-              const NavigationDestination(
-                icon: Icon(Icons.home_outlined),
-                selectedIcon: Icon(Icons.home),
-                label: 'Home',
-              ),
-              const NavigationDestination(
-                icon: Icon(Icons.book_outlined),
-                selectedIcon: Icon(Icons.book),
-                label: 'Diario',
-              ),
-              NavigationDestination(
-                icon: Icon(
-                  Icons.add_circle,
-                  size: 32,
-                  color: AppColors.primary,
-                ),
-                selectedIcon: Icon(
-                  Icons.add_circle,
-                  size: 32,
-                  color: AppColors.primary,
-                ),
-                label: '',
-              ),
-              const NavigationDestination(
-                icon: Icon(Icons.bar_chart_outlined),
-                selectedIcon: Icon(Icons.bar_chart),
-                label: 'Progreso',
-              ),
-              const NavigationDestination(
-                icon: Icon(Icons.person_outlined),
-                selectedIcon: Icon(Icons.person),
-                label: 'Perfil',
-              ),
-            ],
-            onDestinationSelected: (index) {
-              switch (index) {
-                case 0:
-                  GoRouter.of(context).go(AppRoutes.home);
-                case 1:
-                  _showDiarySheet(context);
-                case 2:
-                  _showQuickAddSheet(context);
-                case 3:
-                  GoRouter.of(context).push(AppRoutes.monitoring);
-                case 4:
-                  GoRouter.of(context).go(AppRoutes.settings);
-              }
-            },
-          ),
-        );
-      },
+        ),
+      ),
     );
   }
 }

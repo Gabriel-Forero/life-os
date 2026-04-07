@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:life_os/core/constants/app_breakpoints.dart';
 import 'package:life_os/core/constants/app_colors.dart';
 import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
@@ -26,8 +27,10 @@ class WellnessHubScreen extends ConsumerWidget {
           // Quick Actions Grid
           Text('Acciones rapidas', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: 12),
-          GridView.count(
-            crossAxisCount: 2,
+          LayoutBuilder(builder: (context, constraints) {
+            final columns = AppBreakpoints.gridColumns(constraints.maxWidth, expandedCols: 3);
+            return GridView.count(
+            crossAxisCount: columns,
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             mainAxisSpacing: 12,
@@ -83,7 +86,8 @@ class WellnessHubScreen extends ConsumerWidget {
                 onTap: () => GoRouter.of(context).push(AppRoutes.mentalInsights),
               ),
             ],
-          ),
+          );
+          }),
           const SizedBox(height: 24),
 
           // Today's Summary
