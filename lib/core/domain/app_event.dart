@@ -57,6 +57,8 @@ final class BudgetThresholdEvent extends AppEvent {
     required this.budgetId,
     required this.categoryName,
     required this.percentage,
+    this.threshold = 0,
+    this.level = 'category',
     super.timestamp,
   });
 
@@ -64,15 +66,22 @@ final class BudgetThresholdEvent extends AppEvent {
   final String categoryName;
   final double percentage;
 
+  /// The threshold that was crossed: 50, 75, 90, or 100.
+  final int threshold;
+
+  /// The level: 'category', 'group', or 'global'.
+  final String level;
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is BudgetThresholdEvent &&
           other.budgetId == budgetId &&
-          other.percentage == percentage;
+          other.threshold == threshold &&
+          other.level == level;
 
   @override
-  int get hashCode => Object.hash(budgetId, percentage);
+  int get hashCode => Object.hash(budgetId, threshold, level);
 }
 
 final class HabitCheckedInEvent extends AppEvent {

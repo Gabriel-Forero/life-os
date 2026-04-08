@@ -10,23 +10,13 @@ mixin _$FinanceDaoMixin on DatabaseAccessor<AppDatabase> {
   $SavingsGoalsTable get savingsGoals => attachedDatabase.savingsGoals;
   $RecurringTransactionsTable get recurringTransactions =>
       attachedDatabase.recurringTransactions;
-  FinanceDaoManager get managers => FinanceDaoManager(this);
-}
-
-class FinanceDaoManager {
-  final _$FinanceDaoMixin _db;
-  FinanceDaoManager(this._db);
-  $$CategoriesTableTableManager get categories =>
-      $$CategoriesTableTableManager(_db.attachedDatabase, _db.categories);
-  $$TransactionsTableTableManager get transactions =>
-      $$TransactionsTableTableManager(_db.attachedDatabase, _db.transactions);
-  $$BudgetsTableTableManager get budgets =>
-      $$BudgetsTableTableManager(_db.attachedDatabase, _db.budgets);
-  $$SavingsGoalsTableTableManager get savingsGoals =>
-      $$SavingsGoalsTableTableManager(_db.attachedDatabase, _db.savingsGoals);
-  $$RecurringTransactionsTableTableManager get recurringTransactions =>
-      $$RecurringTransactionsTableTableManager(
-        _db.attachedDatabase,
-        _db.recurringTransactions,
-      );
+  $CategoryGroupsTable get categoryGroups => attachedDatabase.categoryGroups;
+  $CategoryGroupMembersTable get categoryGroupMembers =>
+      attachedDatabase.categoryGroupMembers;
+  $GroupBudgetsTable get groupBudgets => attachedDatabase.groupBudgets;
+  $BudgetTemplatesTable get budgetTemplates => attachedDatabase.budgetTemplates;
+  $BudgetTemplateItemsTable get budgetTemplateItems =>
+      attachedDatabase.budgetTemplateItems;
+  $MonthlyBudgetConfigsTable get monthlyBudgetConfigs =>
+      attachedDatabase.monthlyBudgetConfigs;
 }

@@ -12,6 +12,7 @@ import 'package:life_os/features/dashboard/presentation/evolution_screen.dart';
 import 'package:life_os/features/dashboard/presentation/monitoring_screen.dart';
 import 'package:life_os/features/dashboard/presentation/score_history_screen.dart';
 import 'package:life_os/features/finance/presentation/add_edit_transaction_screen.dart';
+import 'package:life_os/features/finance/presentation/budget_analytics_screen.dart';
 import 'package:life_os/features/finance/presentation/budget_overview_screen.dart';
 import 'package:life_os/features/finance/presentation/finance_dashboard_screen.dart';
 import 'package:life_os/features/finance/presentation/savings_goals_screen.dart';
@@ -71,6 +72,7 @@ abstract final class AppRoutes {
   static const String financeSavings = '/finance/savings';
   static const String financeDashboard = '/finance/dashboard';
   static const String financeSmsImport = '/finance/sms-import';
+  static const String financeBudgetAnalytics = '/finance/budget-analytics';
 
   // Gym
   static const String gym = '/gym';
@@ -217,6 +219,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           // --- Overview/detail screens (sidebar stays visible) ---
           // Finance
           GoRoute(path: AppRoutes.financeBudgets, builder: (context, state) => const BudgetOverviewScreen()),
+          GoRoute(path: AppRoutes.financeBudgetAnalytics, builder: (context, state) => const BudgetAnalyticsScreen()),
           GoRoute(path: AppRoutes.financeSavings, builder: (context, state) => const SavingsGoalsScreen()),
           GoRoute(path: AppRoutes.financeDashboard, builder: (context, state) => const FinanceDashboardScreen()),
           GoRoute(path: AppRoutes.financeValuation, builder: (context, state) => const FinanceValuationScreen()),

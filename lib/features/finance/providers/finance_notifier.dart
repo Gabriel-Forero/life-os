@@ -306,6 +306,233 @@ class FinanceNotifier {
     }
   }
 
+  // --- Auto-repeat budgets ---
+
+  /// Checks if the target month has budgets. If not, copies from the previous
+  /// month (only budgets with autoRepeat = true) and the global budget config.
+  /// Returns [Success(true)] if budgets were copied, [Success(false)] if the
+  /// target month already had budgets.
+  Future<Result<bool>> ensureBudgetsForMonth(int month, int year) async {
+    try {
+      final existing = await dao.getBudgetsForMonth(month, year);
+      if (existing.isNotEmpty) return const Success(false);
+
+      // Determine previous month
+      final prevMonth = month == 1 ? 12 : month - 1;
+      final prevYear = month == 1 ? year - 1 : year;
+
+      final prevBudgets = await dao.getBudgetsForMonth(prevMonth, prevYear);
+      if (prevBudgets.isEmpty) return const Success(false);
+
+      await dao.copyBudgetsToMonth(
+        fromMonth: prevMonth,
+        fromYear: prevYear,
+        toMonth: month,
+        toYear: year,
+      );
+
+      await dao.copyMonthlyConfig(
+        fromMonth: prevMonth,
+        fromYear: prevYear,
+        toMonth: month,
+        toYear: year,
+      );
+
+      await dao.copyGroupBudgetsToMonth(
+        fromMonth: prevMonth,
+        fromYear: prevYear,
+        toMonth: month,
+        toYear: year,
+      );
+
+      return const Success(true);
+    } on Exception catch (e) {
+      return Failure(DatabaseFailure(
+        userMessage: 'Error al copiar presupuestos',
+        debugMessage: 'ensureBudgetsForMonth failed: $e',
+        originalError: e,
+      ));
+    }
+  }
+
+  // --- Budget Templates ---
+
+  Future<Result<int>> saveAsTemplate({
+    required String name,
+    required int month,
+    required int year,
+  }) async {
+    final nameResult = validateCategoryName(name);
+    if (nameResult.isFailure) return Failure(nameResult.failureOrNull!);
+
+    try {
+      final templateId = await dao.saveCurrentBudgetsAsTemplate(
+        name: nameResult.valueOrNull!,
+        month: month,
+        year: year,
+      );
+      return Success(templateId);
+    } on Exception catch (e) {
+      return Failure(DatabaseFailure(
+        userMessage: 'Error al guardar plantilla',
+        debugMessage: 'saveAsTemplate failed: $e',
+        originalError: e,
+      ));
+    }
+  }
+
+  Future<Result<void>> applyTemplate({
+    required int templateId,
+    required int month,
+    required int year,
+  }) async {
+    try {
+      await dao.applyTemplate(
+        templateId: templateId,
+        month: month,
+        year: year,
+      );
+      return const Success(null);
+    } on Exception catch (e) {
+      return Failure(DatabaseFailure(
+        userMessage: 'Error al aplicar plantilla',
+        debugMessage: 'applyTemplate failed: $e',
+        originalError: e,
+      ));
+    }
+  }
+
+  Future<Result<void>> deleteTemplate(int templateId) async {
+    try {
+      await dao.deleteTemplate(templateId);
+      return const Success(null);
+    } on Exception catch (e) {
+      return Failure(DatabaseFailure(
+        userMessage: 'Error al eliminar plantilla',
+        debugMessage: 'deleteTemplate failed: $e',
+        originalError: e,
+      ));
+    }
+  }
+
+  // --- Category Groups ---
+
+  Future<Result<int>> addGroup({
+    required String name,
+    required int color,
+  }) async {
+    final nameResult = validateCategoryName(name);
+    if (nameResult.isFailure) return Failure(nameResult.failureOrNull!);
+
+    try {
+      final id = await dao.insertGroup(CategoryGroupsCompanion.insert(
+        name: nameResult.valueOrNull!,
+        color: Value(color),
+        createdAt: DateTime.now(),
+      ));
+      return Success(id);
+    } on Exception catch (e) {
+      return Failure(DatabaseFailure(
+        userMessage: 'Error al crear grupo',
+        debugMessage: 'addGroup failed: $e',
+        originalError: e,
+      ));
+    }
+  }
+
+  Future<Result<void>> removeGroup(int groupId) async {
+    try {
+      await dao.deleteGroup(groupId);
+      return const Success(null);
+    } on Exception catch (e) {
+      return Failure(DatabaseFailure(
+        userMessage: 'Error al eliminar grupo',
+        debugMessage: 'removeGroup failed: $e',
+        originalError: e,
+      ));
+    }
+  }
+
+  Future<Result<void>> assignCategoryToGroup(
+      int groupId, int categoryId) async {
+    try {
+      await dao.addCategoryToGroup(groupId, categoryId);
+      return const Success(null);
+    } on Exception catch (e) {
+      return Failure(DatabaseFailure(
+        userMessage: 'Error al asignar categoria al grupo',
+        debugMessage: 'assignCategoryToGroup failed: $e',
+        originalError: e,
+      ));
+    }
+  }
+
+  Future<Result<void>> unassignCategoryFromGroup(
+      int groupId, int categoryId) async {
+    try {
+      await dao.removeCategoryFromGroup(groupId, categoryId);
+      return const Success(null);
+    } on Exception catch (e) {
+      return Failure(DatabaseFailure(
+        userMessage: 'Error al desasignar categoria del grupo',
+        debugMessage: 'unassignCategoryFromGroup failed: $e',
+        originalError: e,
+      ));
+    }
+  }
+
+  Future<Result<void>> setGroupBudget({
+    required int groupId,
+    required int amountCents,
+    required int month,
+    required int year,
+  }) async {
+    final amountResult = validateBudgetAmount(amountCents);
+    if (amountResult.isFailure) return Failure(amountResult.failureOrNull!);
+
+    try {
+      await dao.setGroupBudget(
+        groupId: groupId,
+        amountCents: amountCents,
+        month: month,
+        year: year,
+      );
+      return const Success(null);
+    } on Exception catch (e) {
+      return Failure(DatabaseFailure(
+        userMessage: 'Error al guardar presupuesto de grupo',
+        debugMessage: 'setGroupBudget failed: $e',
+        originalError: e,
+      ));
+    }
+  }
+
+  // --- Global Budget ---
+
+  Future<Result<void>> setGlobalBudget({
+    required int amountCents,
+    required int month,
+    required int year,
+  }) async {
+    final amountResult = validateBudgetAmount(amountCents);
+    if (amountResult.isFailure) return Failure(amountResult.failureOrNull!);
+
+    try {
+      await dao.setGlobalBudget(
+        amountCents: amountCents,
+        month: month,
+        year: year,
+      );
+      return const Success(null);
+    } on Exception catch (e) {
+      return Failure(DatabaseFailure(
+        userMessage: 'Error al guardar presupuesto global',
+        debugMessage: 'setGlobalBudget failed: $e',
+        originalError: e,
+      ));
+    }
+  }
+
   // --- Savings Goals ---
 
   Future<Result<int>> addSavingsGoal(SavingsGoalInput input) async {
@@ -464,6 +691,13 @@ class FinanceNotifier {
     return all.isNotEmpty ? all.first.id : 1;
   }
 
+  static const _thresholds = [
+    (value: 0.50, label: 50),
+    (value: 0.75, label: 75),
+    (value: 0.90, label: 90),
+    (value: 1.0, label: 100),
+  ];
+
   Future<void> _checkBudgetThreshold(
     int categoryId,
     int expenseAmount,
@@ -483,20 +717,69 @@ class FinanceNotifier {
         .map((c) => c.name)
         .firstOrNull ?? '';
 
-    if (previousUtil < 0.8 && currentUtil >= 0.8) {
-      eventBus.emit(BudgetThresholdEvent(
-        budgetId: budget.id,
-        categoryName: catName,
-        percentage: currentUtil,
-      ));
+    for (final t in _thresholds) {
+      if (previousUtil < t.value && currentUtil >= t.value) {
+        eventBus.emit(BudgetThresholdEvent(
+          budgetId: budget.id,
+          categoryName: catName,
+          percentage: currentUtil,
+          threshold: t.label,
+          level: 'category',
+        ));
+      }
     }
 
-    if (previousUtil < 1.0 && currentUtil >= 1.0) {
-      eventBus.emit(BudgetThresholdEvent(
-        budgetId: budget.id,
-        categoryName: catName,
-        percentage: currentUtil,
-      ));
+    // Check group-level threshold
+    final groupId = await dao.getCategoryGroupId(categoryId);
+    if (groupId != null) {
+      final gb = await dao.getGroupBudget(groupId, now.month, now.year);
+      if (gb != null) {
+        final groupSpent = await dao.spentInGroup(groupId, now.month, now.year);
+        final groupPrevSpent = groupSpent - expenseAmount;
+        final groupUtil = groupSpent / gb.amountCents;
+        final groupPrevUtil = groupPrevSpent / gb.amountCents;
+
+        final groups = await dao.watchGroups().first;
+        final groupName = groups
+            .where((g) => g.id == groupId)
+            .map((g) => g.name)
+            .firstOrNull ?? '';
+
+        for (final t in _thresholds) {
+          if (groupPrevUtil < t.value && groupUtil >= t.value) {
+            eventBus.emit(BudgetThresholdEvent(
+              budgetId: gb.id,
+              categoryName: groupName,
+              percentage: groupUtil,
+              threshold: t.label,
+              level: 'group',
+            ));
+          }
+        }
+      }
+    }
+
+    // Check global-level threshold
+    final config = await dao.getMonthlyConfig(now.month, now.year);
+    if (config?.globalBudgetCents != null && config!.globalBudgetCents! > 0) {
+      final from = DateTime(now.year, now.month);
+      final to = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
+      final globalSpent = await dao.sumByType('expense', from, to);
+      final globalPrev = globalSpent - expenseAmount;
+      final globalUtil = globalSpent / config.globalBudgetCents!;
+      final globalPrevUtil = globalPrev / config.globalBudgetCents!;
+
+      for (final t in _thresholds) {
+        if (globalPrevUtil < t.value && globalUtil >= t.value) {
+          eventBus.emit(BudgetThresholdEvent(
+            budgetId: config.id,
+            categoryName: 'Global',
+            percentage: globalUtil,
+            threshold: t.label,
+            level: 'global',
+          ));
+        }
+      }
     }
   }
 }

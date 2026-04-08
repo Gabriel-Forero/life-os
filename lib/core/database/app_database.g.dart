@@ -1788,6 +1788,21 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _autoRepeatMeta = const VerificationMeta(
+    'autoRepeat',
+  );
+  @override
+  late final GeneratedColumn<bool> autoRepeat = GeneratedColumn<bool>(
+    'auto_repeat',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("auto_repeat" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -1817,6 +1832,7 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
     amountCents,
     month,
     year,
+    autoRepeat,
     createdAt,
     updatedAt,
   ];
@@ -1870,6 +1886,12 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
     } else if (isInserting) {
       context.missing(_yearMeta);
     }
+    if (data.containsKey('auto_repeat')) {
+      context.handle(
+        _autoRepeatMeta,
+        autoRepeat.isAcceptableOrUnknown(data['auto_repeat']!, _autoRepeatMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -1919,6 +1941,10 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
         DriftSqlType.int,
         data['${effectivePrefix}year'],
       )!,
+      autoRepeat: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}auto_repeat'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -1942,6 +1968,7 @@ class Budget extends DataClass implements Insertable<Budget> {
   final int amountCents;
   final int month;
   final int year;
+  final bool autoRepeat;
   final DateTime createdAt;
   final DateTime updatedAt;
   const Budget({
@@ -1950,6 +1977,7 @@ class Budget extends DataClass implements Insertable<Budget> {
     required this.amountCents,
     required this.month,
     required this.year,
+    required this.autoRepeat,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -1961,6 +1989,7 @@ class Budget extends DataClass implements Insertable<Budget> {
     map['amount_cents'] = Variable<int>(amountCents);
     map['month'] = Variable<int>(month);
     map['year'] = Variable<int>(year);
+    map['auto_repeat'] = Variable<bool>(autoRepeat);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -1973,6 +2002,7 @@ class Budget extends DataClass implements Insertable<Budget> {
       amountCents: Value(amountCents),
       month: Value(month),
       year: Value(year),
+      autoRepeat: Value(autoRepeat),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -1989,6 +2019,7 @@ class Budget extends DataClass implements Insertable<Budget> {
       amountCents: serializer.fromJson<int>(json['amountCents']),
       month: serializer.fromJson<int>(json['month']),
       year: serializer.fromJson<int>(json['year']),
+      autoRepeat: serializer.fromJson<bool>(json['autoRepeat']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -2002,6 +2033,7 @@ class Budget extends DataClass implements Insertable<Budget> {
       'amountCents': serializer.toJson<int>(amountCents),
       'month': serializer.toJson<int>(month),
       'year': serializer.toJson<int>(year),
+      'autoRepeat': serializer.toJson<bool>(autoRepeat),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -2013,6 +2045,7 @@ class Budget extends DataClass implements Insertable<Budget> {
     int? amountCents,
     int? month,
     int? year,
+    bool? autoRepeat,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => Budget(
@@ -2021,6 +2054,7 @@ class Budget extends DataClass implements Insertable<Budget> {
     amountCents: amountCents ?? this.amountCents,
     month: month ?? this.month,
     year: year ?? this.year,
+    autoRepeat: autoRepeat ?? this.autoRepeat,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -2035,6 +2069,9 @@ class Budget extends DataClass implements Insertable<Budget> {
           : this.amountCents,
       month: data.month.present ? data.month.value : this.month,
       year: data.year.present ? data.year.value : this.year,
+      autoRepeat: data.autoRepeat.present
+          ? data.autoRepeat.value
+          : this.autoRepeat,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -2048,6 +2085,7 @@ class Budget extends DataClass implements Insertable<Budget> {
           ..write('amountCents: $amountCents, ')
           ..write('month: $month, ')
           ..write('year: $year, ')
+          ..write('autoRepeat: $autoRepeat, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -2061,6 +2099,7 @@ class Budget extends DataClass implements Insertable<Budget> {
     amountCents,
     month,
     year,
+    autoRepeat,
     createdAt,
     updatedAt,
   );
@@ -2073,6 +2112,7 @@ class Budget extends DataClass implements Insertable<Budget> {
           other.amountCents == this.amountCents &&
           other.month == this.month &&
           other.year == this.year &&
+          other.autoRepeat == this.autoRepeat &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -2083,6 +2123,7 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
   final Value<int> amountCents;
   final Value<int> month;
   final Value<int> year;
+  final Value<bool> autoRepeat;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   const BudgetsCompanion({
@@ -2091,6 +2132,7 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
     this.amountCents = const Value.absent(),
     this.month = const Value.absent(),
     this.year = const Value.absent(),
+    this.autoRepeat = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -2100,6 +2142,7 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
     required int amountCents,
     required int month,
     required int year,
+    this.autoRepeat = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
   }) : categoryId = Value(categoryId),
@@ -2114,6 +2157,7 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
     Expression<int>? amountCents,
     Expression<int>? month,
     Expression<int>? year,
+    Expression<bool>? autoRepeat,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
   }) {
@@ -2123,6 +2167,7 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
       if (amountCents != null) 'amount_cents': amountCents,
       if (month != null) 'month': month,
       if (year != null) 'year': year,
+      if (autoRepeat != null) 'auto_repeat': autoRepeat,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -2134,6 +2179,7 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
     Value<int>? amountCents,
     Value<int>? month,
     Value<int>? year,
+    Value<bool>? autoRepeat,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
   }) {
@@ -2143,6 +2189,7 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
       amountCents: amountCents ?? this.amountCents,
       month: month ?? this.month,
       year: year ?? this.year,
+      autoRepeat: autoRepeat ?? this.autoRepeat,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -2166,6 +2213,9 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
     if (year.present) {
       map['year'] = Variable<int>(year.value);
     }
+    if (autoRepeat.present) {
+      map['auto_repeat'] = Variable<bool>(autoRepeat.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -2183,6 +2233,7 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
           ..write('amountCents: $amountCents, ')
           ..write('month: $month, ')
           ..write('year: $year, ')
+          ..write('autoRepeat: $autoRepeat, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -3267,6 +3318,2101 @@ class RecurringTransactionsCompanion
           ..write('nextOccurrence: $nextOccurrence, ')
           ..write('isActive: $isActive, ')
           ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $CategoryGroupsTable extends CategoryGroups
+    with TableInfo<$CategoryGroupsTable, CategoryGroup> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CategoryGroupsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 30,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _colorMeta = const VerificationMeta('color');
+  @override
+  late final GeneratedColumn<int> color = GeneratedColumn<int>(
+    'color',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0xFF9CA3AF),
+  );
+  static const VerificationMeta _sortOrderMeta = const VerificationMeta(
+    'sortOrder',
+  );
+  @override
+  late final GeneratedColumn<int> sortOrder = GeneratedColumn<int>(
+    'sort_order',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, name, color, sortOrder, createdAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'category_groups';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CategoryGroup> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('color')) {
+      context.handle(
+        _colorMeta,
+        color.isAcceptableOrUnknown(data['color']!, _colorMeta),
+      );
+    }
+    if (data.containsKey('sort_order')) {
+      context.handle(
+        _sortOrderMeta,
+        sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CategoryGroup map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CategoryGroup(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      color: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}color'],
+      )!,
+      sortOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sort_order'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $CategoryGroupsTable createAlias(String alias) {
+    return $CategoryGroupsTable(attachedDatabase, alias);
+  }
+}
+
+class CategoryGroup extends DataClass implements Insertable<CategoryGroup> {
+  final int id;
+  final String name;
+  final int color;
+  final int sortOrder;
+  final DateTime createdAt;
+  const CategoryGroup({
+    required this.id,
+    required this.name,
+    required this.color,
+    required this.sortOrder,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['name'] = Variable<String>(name);
+    map['color'] = Variable<int>(color);
+    map['sort_order'] = Variable<int>(sortOrder);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  CategoryGroupsCompanion toCompanion(bool nullToAbsent) {
+    return CategoryGroupsCompanion(
+      id: Value(id),
+      name: Value(name),
+      color: Value(color),
+      sortOrder: Value(sortOrder),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory CategoryGroup.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CategoryGroup(
+      id: serializer.fromJson<int>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      color: serializer.fromJson<int>(json['color']),
+      sortOrder: serializer.fromJson<int>(json['sortOrder']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'name': serializer.toJson<String>(name),
+      'color': serializer.toJson<int>(color),
+      'sortOrder': serializer.toJson<int>(sortOrder),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  CategoryGroup copyWith({
+    int? id,
+    String? name,
+    int? color,
+    int? sortOrder,
+    DateTime? createdAt,
+  }) => CategoryGroup(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    color: color ?? this.color,
+    sortOrder: sortOrder ?? this.sortOrder,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  CategoryGroup copyWithCompanion(CategoryGroupsCompanion data) {
+    return CategoryGroup(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      color: data.color.present ? data.color.value : this.color,
+      sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CategoryGroup(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('color: $color, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, name, color, sortOrder, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CategoryGroup &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.color == this.color &&
+          other.sortOrder == this.sortOrder &&
+          other.createdAt == this.createdAt);
+}
+
+class CategoryGroupsCompanion extends UpdateCompanion<CategoryGroup> {
+  final Value<int> id;
+  final Value<String> name;
+  final Value<int> color;
+  final Value<int> sortOrder;
+  final Value<DateTime> createdAt;
+  const CategoryGroupsCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.color = const Value.absent(),
+    this.sortOrder = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  CategoryGroupsCompanion.insert({
+    this.id = const Value.absent(),
+    required String name,
+    this.color = const Value.absent(),
+    this.sortOrder = const Value.absent(),
+    required DateTime createdAt,
+  }) : name = Value(name),
+       createdAt = Value(createdAt);
+  static Insertable<CategoryGroup> custom({
+    Expression<int>? id,
+    Expression<String>? name,
+    Expression<int>? color,
+    Expression<int>? sortOrder,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (color != null) 'color': color,
+      if (sortOrder != null) 'sort_order': sortOrder,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  CategoryGroupsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? name,
+    Value<int>? color,
+    Value<int>? sortOrder,
+    Value<DateTime>? createdAt,
+  }) {
+    return CategoryGroupsCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      color: color ?? this.color,
+      sortOrder: sortOrder ?? this.sortOrder,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (color.present) {
+      map['color'] = Variable<int>(color.value);
+    }
+    if (sortOrder.present) {
+      map['sort_order'] = Variable<int>(sortOrder.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CategoryGroupsCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('color: $color, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $CategoryGroupMembersTable extends CategoryGroupMembers
+    with TableInfo<$CategoryGroupMembersTable, CategoryGroupMember> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CategoryGroupMembersTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _groupIdMeta = const VerificationMeta(
+    'groupId',
+  );
+  @override
+  late final GeneratedColumn<int> groupId = GeneratedColumn<int>(
+    'group_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES category_groups (id)',
+    ),
+  );
+  static const VerificationMeta _categoryIdMeta = const VerificationMeta(
+    'categoryId',
+  );
+  @override
+  late final GeneratedColumn<int> categoryId = GeneratedColumn<int>(
+    'category_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES categories (id)',
+    ),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, groupId, categoryId];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'category_group_members';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CategoryGroupMember> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('group_id')) {
+      context.handle(
+        _groupIdMeta,
+        groupId.isAcceptableOrUnknown(data['group_id']!, _groupIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_groupIdMeta);
+    }
+    if (data.containsKey('category_id')) {
+      context.handle(
+        _categoryIdMeta,
+        categoryId.isAcceptableOrUnknown(data['category_id']!, _categoryIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_categoryIdMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {groupId, categoryId},
+  ];
+  @override
+  CategoryGroupMember map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CategoryGroupMember(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      groupId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}group_id'],
+      )!,
+      categoryId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}category_id'],
+      )!,
+    );
+  }
+
+  @override
+  $CategoryGroupMembersTable createAlias(String alias) {
+    return $CategoryGroupMembersTable(attachedDatabase, alias);
+  }
+}
+
+class CategoryGroupMember extends DataClass
+    implements Insertable<CategoryGroupMember> {
+  final int id;
+  final int groupId;
+  final int categoryId;
+  const CategoryGroupMember({
+    required this.id,
+    required this.groupId,
+    required this.categoryId,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['group_id'] = Variable<int>(groupId);
+    map['category_id'] = Variable<int>(categoryId);
+    return map;
+  }
+
+  CategoryGroupMembersCompanion toCompanion(bool nullToAbsent) {
+    return CategoryGroupMembersCompanion(
+      id: Value(id),
+      groupId: Value(groupId),
+      categoryId: Value(categoryId),
+    );
+  }
+
+  factory CategoryGroupMember.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CategoryGroupMember(
+      id: serializer.fromJson<int>(json['id']),
+      groupId: serializer.fromJson<int>(json['groupId']),
+      categoryId: serializer.fromJson<int>(json['categoryId']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'groupId': serializer.toJson<int>(groupId),
+      'categoryId': serializer.toJson<int>(categoryId),
+    };
+  }
+
+  CategoryGroupMember copyWith({int? id, int? groupId, int? categoryId}) =>
+      CategoryGroupMember(
+        id: id ?? this.id,
+        groupId: groupId ?? this.groupId,
+        categoryId: categoryId ?? this.categoryId,
+      );
+  CategoryGroupMember copyWithCompanion(CategoryGroupMembersCompanion data) {
+    return CategoryGroupMember(
+      id: data.id.present ? data.id.value : this.id,
+      groupId: data.groupId.present ? data.groupId.value : this.groupId,
+      categoryId: data.categoryId.present
+          ? data.categoryId.value
+          : this.categoryId,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CategoryGroupMember(')
+          ..write('id: $id, ')
+          ..write('groupId: $groupId, ')
+          ..write('categoryId: $categoryId')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, groupId, categoryId);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CategoryGroupMember &&
+          other.id == this.id &&
+          other.groupId == this.groupId &&
+          other.categoryId == this.categoryId);
+}
+
+class CategoryGroupMembersCompanion
+    extends UpdateCompanion<CategoryGroupMember> {
+  final Value<int> id;
+  final Value<int> groupId;
+  final Value<int> categoryId;
+  const CategoryGroupMembersCompanion({
+    this.id = const Value.absent(),
+    this.groupId = const Value.absent(),
+    this.categoryId = const Value.absent(),
+  });
+  CategoryGroupMembersCompanion.insert({
+    this.id = const Value.absent(),
+    required int groupId,
+    required int categoryId,
+  }) : groupId = Value(groupId),
+       categoryId = Value(categoryId);
+  static Insertable<CategoryGroupMember> custom({
+    Expression<int>? id,
+    Expression<int>? groupId,
+    Expression<int>? categoryId,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (groupId != null) 'group_id': groupId,
+      if (categoryId != null) 'category_id': categoryId,
+    });
+  }
+
+  CategoryGroupMembersCompanion copyWith({
+    Value<int>? id,
+    Value<int>? groupId,
+    Value<int>? categoryId,
+  }) {
+    return CategoryGroupMembersCompanion(
+      id: id ?? this.id,
+      groupId: groupId ?? this.groupId,
+      categoryId: categoryId ?? this.categoryId,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (groupId.present) {
+      map['group_id'] = Variable<int>(groupId.value);
+    }
+    if (categoryId.present) {
+      map['category_id'] = Variable<int>(categoryId.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CategoryGroupMembersCompanion(')
+          ..write('id: $id, ')
+          ..write('groupId: $groupId, ')
+          ..write('categoryId: $categoryId')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $GroupBudgetsTable extends GroupBudgets
+    with TableInfo<$GroupBudgetsTable, GroupBudget> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $GroupBudgetsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _groupIdMeta = const VerificationMeta(
+    'groupId',
+  );
+  @override
+  late final GeneratedColumn<int> groupId = GeneratedColumn<int>(
+    'group_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES category_groups (id)',
+    ),
+  );
+  static const VerificationMeta _amountCentsMeta = const VerificationMeta(
+    'amountCents',
+  );
+  @override
+  late final GeneratedColumn<int> amountCents = GeneratedColumn<int>(
+    'amount_cents',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _monthMeta = const VerificationMeta('month');
+  @override
+  late final GeneratedColumn<int> month = GeneratedColumn<int>(
+    'month',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _yearMeta = const VerificationMeta('year');
+  @override
+  late final GeneratedColumn<int> year = GeneratedColumn<int>(
+    'year',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    groupId,
+    amountCents,
+    month,
+    year,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'group_budgets';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<GroupBudget> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('group_id')) {
+      context.handle(
+        _groupIdMeta,
+        groupId.isAcceptableOrUnknown(data['group_id']!, _groupIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_groupIdMeta);
+    }
+    if (data.containsKey('amount_cents')) {
+      context.handle(
+        _amountCentsMeta,
+        amountCents.isAcceptableOrUnknown(
+          data['amount_cents']!,
+          _amountCentsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_amountCentsMeta);
+    }
+    if (data.containsKey('month')) {
+      context.handle(
+        _monthMeta,
+        month.isAcceptableOrUnknown(data['month']!, _monthMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_monthMeta);
+    }
+    if (data.containsKey('year')) {
+      context.handle(
+        _yearMeta,
+        year.isAcceptableOrUnknown(data['year']!, _yearMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_yearMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {groupId, month, year},
+  ];
+  @override
+  GroupBudget map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return GroupBudget(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      groupId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}group_id'],
+      )!,
+      amountCents: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}amount_cents'],
+      )!,
+      month: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}month'],
+      )!,
+      year: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}year'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $GroupBudgetsTable createAlias(String alias) {
+    return $GroupBudgetsTable(attachedDatabase, alias);
+  }
+}
+
+class GroupBudget extends DataClass implements Insertable<GroupBudget> {
+  final int id;
+  final int groupId;
+  final int amountCents;
+  final int month;
+  final int year;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const GroupBudget({
+    required this.id,
+    required this.groupId,
+    required this.amountCents,
+    required this.month,
+    required this.year,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['group_id'] = Variable<int>(groupId);
+    map['amount_cents'] = Variable<int>(amountCents);
+    map['month'] = Variable<int>(month);
+    map['year'] = Variable<int>(year);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  GroupBudgetsCompanion toCompanion(bool nullToAbsent) {
+    return GroupBudgetsCompanion(
+      id: Value(id),
+      groupId: Value(groupId),
+      amountCents: Value(amountCents),
+      month: Value(month),
+      year: Value(year),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory GroupBudget.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return GroupBudget(
+      id: serializer.fromJson<int>(json['id']),
+      groupId: serializer.fromJson<int>(json['groupId']),
+      amountCents: serializer.fromJson<int>(json['amountCents']),
+      month: serializer.fromJson<int>(json['month']),
+      year: serializer.fromJson<int>(json['year']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'groupId': serializer.toJson<int>(groupId),
+      'amountCents': serializer.toJson<int>(amountCents),
+      'month': serializer.toJson<int>(month),
+      'year': serializer.toJson<int>(year),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  GroupBudget copyWith({
+    int? id,
+    int? groupId,
+    int? amountCents,
+    int? month,
+    int? year,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => GroupBudget(
+    id: id ?? this.id,
+    groupId: groupId ?? this.groupId,
+    amountCents: amountCents ?? this.amountCents,
+    month: month ?? this.month,
+    year: year ?? this.year,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  GroupBudget copyWithCompanion(GroupBudgetsCompanion data) {
+    return GroupBudget(
+      id: data.id.present ? data.id.value : this.id,
+      groupId: data.groupId.present ? data.groupId.value : this.groupId,
+      amountCents: data.amountCents.present
+          ? data.amountCents.value
+          : this.amountCents,
+      month: data.month.present ? data.month.value : this.month,
+      year: data.year.present ? data.year.value : this.year,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('GroupBudget(')
+          ..write('id: $id, ')
+          ..write('groupId: $groupId, ')
+          ..write('amountCents: $amountCents, ')
+          ..write('month: $month, ')
+          ..write('year: $year, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, groupId, amountCents, month, year, createdAt, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is GroupBudget &&
+          other.id == this.id &&
+          other.groupId == this.groupId &&
+          other.amountCents == this.amountCents &&
+          other.month == this.month &&
+          other.year == this.year &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class GroupBudgetsCompanion extends UpdateCompanion<GroupBudget> {
+  final Value<int> id;
+  final Value<int> groupId;
+  final Value<int> amountCents;
+  final Value<int> month;
+  final Value<int> year;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  const GroupBudgetsCompanion({
+    this.id = const Value.absent(),
+    this.groupId = const Value.absent(),
+    this.amountCents = const Value.absent(),
+    this.month = const Value.absent(),
+    this.year = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  GroupBudgetsCompanion.insert({
+    this.id = const Value.absent(),
+    required int groupId,
+    required int amountCents,
+    required int month,
+    required int year,
+    required DateTime createdAt,
+    required DateTime updatedAt,
+  }) : groupId = Value(groupId),
+       amountCents = Value(amountCents),
+       month = Value(month),
+       year = Value(year),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<GroupBudget> custom({
+    Expression<int>? id,
+    Expression<int>? groupId,
+    Expression<int>? amountCents,
+    Expression<int>? month,
+    Expression<int>? year,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (groupId != null) 'group_id': groupId,
+      if (amountCents != null) 'amount_cents': amountCents,
+      if (month != null) 'month': month,
+      if (year != null) 'year': year,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  GroupBudgetsCompanion copyWith({
+    Value<int>? id,
+    Value<int>? groupId,
+    Value<int>? amountCents,
+    Value<int>? month,
+    Value<int>? year,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+  }) {
+    return GroupBudgetsCompanion(
+      id: id ?? this.id,
+      groupId: groupId ?? this.groupId,
+      amountCents: amountCents ?? this.amountCents,
+      month: month ?? this.month,
+      year: year ?? this.year,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (groupId.present) {
+      map['group_id'] = Variable<int>(groupId.value);
+    }
+    if (amountCents.present) {
+      map['amount_cents'] = Variable<int>(amountCents.value);
+    }
+    if (month.present) {
+      map['month'] = Variable<int>(month.value);
+    }
+    if (year.present) {
+      map['year'] = Variable<int>(year.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('GroupBudgetsCompanion(')
+          ..write('id: $id, ')
+          ..write('groupId: $groupId, ')
+          ..write('amountCents: $amountCents, ')
+          ..write('month: $month, ')
+          ..write('year: $year, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $BudgetTemplatesTable extends BudgetTemplates
+    with TableInfo<$BudgetTemplatesTable, BudgetTemplate> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $BudgetTemplatesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 50,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, name, createdAt, updatedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'budget_templates';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<BudgetTemplate> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  BudgetTemplate map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return BudgetTemplate(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $BudgetTemplatesTable createAlias(String alias) {
+    return $BudgetTemplatesTable(attachedDatabase, alias);
+  }
+}
+
+class BudgetTemplate extends DataClass implements Insertable<BudgetTemplate> {
+  final int id;
+  final String name;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const BudgetTemplate({
+    required this.id,
+    required this.name,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['name'] = Variable<String>(name);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  BudgetTemplatesCompanion toCompanion(bool nullToAbsent) {
+    return BudgetTemplatesCompanion(
+      id: Value(id),
+      name: Value(name),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory BudgetTemplate.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return BudgetTemplate(
+      id: serializer.fromJson<int>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'name': serializer.toJson<String>(name),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  BudgetTemplate copyWith({
+    int? id,
+    String? name,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => BudgetTemplate(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  BudgetTemplate copyWithCompanion(BudgetTemplatesCompanion data) {
+    return BudgetTemplate(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BudgetTemplate(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, name, createdAt, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is BudgetTemplate &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class BudgetTemplatesCompanion extends UpdateCompanion<BudgetTemplate> {
+  final Value<int> id;
+  final Value<String> name;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  const BudgetTemplatesCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  BudgetTemplatesCompanion.insert({
+    this.id = const Value.absent(),
+    required String name,
+    required DateTime createdAt,
+    required DateTime updatedAt,
+  }) : name = Value(name),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<BudgetTemplate> custom({
+    Expression<int>? id,
+    Expression<String>? name,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  BudgetTemplatesCompanion copyWith({
+    Value<int>? id,
+    Value<String>? name,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+  }) {
+    return BudgetTemplatesCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BudgetTemplatesCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $BudgetTemplateItemsTable extends BudgetTemplateItems
+    with TableInfo<$BudgetTemplateItemsTable, BudgetTemplateItem> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $BudgetTemplateItemsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _templateIdMeta = const VerificationMeta(
+    'templateId',
+  );
+  @override
+  late final GeneratedColumn<int> templateId = GeneratedColumn<int>(
+    'template_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES budget_templates (id)',
+    ),
+  );
+  static const VerificationMeta _categoryIdMeta = const VerificationMeta(
+    'categoryId',
+  );
+  @override
+  late final GeneratedColumn<int> categoryId = GeneratedColumn<int>(
+    'category_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES categories (id)',
+    ),
+  );
+  static const VerificationMeta _amountCentsMeta = const VerificationMeta(
+    'amountCents',
+  );
+  @override
+  late final GeneratedColumn<int> amountCents = GeneratedColumn<int>(
+    'amount_cents',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    templateId,
+    categoryId,
+    amountCents,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'budget_template_items';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<BudgetTemplateItem> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('template_id')) {
+      context.handle(
+        _templateIdMeta,
+        templateId.isAcceptableOrUnknown(data['template_id']!, _templateIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_templateIdMeta);
+    }
+    if (data.containsKey('category_id')) {
+      context.handle(
+        _categoryIdMeta,
+        categoryId.isAcceptableOrUnknown(data['category_id']!, _categoryIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_categoryIdMeta);
+    }
+    if (data.containsKey('amount_cents')) {
+      context.handle(
+        _amountCentsMeta,
+        amountCents.isAcceptableOrUnknown(
+          data['amount_cents']!,
+          _amountCentsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_amountCentsMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  BudgetTemplateItem map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return BudgetTemplateItem(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      templateId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}template_id'],
+      )!,
+      categoryId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}category_id'],
+      )!,
+      amountCents: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}amount_cents'],
+      )!,
+    );
+  }
+
+  @override
+  $BudgetTemplateItemsTable createAlias(String alias) {
+    return $BudgetTemplateItemsTable(attachedDatabase, alias);
+  }
+}
+
+class BudgetTemplateItem extends DataClass
+    implements Insertable<BudgetTemplateItem> {
+  final int id;
+  final int templateId;
+  final int categoryId;
+  final int amountCents;
+  const BudgetTemplateItem({
+    required this.id,
+    required this.templateId,
+    required this.categoryId,
+    required this.amountCents,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['template_id'] = Variable<int>(templateId);
+    map['category_id'] = Variable<int>(categoryId);
+    map['amount_cents'] = Variable<int>(amountCents);
+    return map;
+  }
+
+  BudgetTemplateItemsCompanion toCompanion(bool nullToAbsent) {
+    return BudgetTemplateItemsCompanion(
+      id: Value(id),
+      templateId: Value(templateId),
+      categoryId: Value(categoryId),
+      amountCents: Value(amountCents),
+    );
+  }
+
+  factory BudgetTemplateItem.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return BudgetTemplateItem(
+      id: serializer.fromJson<int>(json['id']),
+      templateId: serializer.fromJson<int>(json['templateId']),
+      categoryId: serializer.fromJson<int>(json['categoryId']),
+      amountCents: serializer.fromJson<int>(json['amountCents']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'templateId': serializer.toJson<int>(templateId),
+      'categoryId': serializer.toJson<int>(categoryId),
+      'amountCents': serializer.toJson<int>(amountCents),
+    };
+  }
+
+  BudgetTemplateItem copyWith({
+    int? id,
+    int? templateId,
+    int? categoryId,
+    int? amountCents,
+  }) => BudgetTemplateItem(
+    id: id ?? this.id,
+    templateId: templateId ?? this.templateId,
+    categoryId: categoryId ?? this.categoryId,
+    amountCents: amountCents ?? this.amountCents,
+  );
+  BudgetTemplateItem copyWithCompanion(BudgetTemplateItemsCompanion data) {
+    return BudgetTemplateItem(
+      id: data.id.present ? data.id.value : this.id,
+      templateId: data.templateId.present
+          ? data.templateId.value
+          : this.templateId,
+      categoryId: data.categoryId.present
+          ? data.categoryId.value
+          : this.categoryId,
+      amountCents: data.amountCents.present
+          ? data.amountCents.value
+          : this.amountCents,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BudgetTemplateItem(')
+          ..write('id: $id, ')
+          ..write('templateId: $templateId, ')
+          ..write('categoryId: $categoryId, ')
+          ..write('amountCents: $amountCents')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, templateId, categoryId, amountCents);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is BudgetTemplateItem &&
+          other.id == this.id &&
+          other.templateId == this.templateId &&
+          other.categoryId == this.categoryId &&
+          other.amountCents == this.amountCents);
+}
+
+class BudgetTemplateItemsCompanion extends UpdateCompanion<BudgetTemplateItem> {
+  final Value<int> id;
+  final Value<int> templateId;
+  final Value<int> categoryId;
+  final Value<int> amountCents;
+  const BudgetTemplateItemsCompanion({
+    this.id = const Value.absent(),
+    this.templateId = const Value.absent(),
+    this.categoryId = const Value.absent(),
+    this.amountCents = const Value.absent(),
+  });
+  BudgetTemplateItemsCompanion.insert({
+    this.id = const Value.absent(),
+    required int templateId,
+    required int categoryId,
+    required int amountCents,
+  }) : templateId = Value(templateId),
+       categoryId = Value(categoryId),
+       amountCents = Value(amountCents);
+  static Insertable<BudgetTemplateItem> custom({
+    Expression<int>? id,
+    Expression<int>? templateId,
+    Expression<int>? categoryId,
+    Expression<int>? amountCents,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (templateId != null) 'template_id': templateId,
+      if (categoryId != null) 'category_id': categoryId,
+      if (amountCents != null) 'amount_cents': amountCents,
+    });
+  }
+
+  BudgetTemplateItemsCompanion copyWith({
+    Value<int>? id,
+    Value<int>? templateId,
+    Value<int>? categoryId,
+    Value<int>? amountCents,
+  }) {
+    return BudgetTemplateItemsCompanion(
+      id: id ?? this.id,
+      templateId: templateId ?? this.templateId,
+      categoryId: categoryId ?? this.categoryId,
+      amountCents: amountCents ?? this.amountCents,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (templateId.present) {
+      map['template_id'] = Variable<int>(templateId.value);
+    }
+    if (categoryId.present) {
+      map['category_id'] = Variable<int>(categoryId.value);
+    }
+    if (amountCents.present) {
+      map['amount_cents'] = Variable<int>(amountCents.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BudgetTemplateItemsCompanion(')
+          ..write('id: $id, ')
+          ..write('templateId: $templateId, ')
+          ..write('categoryId: $categoryId, ')
+          ..write('amountCents: $amountCents')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $MonthlyBudgetConfigsTable extends MonthlyBudgetConfigs
+    with TableInfo<$MonthlyBudgetConfigsTable, MonthlyBudgetConfig> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $MonthlyBudgetConfigsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _globalBudgetCentsMeta = const VerificationMeta(
+    'globalBudgetCents',
+  );
+  @override
+  late final GeneratedColumn<int> globalBudgetCents = GeneratedColumn<int>(
+    'global_budget_cents',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _monthMeta = const VerificationMeta('month');
+  @override
+  late final GeneratedColumn<int> month = GeneratedColumn<int>(
+    'month',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _yearMeta = const VerificationMeta('year');
+  @override
+  late final GeneratedColumn<int> year = GeneratedColumn<int>(
+    'year',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    globalBudgetCents,
+    month,
+    year,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'monthly_budget_configs';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<MonthlyBudgetConfig> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('global_budget_cents')) {
+      context.handle(
+        _globalBudgetCentsMeta,
+        globalBudgetCents.isAcceptableOrUnknown(
+          data['global_budget_cents']!,
+          _globalBudgetCentsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('month')) {
+      context.handle(
+        _monthMeta,
+        month.isAcceptableOrUnknown(data['month']!, _monthMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_monthMeta);
+    }
+    if (data.containsKey('year')) {
+      context.handle(
+        _yearMeta,
+        year.isAcceptableOrUnknown(data['year']!, _yearMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_yearMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {month, year},
+  ];
+  @override
+  MonthlyBudgetConfig map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return MonthlyBudgetConfig(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      globalBudgetCents: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}global_budget_cents'],
+      ),
+      month: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}month'],
+      )!,
+      year: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}year'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $MonthlyBudgetConfigsTable createAlias(String alias) {
+    return $MonthlyBudgetConfigsTable(attachedDatabase, alias);
+  }
+}
+
+class MonthlyBudgetConfig extends DataClass
+    implements Insertable<MonthlyBudgetConfig> {
+  final int id;
+  final int? globalBudgetCents;
+  final int month;
+  final int year;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const MonthlyBudgetConfig({
+    required this.id,
+    this.globalBudgetCents,
+    required this.month,
+    required this.year,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    if (!nullToAbsent || globalBudgetCents != null) {
+      map['global_budget_cents'] = Variable<int>(globalBudgetCents);
+    }
+    map['month'] = Variable<int>(month);
+    map['year'] = Variable<int>(year);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  MonthlyBudgetConfigsCompanion toCompanion(bool nullToAbsent) {
+    return MonthlyBudgetConfigsCompanion(
+      id: Value(id),
+      globalBudgetCents: globalBudgetCents == null && nullToAbsent
+          ? const Value.absent()
+          : Value(globalBudgetCents),
+      month: Value(month),
+      year: Value(year),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory MonthlyBudgetConfig.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return MonthlyBudgetConfig(
+      id: serializer.fromJson<int>(json['id']),
+      globalBudgetCents: serializer.fromJson<int?>(json['globalBudgetCents']),
+      month: serializer.fromJson<int>(json['month']),
+      year: serializer.fromJson<int>(json['year']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'globalBudgetCents': serializer.toJson<int?>(globalBudgetCents),
+      'month': serializer.toJson<int>(month),
+      'year': serializer.toJson<int>(year),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  MonthlyBudgetConfig copyWith({
+    int? id,
+    Value<int?> globalBudgetCents = const Value.absent(),
+    int? month,
+    int? year,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => MonthlyBudgetConfig(
+    id: id ?? this.id,
+    globalBudgetCents: globalBudgetCents.present
+        ? globalBudgetCents.value
+        : this.globalBudgetCents,
+    month: month ?? this.month,
+    year: year ?? this.year,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  MonthlyBudgetConfig copyWithCompanion(MonthlyBudgetConfigsCompanion data) {
+    return MonthlyBudgetConfig(
+      id: data.id.present ? data.id.value : this.id,
+      globalBudgetCents: data.globalBudgetCents.present
+          ? data.globalBudgetCents.value
+          : this.globalBudgetCents,
+      month: data.month.present ? data.month.value : this.month,
+      year: data.year.present ? data.year.value : this.year,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('MonthlyBudgetConfig(')
+          ..write('id: $id, ')
+          ..write('globalBudgetCents: $globalBudgetCents, ')
+          ..write('month: $month, ')
+          ..write('year: $year, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, globalBudgetCents, month, year, createdAt, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is MonthlyBudgetConfig &&
+          other.id == this.id &&
+          other.globalBudgetCents == this.globalBudgetCents &&
+          other.month == this.month &&
+          other.year == this.year &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class MonthlyBudgetConfigsCompanion
+    extends UpdateCompanion<MonthlyBudgetConfig> {
+  final Value<int> id;
+  final Value<int?> globalBudgetCents;
+  final Value<int> month;
+  final Value<int> year;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  const MonthlyBudgetConfigsCompanion({
+    this.id = const Value.absent(),
+    this.globalBudgetCents = const Value.absent(),
+    this.month = const Value.absent(),
+    this.year = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  MonthlyBudgetConfigsCompanion.insert({
+    this.id = const Value.absent(),
+    this.globalBudgetCents = const Value.absent(),
+    required int month,
+    required int year,
+    required DateTime createdAt,
+    required DateTime updatedAt,
+  }) : month = Value(month),
+       year = Value(year),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<MonthlyBudgetConfig> custom({
+    Expression<int>? id,
+    Expression<int>? globalBudgetCents,
+    Expression<int>? month,
+    Expression<int>? year,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (globalBudgetCents != null) 'global_budget_cents': globalBudgetCents,
+      if (month != null) 'month': month,
+      if (year != null) 'year': year,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  MonthlyBudgetConfigsCompanion copyWith({
+    Value<int>? id,
+    Value<int?>? globalBudgetCents,
+    Value<int>? month,
+    Value<int>? year,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+  }) {
+    return MonthlyBudgetConfigsCompanion(
+      id: id ?? this.id,
+      globalBudgetCents: globalBudgetCents ?? this.globalBudgetCents,
+      month: month ?? this.month,
+      year: year ?? this.year,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (globalBudgetCents.present) {
+      map['global_budget_cents'] = Variable<int>(globalBudgetCents.value);
+    }
+    if (month.present) {
+      map['month'] = Variable<int>(month.value);
+    }
+    if (year.present) {
+      map['year'] = Variable<int>(year.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('MonthlyBudgetConfigsCompanion(')
+          ..write('id: $id, ')
+          ..write('globalBudgetCents: $globalBudgetCents, ')
+          ..write('month: $month, ')
+          ..write('year: $year, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
           ..write(')'))
         .toString();
   }
@@ -17949,6 +20095,17 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $SavingsGoalsTable savingsGoals = $SavingsGoalsTable(this);
   late final $RecurringTransactionsTable recurringTransactions =
       $RecurringTransactionsTable(this);
+  late final $CategoryGroupsTable categoryGroups = $CategoryGroupsTable(this);
+  late final $CategoryGroupMembersTable categoryGroupMembers =
+      $CategoryGroupMembersTable(this);
+  late final $GroupBudgetsTable groupBudgets = $GroupBudgetsTable(this);
+  late final $BudgetTemplatesTable budgetTemplates = $BudgetTemplatesTable(
+    this,
+  );
+  late final $BudgetTemplateItemsTable budgetTemplateItems =
+      $BudgetTemplateItemsTable(this);
+  late final $MonthlyBudgetConfigsTable monthlyBudgetConfigs =
+      $MonthlyBudgetConfigsTable(this);
   late final $ExercisesTable exercises = $ExercisesTable(this);
   late final $RoutinesTable routines = $RoutinesTable(this);
   late final $RoutineExercisesTable routineExercises = $RoutineExercisesTable(
@@ -18015,6 +20172,12 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     budgets,
     savingsGoals,
     recurringTransactions,
+    categoryGroups,
+    categoryGroupMembers,
+    groupBudgets,
+    budgetTemplates,
+    budgetTemplateItems,
+    monthlyBudgetConfigs,
     exercises,
     routines,
     routineExercises,
@@ -18467,6 +20630,61 @@ final class $$CategoriesTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<
+    $CategoryGroupMembersTable,
+    List<CategoryGroupMember>
+  >
+  _categoryGroupMembersRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.categoryGroupMembers,
+        aliasName: $_aliasNameGenerator(
+          db.categories.id,
+          db.categoryGroupMembers.categoryId,
+        ),
+      );
+
+  $$CategoryGroupMembersTableProcessedTableManager
+  get categoryGroupMembersRefs {
+    final manager = $$CategoryGroupMembersTableTableManager(
+      $_db,
+      $_db.categoryGroupMembers,
+    ).filter((f) => f.categoryId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _categoryGroupMembersRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<
+    $BudgetTemplateItemsTable,
+    List<BudgetTemplateItem>
+  >
+  _budgetTemplateItemsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.budgetTemplateItems,
+        aliasName: $_aliasNameGenerator(
+          db.categories.id,
+          db.budgetTemplateItems.categoryId,
+        ),
+      );
+
+  $$BudgetTemplateItemsTableProcessedTableManager get budgetTemplateItemsRefs {
+    final manager = $$BudgetTemplateItemsTableTableManager(
+      $_db,
+      $_db.budgetTemplateItems,
+    ).filter((f) => f.categoryId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _budgetTemplateItemsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$CategoriesTableFilterComposer
@@ -18591,6 +20809,56 @@ class $$CategoriesTableFilterComposer
                     $removeJoinBuilderFromRootComposer,
               ),
         );
+    return f(composer);
+  }
+
+  Expression<bool> categoryGroupMembersRefs(
+    Expression<bool> Function($$CategoryGroupMembersTableFilterComposer f) f,
+  ) {
+    final $$CategoryGroupMembersTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.categoryGroupMembers,
+      getReferencedColumn: (t) => t.categoryId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CategoryGroupMembersTableFilterComposer(
+            $db: $db,
+            $table: $db.categoryGroupMembers,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> budgetTemplateItemsRefs(
+    Expression<bool> Function($$BudgetTemplateItemsTableFilterComposer f) f,
+  ) {
+    final $$BudgetTemplateItemsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.budgetTemplateItems,
+      getReferencedColumn: (t) => t.categoryId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$BudgetTemplateItemsTableFilterComposer(
+            $db: $db,
+            $table: $db.budgetTemplateItems,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
     return f(composer);
   }
 }
@@ -18755,6 +21023,58 @@ class $$CategoriesTableAnnotationComposer
         );
     return f(composer);
   }
+
+  Expression<T> categoryGroupMembersRefs<T extends Object>(
+    Expression<T> Function($$CategoryGroupMembersTableAnnotationComposer a) f,
+  ) {
+    final $$CategoryGroupMembersTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.categoryGroupMembers,
+          getReferencedColumn: (t) => t.categoryId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$CategoryGroupMembersTableAnnotationComposer(
+                $db: $db,
+                $table: $db.categoryGroupMembers,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+
+  Expression<T> budgetTemplateItemsRefs<T extends Object>(
+    Expression<T> Function($$BudgetTemplateItemsTableAnnotationComposer a) f,
+  ) {
+    final $$BudgetTemplateItemsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.budgetTemplateItems,
+          getReferencedColumn: (t) => t.categoryId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$BudgetTemplateItemsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.budgetTemplateItems,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$CategoriesTableTableManager
@@ -18774,6 +21094,8 @@ class $$CategoriesTableTableManager
             bool transactionsRefs,
             bool budgetsRefs,
             bool recurringTransactionsRefs,
+            bool categoryGroupMembersRefs,
+            bool budgetTemplateItemsRefs,
           })
         > {
   $$CategoriesTableTableManager(_$AppDatabase db, $CategoriesTable table)
@@ -18840,6 +21162,8 @@ class $$CategoriesTableTableManager
                 transactionsRefs = false,
                 budgetsRefs = false,
                 recurringTransactionsRefs = false,
+                categoryGroupMembersRefs = false,
+                budgetTemplateItemsRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
@@ -18847,6 +21171,8 @@ class $$CategoriesTableTableManager
                     if (transactionsRefs) db.transactions,
                     if (budgetsRefs) db.budgets,
                     if (recurringTransactionsRefs) db.recurringTransactions,
+                    if (categoryGroupMembersRefs) db.categoryGroupMembers,
+                    if (budgetTemplateItemsRefs) db.budgetTemplateItems,
                   ],
                   addJoins: null,
                   getPrefetchedDataCallback: (items) async {
@@ -18914,6 +21240,48 @@ class $$CategoriesTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (categoryGroupMembersRefs)
+                        await $_getPrefetchedData<
+                          Category,
+                          $CategoriesTable,
+                          CategoryGroupMember
+                        >(
+                          currentTable: table,
+                          referencedTable: $$CategoriesTableReferences
+                              ._categoryGroupMembersRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$CategoriesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).categoryGroupMembersRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.categoryId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (budgetTemplateItemsRefs)
+                        await $_getPrefetchedData<
+                          Category,
+                          $CategoriesTable,
+                          BudgetTemplateItem
+                        >(
+                          currentTable: table,
+                          referencedTable: $$CategoriesTableReferences
+                              ._budgetTemplateItemsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$CategoriesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).budgetTemplateItemsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.categoryId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -18938,6 +21306,8 @@ typedef $$CategoriesTableProcessedTableManager =
         bool transactionsRefs,
         bool budgetsRefs,
         bool recurringTransactionsRefs,
+        bool categoryGroupMembersRefs,
+        bool budgetTemplateItemsRefs,
       })
     >;
 typedef $$TransactionsTableCreateCompanionBuilder =
@@ -19340,6 +21710,7 @@ typedef $$BudgetsTableCreateCompanionBuilder =
       required int amountCents,
       required int month,
       required int year,
+      Value<bool> autoRepeat,
       required DateTime createdAt,
       required DateTime updatedAt,
     });
@@ -19350,6 +21721,7 @@ typedef $$BudgetsTableUpdateCompanionBuilder =
       Value<int> amountCents,
       Value<int> month,
       Value<int> year,
+      Value<bool> autoRepeat,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -19404,6 +21776,11 @@ class $$BudgetsTableFilterComposer
 
   ColumnFilters<int> get year => $composableBuilder(
     column: $table.year,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get autoRepeat => $composableBuilder(
+    column: $table.autoRepeat,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -19470,6 +21847,11 @@ class $$BudgetsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get autoRepeat => $composableBuilder(
+    column: $table.autoRepeat,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -19526,6 +21908,11 @@ class $$BudgetsTableAnnotationComposer
 
   GeneratedColumn<int> get year =>
       $composableBuilder(column: $table.year, builder: (column) => column);
+
+  GeneratedColumn<bool> get autoRepeat => $composableBuilder(
+    column: $table.autoRepeat,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -19590,6 +21977,7 @@ class $$BudgetsTableTableManager
                 Value<int> amountCents = const Value.absent(),
                 Value<int> month = const Value.absent(),
                 Value<int> year = const Value.absent(),
+                Value<bool> autoRepeat = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => BudgetsCompanion(
@@ -19598,6 +21986,7 @@ class $$BudgetsTableTableManager
                 amountCents: amountCents,
                 month: month,
                 year: year,
+                autoRepeat: autoRepeat,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -19608,6 +21997,7 @@ class $$BudgetsTableTableManager
                 required int amountCents,
                 required int month,
                 required int year,
+                Value<bool> autoRepeat = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
               }) => BudgetsCompanion.insert(
@@ -19616,6 +22006,7 @@ class $$BudgetsTableTableManager
                 amountCents: amountCents,
                 month: month,
                 year: year,
+                autoRepeat: autoRepeat,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -20360,6 +22751,2102 @@ typedef $$RecurringTransactionsTableProcessedTableManager =
       (RecurringTransaction, $$RecurringTransactionsTableReferences),
       RecurringTransaction,
       PrefetchHooks Function({bool categoryId})
+    >;
+typedef $$CategoryGroupsTableCreateCompanionBuilder =
+    CategoryGroupsCompanion Function({
+      Value<int> id,
+      required String name,
+      Value<int> color,
+      Value<int> sortOrder,
+      required DateTime createdAt,
+    });
+typedef $$CategoryGroupsTableUpdateCompanionBuilder =
+    CategoryGroupsCompanion Function({
+      Value<int> id,
+      Value<String> name,
+      Value<int> color,
+      Value<int> sortOrder,
+      Value<DateTime> createdAt,
+    });
+
+final class $$CategoryGroupsTableReferences
+    extends BaseReferences<_$AppDatabase, $CategoryGroupsTable, CategoryGroup> {
+  $$CategoryGroupsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static MultiTypedResultKey<
+    $CategoryGroupMembersTable,
+    List<CategoryGroupMember>
+  >
+  _categoryGroupMembersRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.categoryGroupMembers,
+        aliasName: $_aliasNameGenerator(
+          db.categoryGroups.id,
+          db.categoryGroupMembers.groupId,
+        ),
+      );
+
+  $$CategoryGroupMembersTableProcessedTableManager
+  get categoryGroupMembersRefs {
+    final manager = $$CategoryGroupMembersTableTableManager(
+      $_db,
+      $_db.categoryGroupMembers,
+    ).filter((f) => f.groupId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _categoryGroupMembersRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$GroupBudgetsTable, List<GroupBudget>>
+  _groupBudgetsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.groupBudgets,
+    aliasName: $_aliasNameGenerator(
+      db.categoryGroups.id,
+      db.groupBudgets.groupId,
+    ),
+  );
+
+  $$GroupBudgetsTableProcessedTableManager get groupBudgetsRefs {
+    final manager = $$GroupBudgetsTableTableManager(
+      $_db,
+      $_db.groupBudgets,
+    ).filter((f) => f.groupId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_groupBudgetsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$CategoryGroupsTableFilterComposer
+    extends Composer<_$AppDatabase, $CategoryGroupsTable> {
+  $$CategoryGroupsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get color => $composableBuilder(
+    column: $table.color,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> categoryGroupMembersRefs(
+    Expression<bool> Function($$CategoryGroupMembersTableFilterComposer f) f,
+  ) {
+    final $$CategoryGroupMembersTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.categoryGroupMembers,
+      getReferencedColumn: (t) => t.groupId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CategoryGroupMembersTableFilterComposer(
+            $db: $db,
+            $table: $db.categoryGroupMembers,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> groupBudgetsRefs(
+    Expression<bool> Function($$GroupBudgetsTableFilterComposer f) f,
+  ) {
+    final $$GroupBudgetsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.groupBudgets,
+      getReferencedColumn: (t) => t.groupId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$GroupBudgetsTableFilterComposer(
+            $db: $db,
+            $table: $db.groupBudgets,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$CategoryGroupsTableOrderingComposer
+    extends Composer<_$AppDatabase, $CategoryGroupsTable> {
+  $$CategoryGroupsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get color => $composableBuilder(
+    column: $table.color,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CategoryGroupsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CategoryGroupsTable> {
+  $$CategoryGroupsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<int> get color =>
+      $composableBuilder(column: $table.color, builder: (column) => column);
+
+  GeneratedColumn<int> get sortOrder =>
+      $composableBuilder(column: $table.sortOrder, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  Expression<T> categoryGroupMembersRefs<T extends Object>(
+    Expression<T> Function($$CategoryGroupMembersTableAnnotationComposer a) f,
+  ) {
+    final $$CategoryGroupMembersTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.categoryGroupMembers,
+          getReferencedColumn: (t) => t.groupId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$CategoryGroupMembersTableAnnotationComposer(
+                $db: $db,
+                $table: $db.categoryGroupMembers,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+
+  Expression<T> groupBudgetsRefs<T extends Object>(
+    Expression<T> Function($$GroupBudgetsTableAnnotationComposer a) f,
+  ) {
+    final $$GroupBudgetsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.groupBudgets,
+      getReferencedColumn: (t) => t.groupId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$GroupBudgetsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.groupBudgets,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$CategoryGroupsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CategoryGroupsTable,
+          CategoryGroup,
+          $$CategoryGroupsTableFilterComposer,
+          $$CategoryGroupsTableOrderingComposer,
+          $$CategoryGroupsTableAnnotationComposer,
+          $$CategoryGroupsTableCreateCompanionBuilder,
+          $$CategoryGroupsTableUpdateCompanionBuilder,
+          (CategoryGroup, $$CategoryGroupsTableReferences),
+          CategoryGroup,
+          PrefetchHooks Function({
+            bool categoryGroupMembersRefs,
+            bool groupBudgetsRefs,
+          })
+        > {
+  $$CategoryGroupsTableTableManager(
+    _$AppDatabase db,
+    $CategoryGroupsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CategoryGroupsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CategoryGroupsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CategoryGroupsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<int> color = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => CategoryGroupsCompanion(
+                id: id,
+                name: name,
+                color: color,
+                sortOrder: sortOrder,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String name,
+                Value<int> color = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
+                required DateTime createdAt,
+              }) => CategoryGroupsCompanion.insert(
+                id: id,
+                name: name,
+                color: color,
+                sortOrder: sortOrder,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$CategoryGroupsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({categoryGroupMembersRefs = false, groupBudgetsRefs = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (categoryGroupMembersRefs) db.categoryGroupMembers,
+                    if (groupBudgetsRefs) db.groupBudgets,
+                  ],
+                  addJoins: null,
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (categoryGroupMembersRefs)
+                        await $_getPrefetchedData<
+                          CategoryGroup,
+                          $CategoryGroupsTable,
+                          CategoryGroupMember
+                        >(
+                          currentTable: table,
+                          referencedTable: $$CategoryGroupsTableReferences
+                              ._categoryGroupMembersRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$CategoryGroupsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).categoryGroupMembersRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.groupId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (groupBudgetsRefs)
+                        await $_getPrefetchedData<
+                          CategoryGroup,
+                          $CategoryGroupsTable,
+                          GroupBudget
+                        >(
+                          currentTable: table,
+                          referencedTable: $$CategoryGroupsTableReferences
+                              ._groupBudgetsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$CategoryGroupsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).groupBudgetsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.groupId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $$CategoryGroupsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CategoryGroupsTable,
+      CategoryGroup,
+      $$CategoryGroupsTableFilterComposer,
+      $$CategoryGroupsTableOrderingComposer,
+      $$CategoryGroupsTableAnnotationComposer,
+      $$CategoryGroupsTableCreateCompanionBuilder,
+      $$CategoryGroupsTableUpdateCompanionBuilder,
+      (CategoryGroup, $$CategoryGroupsTableReferences),
+      CategoryGroup,
+      PrefetchHooks Function({
+        bool categoryGroupMembersRefs,
+        bool groupBudgetsRefs,
+      })
+    >;
+typedef $$CategoryGroupMembersTableCreateCompanionBuilder =
+    CategoryGroupMembersCompanion Function({
+      Value<int> id,
+      required int groupId,
+      required int categoryId,
+    });
+typedef $$CategoryGroupMembersTableUpdateCompanionBuilder =
+    CategoryGroupMembersCompanion Function({
+      Value<int> id,
+      Value<int> groupId,
+      Value<int> categoryId,
+    });
+
+final class $$CategoryGroupMembersTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $CategoryGroupMembersTable,
+          CategoryGroupMember
+        > {
+  $$CategoryGroupMembersTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $CategoryGroupsTable _groupIdTable(_$AppDatabase db) =>
+      db.categoryGroups.createAlias(
+        $_aliasNameGenerator(
+          db.categoryGroupMembers.groupId,
+          db.categoryGroups.id,
+        ),
+      );
+
+  $$CategoryGroupsTableProcessedTableManager get groupId {
+    final $_column = $_itemColumn<int>('group_id')!;
+
+    final manager = $$CategoryGroupsTableTableManager(
+      $_db,
+      $_db.categoryGroups,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_groupIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $CategoriesTable _categoryIdTable(_$AppDatabase db) =>
+      db.categories.createAlias(
+        $_aliasNameGenerator(
+          db.categoryGroupMembers.categoryId,
+          db.categories.id,
+        ),
+      );
+
+  $$CategoriesTableProcessedTableManager get categoryId {
+    final $_column = $_itemColumn<int>('category_id')!;
+
+    final manager = $$CategoriesTableTableManager(
+      $_db,
+      $_db.categories,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_categoryIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$CategoryGroupMembersTableFilterComposer
+    extends Composer<_$AppDatabase, $CategoryGroupMembersTable> {
+  $$CategoryGroupMembersTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$CategoryGroupsTableFilterComposer get groupId {
+    final $$CategoryGroupsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.groupId,
+      referencedTable: $db.categoryGroups,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CategoryGroupsTableFilterComposer(
+            $db: $db,
+            $table: $db.categoryGroups,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$CategoriesTableFilterComposer get categoryId {
+    final $$CategoriesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.categoryId,
+      referencedTable: $db.categories,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CategoriesTableFilterComposer(
+            $db: $db,
+            $table: $db.categories,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$CategoryGroupMembersTableOrderingComposer
+    extends Composer<_$AppDatabase, $CategoryGroupMembersTable> {
+  $$CategoryGroupMembersTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$CategoryGroupsTableOrderingComposer get groupId {
+    final $$CategoryGroupsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.groupId,
+      referencedTable: $db.categoryGroups,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CategoryGroupsTableOrderingComposer(
+            $db: $db,
+            $table: $db.categoryGroups,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$CategoriesTableOrderingComposer get categoryId {
+    final $$CategoriesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.categoryId,
+      referencedTable: $db.categories,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CategoriesTableOrderingComposer(
+            $db: $db,
+            $table: $db.categories,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$CategoryGroupMembersTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CategoryGroupMembersTable> {
+  $$CategoryGroupMembersTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  $$CategoryGroupsTableAnnotationComposer get groupId {
+    final $$CategoryGroupsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.groupId,
+      referencedTable: $db.categoryGroups,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CategoryGroupsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.categoryGroups,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$CategoriesTableAnnotationComposer get categoryId {
+    final $$CategoriesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.categoryId,
+      referencedTable: $db.categories,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CategoriesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.categories,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$CategoryGroupMembersTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CategoryGroupMembersTable,
+          CategoryGroupMember,
+          $$CategoryGroupMembersTableFilterComposer,
+          $$CategoryGroupMembersTableOrderingComposer,
+          $$CategoryGroupMembersTableAnnotationComposer,
+          $$CategoryGroupMembersTableCreateCompanionBuilder,
+          $$CategoryGroupMembersTableUpdateCompanionBuilder,
+          (CategoryGroupMember, $$CategoryGroupMembersTableReferences),
+          CategoryGroupMember,
+          PrefetchHooks Function({bool groupId, bool categoryId})
+        > {
+  $$CategoryGroupMembersTableTableManager(
+    _$AppDatabase db,
+    $CategoryGroupMembersTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CategoryGroupMembersTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CategoryGroupMembersTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$CategoryGroupMembersTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> groupId = const Value.absent(),
+                Value<int> categoryId = const Value.absent(),
+              }) => CategoryGroupMembersCompanion(
+                id: id,
+                groupId: groupId,
+                categoryId: categoryId,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int groupId,
+                required int categoryId,
+              }) => CategoryGroupMembersCompanion.insert(
+                id: id,
+                groupId: groupId,
+                categoryId: categoryId,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$CategoryGroupMembersTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({groupId = false, categoryId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (groupId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.groupId,
+                                referencedTable:
+                                    $$CategoryGroupMembersTableReferences
+                                        ._groupIdTable(db),
+                                referencedColumn:
+                                    $$CategoryGroupMembersTableReferences
+                                        ._groupIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+                    if (categoryId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.categoryId,
+                                referencedTable:
+                                    $$CategoryGroupMembersTableReferences
+                                        ._categoryIdTable(db),
+                                referencedColumn:
+                                    $$CategoryGroupMembersTableReferences
+                                        ._categoryIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$CategoryGroupMembersTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CategoryGroupMembersTable,
+      CategoryGroupMember,
+      $$CategoryGroupMembersTableFilterComposer,
+      $$CategoryGroupMembersTableOrderingComposer,
+      $$CategoryGroupMembersTableAnnotationComposer,
+      $$CategoryGroupMembersTableCreateCompanionBuilder,
+      $$CategoryGroupMembersTableUpdateCompanionBuilder,
+      (CategoryGroupMember, $$CategoryGroupMembersTableReferences),
+      CategoryGroupMember,
+      PrefetchHooks Function({bool groupId, bool categoryId})
+    >;
+typedef $$GroupBudgetsTableCreateCompanionBuilder =
+    GroupBudgetsCompanion Function({
+      Value<int> id,
+      required int groupId,
+      required int amountCents,
+      required int month,
+      required int year,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+    });
+typedef $$GroupBudgetsTableUpdateCompanionBuilder =
+    GroupBudgetsCompanion Function({
+      Value<int> id,
+      Value<int> groupId,
+      Value<int> amountCents,
+      Value<int> month,
+      Value<int> year,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+    });
+
+final class $$GroupBudgetsTableReferences
+    extends BaseReferences<_$AppDatabase, $GroupBudgetsTable, GroupBudget> {
+  $$GroupBudgetsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $CategoryGroupsTable _groupIdTable(_$AppDatabase db) =>
+      db.categoryGroups.createAlias(
+        $_aliasNameGenerator(db.groupBudgets.groupId, db.categoryGroups.id),
+      );
+
+  $$CategoryGroupsTableProcessedTableManager get groupId {
+    final $_column = $_itemColumn<int>('group_id')!;
+
+    final manager = $$CategoryGroupsTableTableManager(
+      $_db,
+      $_db.categoryGroups,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_groupIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$GroupBudgetsTableFilterComposer
+    extends Composer<_$AppDatabase, $GroupBudgetsTable> {
+  $$GroupBudgetsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get amountCents => $composableBuilder(
+    column: $table.amountCents,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get month => $composableBuilder(
+    column: $table.month,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get year => $composableBuilder(
+    column: $table.year,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$CategoryGroupsTableFilterComposer get groupId {
+    final $$CategoryGroupsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.groupId,
+      referencedTable: $db.categoryGroups,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CategoryGroupsTableFilterComposer(
+            $db: $db,
+            $table: $db.categoryGroups,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$GroupBudgetsTableOrderingComposer
+    extends Composer<_$AppDatabase, $GroupBudgetsTable> {
+  $$GroupBudgetsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get amountCents => $composableBuilder(
+    column: $table.amountCents,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get month => $composableBuilder(
+    column: $table.month,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get year => $composableBuilder(
+    column: $table.year,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$CategoryGroupsTableOrderingComposer get groupId {
+    final $$CategoryGroupsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.groupId,
+      referencedTable: $db.categoryGroups,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CategoryGroupsTableOrderingComposer(
+            $db: $db,
+            $table: $db.categoryGroups,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$GroupBudgetsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $GroupBudgetsTable> {
+  $$GroupBudgetsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get amountCents => $composableBuilder(
+    column: $table.amountCents,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get month =>
+      $composableBuilder(column: $table.month, builder: (column) => column);
+
+  GeneratedColumn<int> get year =>
+      $composableBuilder(column: $table.year, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  $$CategoryGroupsTableAnnotationComposer get groupId {
+    final $$CategoryGroupsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.groupId,
+      referencedTable: $db.categoryGroups,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CategoryGroupsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.categoryGroups,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$GroupBudgetsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $GroupBudgetsTable,
+          GroupBudget,
+          $$GroupBudgetsTableFilterComposer,
+          $$GroupBudgetsTableOrderingComposer,
+          $$GroupBudgetsTableAnnotationComposer,
+          $$GroupBudgetsTableCreateCompanionBuilder,
+          $$GroupBudgetsTableUpdateCompanionBuilder,
+          (GroupBudget, $$GroupBudgetsTableReferences),
+          GroupBudget,
+          PrefetchHooks Function({bool groupId})
+        > {
+  $$GroupBudgetsTableTableManager(_$AppDatabase db, $GroupBudgetsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$GroupBudgetsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$GroupBudgetsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$GroupBudgetsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> groupId = const Value.absent(),
+                Value<int> amountCents = const Value.absent(),
+                Value<int> month = const Value.absent(),
+                Value<int> year = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => GroupBudgetsCompanion(
+                id: id,
+                groupId: groupId,
+                amountCents: amountCents,
+                month: month,
+                year: year,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int groupId,
+                required int amountCents,
+                required int month,
+                required int year,
+                required DateTime createdAt,
+                required DateTime updatedAt,
+              }) => GroupBudgetsCompanion.insert(
+                id: id,
+                groupId: groupId,
+                amountCents: amountCents,
+                month: month,
+                year: year,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$GroupBudgetsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({groupId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (groupId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.groupId,
+                                referencedTable: $$GroupBudgetsTableReferences
+                                    ._groupIdTable(db),
+                                referencedColumn: $$GroupBudgetsTableReferences
+                                    ._groupIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$GroupBudgetsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $GroupBudgetsTable,
+      GroupBudget,
+      $$GroupBudgetsTableFilterComposer,
+      $$GroupBudgetsTableOrderingComposer,
+      $$GroupBudgetsTableAnnotationComposer,
+      $$GroupBudgetsTableCreateCompanionBuilder,
+      $$GroupBudgetsTableUpdateCompanionBuilder,
+      (GroupBudget, $$GroupBudgetsTableReferences),
+      GroupBudget,
+      PrefetchHooks Function({bool groupId})
+    >;
+typedef $$BudgetTemplatesTableCreateCompanionBuilder =
+    BudgetTemplatesCompanion Function({
+      Value<int> id,
+      required String name,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+    });
+typedef $$BudgetTemplatesTableUpdateCompanionBuilder =
+    BudgetTemplatesCompanion Function({
+      Value<int> id,
+      Value<String> name,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+    });
+
+final class $$BudgetTemplatesTableReferences
+    extends
+        BaseReferences<_$AppDatabase, $BudgetTemplatesTable, BudgetTemplate> {
+  $$BudgetTemplatesTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static MultiTypedResultKey<
+    $BudgetTemplateItemsTable,
+    List<BudgetTemplateItem>
+  >
+  _budgetTemplateItemsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.budgetTemplateItems,
+        aliasName: $_aliasNameGenerator(
+          db.budgetTemplates.id,
+          db.budgetTemplateItems.templateId,
+        ),
+      );
+
+  $$BudgetTemplateItemsTableProcessedTableManager get budgetTemplateItemsRefs {
+    final manager = $$BudgetTemplateItemsTableTableManager(
+      $_db,
+      $_db.budgetTemplateItems,
+    ).filter((f) => f.templateId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _budgetTemplateItemsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$BudgetTemplatesTableFilterComposer
+    extends Composer<_$AppDatabase, $BudgetTemplatesTable> {
+  $$BudgetTemplatesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> budgetTemplateItemsRefs(
+    Expression<bool> Function($$BudgetTemplateItemsTableFilterComposer f) f,
+  ) {
+    final $$BudgetTemplateItemsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.budgetTemplateItems,
+      getReferencedColumn: (t) => t.templateId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$BudgetTemplateItemsTableFilterComposer(
+            $db: $db,
+            $table: $db.budgetTemplateItems,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$BudgetTemplatesTableOrderingComposer
+    extends Composer<_$AppDatabase, $BudgetTemplatesTable> {
+  $$BudgetTemplatesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$BudgetTemplatesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $BudgetTemplatesTable> {
+  $$BudgetTemplatesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  Expression<T> budgetTemplateItemsRefs<T extends Object>(
+    Expression<T> Function($$BudgetTemplateItemsTableAnnotationComposer a) f,
+  ) {
+    final $$BudgetTemplateItemsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.budgetTemplateItems,
+          getReferencedColumn: (t) => t.templateId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$BudgetTemplateItemsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.budgetTemplateItems,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+}
+
+class $$BudgetTemplatesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $BudgetTemplatesTable,
+          BudgetTemplate,
+          $$BudgetTemplatesTableFilterComposer,
+          $$BudgetTemplatesTableOrderingComposer,
+          $$BudgetTemplatesTableAnnotationComposer,
+          $$BudgetTemplatesTableCreateCompanionBuilder,
+          $$BudgetTemplatesTableUpdateCompanionBuilder,
+          (BudgetTemplate, $$BudgetTemplatesTableReferences),
+          BudgetTemplate,
+          PrefetchHooks Function({bool budgetTemplateItemsRefs})
+        > {
+  $$BudgetTemplatesTableTableManager(
+    _$AppDatabase db,
+    $BudgetTemplatesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$BudgetTemplatesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$BudgetTemplatesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$BudgetTemplatesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => BudgetTemplatesCompanion(
+                id: id,
+                name: name,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String name,
+                required DateTime createdAt,
+                required DateTime updatedAt,
+              }) => BudgetTemplatesCompanion.insert(
+                id: id,
+                name: name,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$BudgetTemplatesTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({budgetTemplateItemsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [
+                if (budgetTemplateItemsRefs) db.budgetTemplateItems,
+              ],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (budgetTemplateItemsRefs)
+                    await $_getPrefetchedData<
+                      BudgetTemplate,
+                      $BudgetTemplatesTable,
+                      BudgetTemplateItem
+                    >(
+                      currentTable: table,
+                      referencedTable: $$BudgetTemplatesTableReferences
+                          ._budgetTemplateItemsRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$BudgetTemplatesTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).budgetTemplateItemsRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where((e) => e.templateId == item.id),
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$BudgetTemplatesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $BudgetTemplatesTable,
+      BudgetTemplate,
+      $$BudgetTemplatesTableFilterComposer,
+      $$BudgetTemplatesTableOrderingComposer,
+      $$BudgetTemplatesTableAnnotationComposer,
+      $$BudgetTemplatesTableCreateCompanionBuilder,
+      $$BudgetTemplatesTableUpdateCompanionBuilder,
+      (BudgetTemplate, $$BudgetTemplatesTableReferences),
+      BudgetTemplate,
+      PrefetchHooks Function({bool budgetTemplateItemsRefs})
+    >;
+typedef $$BudgetTemplateItemsTableCreateCompanionBuilder =
+    BudgetTemplateItemsCompanion Function({
+      Value<int> id,
+      required int templateId,
+      required int categoryId,
+      required int amountCents,
+    });
+typedef $$BudgetTemplateItemsTableUpdateCompanionBuilder =
+    BudgetTemplateItemsCompanion Function({
+      Value<int> id,
+      Value<int> templateId,
+      Value<int> categoryId,
+      Value<int> amountCents,
+    });
+
+final class $$BudgetTemplateItemsTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $BudgetTemplateItemsTable,
+          BudgetTemplateItem
+        > {
+  $$BudgetTemplateItemsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $BudgetTemplatesTable _templateIdTable(_$AppDatabase db) =>
+      db.budgetTemplates.createAlias(
+        $_aliasNameGenerator(
+          db.budgetTemplateItems.templateId,
+          db.budgetTemplates.id,
+        ),
+      );
+
+  $$BudgetTemplatesTableProcessedTableManager get templateId {
+    final $_column = $_itemColumn<int>('template_id')!;
+
+    final manager = $$BudgetTemplatesTableTableManager(
+      $_db,
+      $_db.budgetTemplates,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_templateIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $CategoriesTable _categoryIdTable(_$AppDatabase db) =>
+      db.categories.createAlias(
+        $_aliasNameGenerator(
+          db.budgetTemplateItems.categoryId,
+          db.categories.id,
+        ),
+      );
+
+  $$CategoriesTableProcessedTableManager get categoryId {
+    final $_column = $_itemColumn<int>('category_id')!;
+
+    final manager = $$CategoriesTableTableManager(
+      $_db,
+      $_db.categories,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_categoryIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$BudgetTemplateItemsTableFilterComposer
+    extends Composer<_$AppDatabase, $BudgetTemplateItemsTable> {
+  $$BudgetTemplateItemsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get amountCents => $composableBuilder(
+    column: $table.amountCents,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$BudgetTemplatesTableFilterComposer get templateId {
+    final $$BudgetTemplatesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.templateId,
+      referencedTable: $db.budgetTemplates,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$BudgetTemplatesTableFilterComposer(
+            $db: $db,
+            $table: $db.budgetTemplates,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$CategoriesTableFilterComposer get categoryId {
+    final $$CategoriesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.categoryId,
+      referencedTable: $db.categories,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CategoriesTableFilterComposer(
+            $db: $db,
+            $table: $db.categories,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$BudgetTemplateItemsTableOrderingComposer
+    extends Composer<_$AppDatabase, $BudgetTemplateItemsTable> {
+  $$BudgetTemplateItemsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get amountCents => $composableBuilder(
+    column: $table.amountCents,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$BudgetTemplatesTableOrderingComposer get templateId {
+    final $$BudgetTemplatesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.templateId,
+      referencedTable: $db.budgetTemplates,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$BudgetTemplatesTableOrderingComposer(
+            $db: $db,
+            $table: $db.budgetTemplates,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$CategoriesTableOrderingComposer get categoryId {
+    final $$CategoriesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.categoryId,
+      referencedTable: $db.categories,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CategoriesTableOrderingComposer(
+            $db: $db,
+            $table: $db.categories,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$BudgetTemplateItemsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $BudgetTemplateItemsTable> {
+  $$BudgetTemplateItemsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get amountCents => $composableBuilder(
+    column: $table.amountCents,
+    builder: (column) => column,
+  );
+
+  $$BudgetTemplatesTableAnnotationComposer get templateId {
+    final $$BudgetTemplatesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.templateId,
+      referencedTable: $db.budgetTemplates,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$BudgetTemplatesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.budgetTemplates,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$CategoriesTableAnnotationComposer get categoryId {
+    final $$CategoriesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.categoryId,
+      referencedTable: $db.categories,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CategoriesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.categories,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$BudgetTemplateItemsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $BudgetTemplateItemsTable,
+          BudgetTemplateItem,
+          $$BudgetTemplateItemsTableFilterComposer,
+          $$BudgetTemplateItemsTableOrderingComposer,
+          $$BudgetTemplateItemsTableAnnotationComposer,
+          $$BudgetTemplateItemsTableCreateCompanionBuilder,
+          $$BudgetTemplateItemsTableUpdateCompanionBuilder,
+          (BudgetTemplateItem, $$BudgetTemplateItemsTableReferences),
+          BudgetTemplateItem,
+          PrefetchHooks Function({bool templateId, bool categoryId})
+        > {
+  $$BudgetTemplateItemsTableTableManager(
+    _$AppDatabase db,
+    $BudgetTemplateItemsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$BudgetTemplateItemsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$BudgetTemplateItemsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$BudgetTemplateItemsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> templateId = const Value.absent(),
+                Value<int> categoryId = const Value.absent(),
+                Value<int> amountCents = const Value.absent(),
+              }) => BudgetTemplateItemsCompanion(
+                id: id,
+                templateId: templateId,
+                categoryId: categoryId,
+                amountCents: amountCents,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int templateId,
+                required int categoryId,
+                required int amountCents,
+              }) => BudgetTemplateItemsCompanion.insert(
+                id: id,
+                templateId: templateId,
+                categoryId: categoryId,
+                amountCents: amountCents,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$BudgetTemplateItemsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({templateId = false, categoryId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (templateId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.templateId,
+                                referencedTable:
+                                    $$BudgetTemplateItemsTableReferences
+                                        ._templateIdTable(db),
+                                referencedColumn:
+                                    $$BudgetTemplateItemsTableReferences
+                                        ._templateIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+                    if (categoryId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.categoryId,
+                                referencedTable:
+                                    $$BudgetTemplateItemsTableReferences
+                                        ._categoryIdTable(db),
+                                referencedColumn:
+                                    $$BudgetTemplateItemsTableReferences
+                                        ._categoryIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$BudgetTemplateItemsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $BudgetTemplateItemsTable,
+      BudgetTemplateItem,
+      $$BudgetTemplateItemsTableFilterComposer,
+      $$BudgetTemplateItemsTableOrderingComposer,
+      $$BudgetTemplateItemsTableAnnotationComposer,
+      $$BudgetTemplateItemsTableCreateCompanionBuilder,
+      $$BudgetTemplateItemsTableUpdateCompanionBuilder,
+      (BudgetTemplateItem, $$BudgetTemplateItemsTableReferences),
+      BudgetTemplateItem,
+      PrefetchHooks Function({bool templateId, bool categoryId})
+    >;
+typedef $$MonthlyBudgetConfigsTableCreateCompanionBuilder =
+    MonthlyBudgetConfigsCompanion Function({
+      Value<int> id,
+      Value<int?> globalBudgetCents,
+      required int month,
+      required int year,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+    });
+typedef $$MonthlyBudgetConfigsTableUpdateCompanionBuilder =
+    MonthlyBudgetConfigsCompanion Function({
+      Value<int> id,
+      Value<int?> globalBudgetCents,
+      Value<int> month,
+      Value<int> year,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+    });
+
+class $$MonthlyBudgetConfigsTableFilterComposer
+    extends Composer<_$AppDatabase, $MonthlyBudgetConfigsTable> {
+  $$MonthlyBudgetConfigsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get globalBudgetCents => $composableBuilder(
+    column: $table.globalBudgetCents,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get month => $composableBuilder(
+    column: $table.month,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get year => $composableBuilder(
+    column: $table.year,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$MonthlyBudgetConfigsTableOrderingComposer
+    extends Composer<_$AppDatabase, $MonthlyBudgetConfigsTable> {
+  $$MonthlyBudgetConfigsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get globalBudgetCents => $composableBuilder(
+    column: $table.globalBudgetCents,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get month => $composableBuilder(
+    column: $table.month,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get year => $composableBuilder(
+    column: $table.year,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$MonthlyBudgetConfigsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $MonthlyBudgetConfigsTable> {
+  $$MonthlyBudgetConfigsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get globalBudgetCents => $composableBuilder(
+    column: $table.globalBudgetCents,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get month =>
+      $composableBuilder(column: $table.month, builder: (column) => column);
+
+  GeneratedColumn<int> get year =>
+      $composableBuilder(column: $table.year, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$MonthlyBudgetConfigsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $MonthlyBudgetConfigsTable,
+          MonthlyBudgetConfig,
+          $$MonthlyBudgetConfigsTableFilterComposer,
+          $$MonthlyBudgetConfigsTableOrderingComposer,
+          $$MonthlyBudgetConfigsTableAnnotationComposer,
+          $$MonthlyBudgetConfigsTableCreateCompanionBuilder,
+          $$MonthlyBudgetConfigsTableUpdateCompanionBuilder,
+          (
+            MonthlyBudgetConfig,
+            BaseReferences<
+              _$AppDatabase,
+              $MonthlyBudgetConfigsTable,
+              MonthlyBudgetConfig
+            >,
+          ),
+          MonthlyBudgetConfig,
+          PrefetchHooks Function()
+        > {
+  $$MonthlyBudgetConfigsTableTableManager(
+    _$AppDatabase db,
+    $MonthlyBudgetConfigsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$MonthlyBudgetConfigsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$MonthlyBudgetConfigsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$MonthlyBudgetConfigsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int?> globalBudgetCents = const Value.absent(),
+                Value<int> month = const Value.absent(),
+                Value<int> year = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => MonthlyBudgetConfigsCompanion(
+                id: id,
+                globalBudgetCents: globalBudgetCents,
+                month: month,
+                year: year,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int?> globalBudgetCents = const Value.absent(),
+                required int month,
+                required int year,
+                required DateTime createdAt,
+                required DateTime updatedAt,
+              }) => MonthlyBudgetConfigsCompanion.insert(
+                id: id,
+                globalBudgetCents: globalBudgetCents,
+                month: month,
+                year: year,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$MonthlyBudgetConfigsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $MonthlyBudgetConfigsTable,
+      MonthlyBudgetConfig,
+      $$MonthlyBudgetConfigsTableFilterComposer,
+      $$MonthlyBudgetConfigsTableOrderingComposer,
+      $$MonthlyBudgetConfigsTableAnnotationComposer,
+      $$MonthlyBudgetConfigsTableCreateCompanionBuilder,
+      $$MonthlyBudgetConfigsTableUpdateCompanionBuilder,
+      (
+        MonthlyBudgetConfig,
+        BaseReferences<
+          _$AppDatabase,
+          $MonthlyBudgetConfigsTable,
+          MonthlyBudgetConfig
+        >,
+      ),
+      MonthlyBudgetConfig,
+      PrefetchHooks Function()
     >;
 typedef $$ExercisesTableCreateCompanionBuilder =
     ExercisesCompanion Function({
@@ -30567,6 +35054,18 @@ class $AppDatabaseManager {
       $$SavingsGoalsTableTableManager(_db, _db.savingsGoals);
   $$RecurringTransactionsTableTableManager get recurringTransactions =>
       $$RecurringTransactionsTableTableManager(_db, _db.recurringTransactions);
+  $$CategoryGroupsTableTableManager get categoryGroups =>
+      $$CategoryGroupsTableTableManager(_db, _db.categoryGroups);
+  $$CategoryGroupMembersTableTableManager get categoryGroupMembers =>
+      $$CategoryGroupMembersTableTableManager(_db, _db.categoryGroupMembers);
+  $$GroupBudgetsTableTableManager get groupBudgets =>
+      $$GroupBudgetsTableTableManager(_db, _db.groupBudgets);
+  $$BudgetTemplatesTableTableManager get budgetTemplates =>
+      $$BudgetTemplatesTableTableManager(_db, _db.budgetTemplates);
+  $$BudgetTemplateItemsTableTableManager get budgetTemplateItems =>
+      $$BudgetTemplateItemsTableTableManager(_db, _db.budgetTemplateItems);
+  $$MonthlyBudgetConfigsTableTableManager get monthlyBudgetConfigs =>
+      $$MonthlyBudgetConfigsTableTableManager(_db, _db.monthlyBudgetConfigs);
   $$ExercisesTableTableManager get exercises =>
       $$ExercisesTableTableManager(_db, _db.exercises);
   $$RoutinesTableTableManager get routines =>

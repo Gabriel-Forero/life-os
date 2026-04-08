@@ -40,6 +40,8 @@ class Budgets extends Table {
   IntColumn get amountCents => integer()();
   IntColumn get month => integer()();
   IntColumn get year => integer()();
+  BoolColumn get autoRepeat =>
+      boolean().withDefault(const Constant(true))();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
 
@@ -78,4 +80,85 @@ class RecurringTransactions extends Table {
   DateTimeColumn get nextOccurrence => dateTime()();
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
   DateTimeColumn get createdAt => dateTime()();
+}
+
+class CategoryGroups extends Table {
+  @override
+  String get tableName => 'category_groups';
+
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get name => text().withLength(min: 1, max: 30)();
+  IntColumn get color => integer().withDefault(const Constant(0xFF9CA3AF))();
+  IntColumn get sortOrder => integer().withDefault(const Constant(0))();
+  DateTimeColumn get createdAt => dateTime()();
+}
+
+class CategoryGroupMembers extends Table {
+  @override
+  String get tableName => 'category_group_members';
+
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get groupId => integer().references(CategoryGroups, #id)();
+  IntColumn get categoryId => integer().references(Categories, #id)();
+
+  @override
+  List<Set<Column>> get uniqueKeys => [
+        {groupId, categoryId},
+      ];
+}
+
+class GroupBudgets extends Table {
+  @override
+  String get tableName => 'group_budgets';
+
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get groupId => integer().references(CategoryGroups, #id)();
+  IntColumn get amountCents => integer()();
+  IntColumn get month => integer()();
+  IntColumn get year => integer()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  List<Set<Column>> get uniqueKeys => [
+        {groupId, month, year},
+      ];
+}
+
+class BudgetTemplates extends Table {
+  @override
+  String get tableName => 'budget_templates';
+
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get name => text().withLength(min: 1, max: 50)();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+}
+
+class BudgetTemplateItems extends Table {
+  @override
+  String get tableName => 'budget_template_items';
+
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get templateId =>
+      integer().references(BudgetTemplates, #id)();
+  IntColumn get categoryId => integer().references(Categories, #id)();
+  IntColumn get amountCents => integer()();
+}
+
+class MonthlyBudgetConfigs extends Table {
+  @override
+  String get tableName => 'monthly_budget_configs';
+
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get globalBudgetCents => integer().nullable()();
+  IntColumn get month => integer()();
+  IntColumn get year => integer()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  List<Set<Column>> get uniqueKeys => [
+        {month, year},
+      ];
 }

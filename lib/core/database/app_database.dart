@@ -31,6 +31,12 @@ part 'app_database.g.dart';
     Budgets,
     SavingsGoals,
     RecurringTransactions,
+    CategoryGroups,
+    CategoryGroupMembers,
+    GroupBudgets,
+    BudgetTemplates,
+    BudgetTemplateItems,
+    MonthlyBudgetConfigs,
     // Gym
     Exercises,
     Routines,
@@ -86,7 +92,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 13;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -149,6 +155,8 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(routineExercises, routineExercises.dayName);
           }
           if (from < 11) {
+            // v11: Body measurements expansion
+
             await m.addColumn(bodyMeasurements, bodyMeasurements.neckCm);
             await m.addColumn(bodyMeasurements, bodyMeasurements.shouldersCm);
             await m.addColumn(bodyMeasurements, bodyMeasurements.forearmCm);
@@ -166,6 +174,17 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(
                 bodyMeasurements, bodyMeasurements.photoBackPath);
             await m.addColumn(bodyMeasurements, bodyMeasurements.note);
+          }
+          if (from < 12) {
+            await m.addColumn(budgets, budgets.autoRepeat);
+            await m.createTable(budgetTemplates);
+            await m.createTable(budgetTemplateItems);
+            await m.createTable(monthlyBudgetConfigs);
+          }
+          if (from < 13) {
+            await m.createTable(categoryGroups);
+            await m.createTable(categoryGroupMembers);
+            await m.createTable(groupBudgets);
           }
         },
       );
