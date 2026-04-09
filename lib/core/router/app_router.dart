@@ -75,6 +75,7 @@ abstract final class AppRoutes {
   static const String financeSmsImport = '/finance/sms-import';
   static const String financeBudgetAnalytics = '/finance/budget-analytics';
   static const String financeBudgetWizard = '/finance/budget-wizard';
+  static const String financeTransactions = '/finance/transactions';
 
   // Gym
   static const String gym = '/gym';
@@ -176,7 +177,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           // Finance
           GoRoute(
             path: AppRoutes.finance,
-            builder: (context, state) => const TransactionsListScreen(),
+            builder: (context, state) => const FinanceDashboardScreen(),
           ),
           // Gym
           GoRoute(
@@ -225,6 +226,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(path: AppRoutes.financeBudgetWizard, builder: (context, state) => const BudgetWizardScreen()),
           GoRoute(path: AppRoutes.financeSavings, builder: (context, state) => const SavingsGoalsScreen()),
           GoRoute(path: AppRoutes.financeDashboard, builder: (context, state) => const FinanceDashboardScreen()),
+          GoRoute(path: AppRoutes.financeTransactions, builder: (context, state) => const TransactionsListScreen()),
           GoRoute(path: AppRoutes.financeValuation, builder: (context, state) => const FinanceValuationScreen()),
           // Gym
           GoRoute(path: AppRoutes.gymExercises, builder: (context, state) => const ExerciseLibraryScreen()),
@@ -362,10 +364,10 @@ class _AppShellState extends State<_AppShell> {
           tooltip: 'Presupuestos',
         ),
         IconButton(
-          key: const ValueKey('transactions-dashboard-button'),
-          icon: Icon(Icons.bar_chart, color: AppColors.finance),
-          onPressed: () => GoRouter.of(context).push(AppRoutes.financeDashboard),
-          tooltip: 'Dashboard',
+          key: const ValueKey('transactions-list-button'),
+          icon: Icon(Icons.receipt_long_outlined, color: AppColors.finance),
+          onPressed: () => GoRouter.of(context).push(AppRoutes.financeTransactions),
+          tooltip: 'Transacciones',
         ),
         IconButton(
           key: const ValueKey('transactions-savings-button'),

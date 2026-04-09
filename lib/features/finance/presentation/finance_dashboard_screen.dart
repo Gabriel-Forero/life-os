@@ -13,17 +13,6 @@ import 'package:intl/intl.dart';
 // Enums y modelos
 // ---------------------------------------------------------------------------
 
-/// Rango de fechas seleccionable para el dashboard.
-enum _DateRange { week, month, year }
-
-extension _DateRangeLabel on _DateRange {
-  String get label => switch (this) {
-        _DateRange.week => 'Semana',
-        _DateRange.month => 'Mes',
-        _DateRange.year => 'Ano',
-      };
-}
-
 // Real data models
 class _PieSlice {
   const _PieSlice({
@@ -67,57 +56,38 @@ class FinanceDashboardScreen extends ConsumerStatefulWidget {
 
 class _FinanceDashboardScreenState
     extends ConsumerState<FinanceDashboardScreen> {
-  _DateRange _selectedRange = _DateRange.month;
+  late int _month;
+  late int _year;
   int? _touchedPieIndex;
 
-  (DateTime, DateTime) _dateRangeFor(_DateRange range) {
+  @override
+  void initState() {
+    super.initState();
     final now = DateTime.now();
-    return switch (range) {
-      _DateRange.week => (
-          now.subtract(Duration(days: now.weekday - 1)),
-          DateTime(now.year, now.month, now.day, 23, 59, 59),
-        ),
-      _DateRange.month => (
-          DateTime(now.year, now.month, 1),
-          DateTime(now.year, now.month + 1, 0, 23, 59, 59),
-        ),
-      _DateRange.year => (
-          DateTime(now.year, 1, 1),
-          DateTime(now.year, 12, 31, 23, 59, 59),
-        ),
-    };
+    _month = now.month;
+    _year = now.year;
+  }
+
+  void _changeMonth(int delta) {
+    setState(() {
+      var m = _month + delta;
+      var y = _year;
+      while (m < 1) { m += 12; y--; }
+      while (m > 12) { m -= 12; y++; }
+      _month = m;
+      _year = y;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final formatter = NumberFormat('#,##0', 'es_CO');
     final dao = ref.watch(financeDaoProvider);
-    final (from, to) = _dateRangeFor(_selectedRange);
+    final from = DateTime(_year, _month, 1);
+    final to = DateTime(_year, _month + 1, 0, 23, 59, 59);
 
     return Scaffold(
       key: const ValueKey('finance-dashboard-screen'),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        foregroundColor: AppColors.finance,
-        title: Semantics(
-          header: true,
-          child: const Text('Finanzas'),
-        ),
-        actions: [
-          Semantics(
-            label: 'Ver notificaciones financieras',
-            button: true,
-            child: IconButton(
-              key: const ValueKey('dashboard-notifications-button'),
-              icon: const Icon(Icons.notifications_outlined),
-              onPressed: () {},
-              tooltip: 'Notificaciones',
-            ),
-          ),
-        ],
-      ),
       body: FutureBuilder<List<int>>(
         future: Future.wait([
           dao.sumByType('income', from, to),
@@ -134,15 +104,12 @@ class _FinanceDashboardScreenState
             child: ListView(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
               children: [
-                // --- Selector de rango de fecha ---
-                Semantics(
-                  label: 'Seleccionar rango de fecha',
-                  child: _DateRangeSelector(
-                    key: const ValueKey('dashboard-date-range-selector'),
-                    selected: _selectedRange,
-                    onChanged: (range) =>
-                        setState(() => _selectedRange = range),
-                  ),
+                // --- Selector de mes ---
+                _MonthStrip(
+                  key: const ValueKey('dashboard-month-strip'),
+                  month: _month,
+                  year: _year,
+                  onMonthChange: _changeMonth,
                 ),
                 const SizedBox(height: 16),
 
@@ -373,34 +340,98 @@ class _FinanceDashboardScreenState
 // Widget: selector de rango de fecha
 // ---------------------------------------------------------------------------
 
-class _DateRangeSelector extends StatelessWidget {
-  const _DateRangeSelector({
+class _MonthStrip extends StatelessWidget {
+  const _MonthStrip({
     super.key,
-    required this.selected,
-    required this.onChanged,
+    required this.month,
+    required this.year,
+    required this.onMonthChange,
   });
 
-  final _DateRange selected;
-  final ValueChanged<_DateRange> onChanged;
+  final int month;
+  final int year;
+  final ValueChanged<int> onMonthChange;
+
+  static const _kNames = [
+    'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
+    'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic',
+  ];
 
   @override
   Widget build(BuildContext context) {
-    return SegmentedButton<_DateRange>(
-      segments: _DateRange.values
-          .map(
-            (r) => ButtonSegment<_DateRange>(
-              value: r,
-              label: Text(r.label),
+    final theme = Theme.of(context);
+    final brightness = theme.brightness;
+    final now = DateTime.now();
+
+    // 13 months: 6 before, current, 6 after
+    final months = List.generate(13, (i) {
+      final offset = i - 6;
+      var m = month + offset;
+      var y = year;
+      while (m < 1) { m += 12; y--; }
+      while (m > 12) { m -= 12; y++; }
+      return (month: m, year: y, delta: offset);
+    });
+
+    return SizedBox(
+      height: 56,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        itemCount: months.length,
+        itemBuilder: (context, index) {
+          final item = months[index];
+          final isSelected = item.delta == 0;
+          final isCurrent =
+              item.month == now.month && item.year == now.year;
+
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 3),
+            child: GestureDetector(
+              onTap: () => onMonthChange(item.delta),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 56,
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? AppColors.finance.withAlpha(brightness == Brightness.dark ? 25 : 15)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: isSelected
+                        ? AppColors.finance
+                        : isCurrent
+                            ? AppColors.finance.withAlpha(40)
+                            : Colors.transparent,
+                    width: isSelected ? 2 : 1,
+                  ),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      _kNames[item.month - 1],
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: isSelected
+                            ? AppColors.finance
+                            : AppColors.textSecondary(brightness),
+                        fontWeight:
+                            isSelected ? FontWeight.w700 : FontWeight.w500,
+                      ),
+                    ),
+                    if (item.year != now.year)
+                      Text(
+                        '${item.year}',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: AppColors.textSecondary(brightness).withAlpha(120),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
             ),
-          )
-          .toList(),
-      selected: {selected},
-      onSelectionChanged: (set) {
-        if (set.isNotEmpty) onChanged(set.first);
-      },
-      style: SegmentedButton.styleFrom(
-        selectedBackgroundColor: AppColors.finance.withAlpha(30),
-        selectedForegroundColor: AppColors.finance,
+          );
+        },
       ),
     );
   }
