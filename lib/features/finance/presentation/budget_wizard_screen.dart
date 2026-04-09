@@ -56,8 +56,36 @@ class _BudgetWizardScreenState extends ConsumerState<BudgetWizardScreen> {
   final List<_SavingsGoalEntry> _savingsGoals = [];
   final List<_InvestmentEntry> _investments = [];
 
+  // ── Carry-over from previous month ───────────────────────────────────────
+  int _previousMonthAhorro = 0;
+
   // ── Saving state ────────────────────────────────────────────────────────
   bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPreviousMonthAhorro();
+  }
+
+  Future<void> _loadPreviousMonthAhorro() async {
+    final now = DateTime.now();
+    final prevMonth = now.month == 1 ? 12 : now.month - 1;
+    final prevYear = now.month == 1 ? now.year - 1 : now.year;
+    final dao = ref.read(financeDaoProvider);
+
+    // Calculate previous month: income - expenses - investments
+    final from = DateTime(prevYear, prevMonth);
+    final to = DateTime(prevYear, prevMonth + 1, 0, 23, 59, 59);
+    final income = await dao.sumByType('income', from, to);
+    final expenses = await dao.sumByType('expense', from, to);
+    // Investments are tracked as expenses in savings-related categories
+    // For now, use: ahorro = income - expenses (net leftover)
+    final ahorro = income - expenses;
+    if (mounted) {
+      setState(() => _previousMonthAhorro = ahorro > 0 ? ahorro : 0);
+    }
+  }
 
   @override
   void dispose() {
@@ -116,16 +144,21 @@ class _BudgetWizardScreenState extends ConsumerState<BudgetWizardScreen> {
   int get _totalSavings =>
       _emergencyMonthly + _totalSavingsGoals + _totalInvestments;
 
-  int get _balance => _totalIncome - _totalExpenses - _totalSavings;
+  /// Ahorro disponible = lo que sobra del mes (ingresos - gastos - inversiones)
+  int get _ahorroDisponible =>
+      _totalIncome - _totalExpenses - _totalSavings;
+
+  /// Total disponible este mes = ingresos + ahorro del mes anterior
+  int get _totalDisponible => _totalIncome + _previousMonthAhorro;
 
   double get _expensePercent =>
-      _totalIncome > 0 ? _totalExpenses / _totalIncome * 100 : 0;
+      _totalDisponible > 0 ? _totalExpenses / _totalDisponible * 100 : 0;
 
   double get _savingsPercent =>
-      _totalIncome > 0 ? _totalSavings / _totalIncome * 100 : 0;
+      _totalDisponible > 0 ? _totalSavings / _totalDisponible * 100 : 0;
 
   double get _debtPercent =>
-      _totalIncome > 0 ? _debtPayments / _totalIncome * 100 : 0;
+      _totalDisponible > 0 ? _debtPayments / _totalDisponible * 100 : 0;
 
   // ── Navigation ──────────────────────────────────────────────────────────
 
@@ -158,15 +191,6 @@ class _BudgetWizardScreenState extends ConsumerState<BudgetWizardScreen> {
     final dao = ref.read(financeDaoProvider);
 
     try {
-      // Store total income as global budget
-      if (_totalIncome > 0) {
-        await notifier.setGlobalBudget(
-          amountCents: _totalIncome,
-          month: month,
-          year: year,
-        );
-      }
-
       // Map expenses to categories and create budgets
       final expenseMappings = <String, int>{
         'Hogar': _fixedExpenses[0].cents, // Arriendo
@@ -311,7 +335,9 @@ class _BudgetWizardScreenState extends ConsumerState<BudgetWizardScreen> {
                   totalFixedExpenses: _totalFixedExpenses,
                   totalVariableExpenses: _totalVariableExpenses,
                   totalSavings: _totalSavings,
-                  balance: _balance,
+                  ahorroDisponible: _ahorroDisponible,
+                  previousMonthAhorro: _previousMonthAhorro,
+                  totalDisponible: _totalDisponible,
                   expensePercent: _expensePercent,
                   savingsPercent: _savingsPercent,
                   debtPercent: _debtPercent,
@@ -1265,7 +1291,9 @@ class _SummaryPage extends StatelessWidget {
     required this.totalFixedExpenses,
     required this.totalVariableExpenses,
     required this.totalSavings,
-    required this.balance,
+    required this.ahorroDisponible,
+    required this.previousMonthAhorro,
+    required this.totalDisponible,
     required this.expensePercent,
     required this.savingsPercent,
     required this.debtPercent,
@@ -1278,7 +1306,9 @@ class _SummaryPage extends StatelessWidget {
   final int totalFixedExpenses;
   final int totalVariableExpenses;
   final int totalSavings;
-  final int balance;
+  final int ahorroDisponible;
+  final int previousMonthAhorro;
+  final int totalDisponible;
   final double expensePercent;
   final double savingsPercent;
   final double debtPercent;
@@ -1289,14 +1319,12 @@ class _SummaryPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final brightness = theme.brightness;
-    final needsPercent =
-        totalIncome > 0 ? 100 - expensePercent - savingsPercent : 0.0;
 
     // 50/30/20 analysis
     final fixedPct =
-        totalIncome > 0 ? totalFixedExpenses / totalIncome * 100 : 0.0;
+        totalDisponible > 0 ? totalFixedExpenses / totalDisponible * 100 : 0.0;
     final variablePct =
-        totalIncome > 0 ? totalVariableExpenses / totalIncome * 100 : 0.0;
+        totalDisponible > 0 ? totalVariableExpenses / totalDisponible * 100 : 0.0;
 
     return ListView(
       padding: const EdgeInsets.all(20),
@@ -1308,27 +1336,29 @@ class _SummaryPage extends StatelessWidget {
         ),
         const SizedBox(height: 16),
 
-        // Balance card
+        // Ahorro disponible card (main hero)
         Container(
           decoration: AppDecorations.elevatedCard(brightness),
           padding: const EdgeInsets.all(20),
           child: Column(
             children: [
-              Text('Balance mensual',
+              Text('Ahorro disponible este mes',
                   style: theme.textTheme.bodySmall?.copyWith(
                       color: AppColors.textSecondary(brightness))),
               const SizedBox(height: 8),
               Text(
-                _formatCurrency(balance),
+                _formatCurrency(ahorroDisponible),
                 style: AppTypography.numericDisplay(
                   fontSize: 32,
                   fontWeight: FontWeight.w700,
-                  color: balance >= 0 ? AppColors.success : AppColors.error,
+                  color: ahorroDisponible >= 0 ? AppColors.success : AppColors.error,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
-                balance >= 0 ? 'Restante despues de gastos y ahorro' : 'Deficit — gastas mas de lo que ganas',
+                ahorroDisponible >= 0
+                    ? 'Dinero que sobra despues de gastos e inversiones'
+                    : 'Deficit — gastas mas de lo que ganas',
                 style: theme.textTheme.bodySmall?.copyWith(
                     color: AppColors.textSecondary(brightness)),
                 textAlign: TextAlign.center,
@@ -1339,8 +1369,42 @@ class _SummaryPage extends StatelessWidget {
 
         const SizedBox(height: 16),
 
+        // Previous month carry-over (if any)
+        if (previousMonthAhorro > 0)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Container(
+              decoration: BoxDecoration(
+                color: AppColors.finance.withAlpha(brightness == Brightness.dark ? 15 : 8),
+                borderRadius: BorderRadius.circular(AppDecorations.radiusSm),
+                border: Border.all(color: AppColors.finance.withAlpha(brightness == Brightness.dark ? 40 : 25)),
+              ),
+              padding: const EdgeInsets.all(14),
+              child: Row(
+                children: [
+                  const Icon(Icons.savings_outlined, color: AppColors.finance, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Ahorro del mes anterior: ${_formatCurrency(previousMonthAhorro)}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: AppColors.finance,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
         // Breakdown rows
-        _SummaryRow('Ingresos totales', totalIncome, const Color(0xFF10B981)),
+        _SummaryRow('Ingresos del mes', totalIncome, const Color(0xFF10B981)),
+        if (previousMonthAhorro > 0)
+          _SummaryRow('+ Ahorro mes anterior', previousMonthAhorro, AppColors.finance),
+        _SummaryRow('Total disponible', totalDisponible, const Color(0xFF10B981),
+            subtitle: 'Ingresos + ahorro anterior'),
+        const SizedBox(height: 4),
         _SummaryRow('Gastos fijos', totalFixedExpenses, const Color(0xFFEF4444),
             subtitle: '${fixedPct.toStringAsFixed(1)}%'),
         _SummaryRow(
@@ -1352,22 +1416,22 @@ class _SummaryPage extends StatelessWidget {
 
         const SizedBox(height: 16),
 
-        // Validation: Income = Expenses + Savings + Balance
+        // Validation: Ingresos + Ahorro anterior = Gastos + Inversiones + Ahorro disponible
         Container(
           decoration: AppDecorations.card(brightness),
           padding: const EdgeInsets.all(14),
           child: Row(
             children: [
               Icon(
-                balance == 0 ? Icons.check_circle_rounded : Icons.info_outline_rounded,
-                color: balance == 0 ? AppColors.success : AppColors.info,
+                ahorroDisponible >= 0 ? Icons.check_circle_rounded : Icons.warning_rounded,
+                color: ahorroDisponible >= 0 ? AppColors.success : AppColors.error,
                 size: 20,
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'Ingresos = Gastos + Ahorro + Balance\n'
-                  '${_formatCurrency(totalIncome)} = ${_formatCurrency(totalExpenses)} + ${_formatCurrency(totalSavings)} + ${_formatCurrency(balance)}',
+                  'Disponible = Gastos + Inversiones + Ahorro\n'
+                  '${_formatCurrency(totalDisponible)} = ${_formatCurrency(totalExpenses)} + ${_formatCurrency(totalSavings)} + ${_formatCurrency(ahorroDisponible)}',
                   style: theme.textTheme.bodySmall,
                 ),
               ),
@@ -1394,13 +1458,13 @@ class _SummaryPage extends StatelessWidget {
             message:
                 'Tu tasa de ahorro es menor al 10% recomendado. Intenta destinar al menos el 20% de tus ingresos a ahorro.',
           ),
-        if (balance < 0)
+        if (ahorroDisponible < 0)
           _AlertCard(
             icon: Icons.error_outline_rounded,
             color: AppColors.error,
-            title: 'Deficit de ${_formatCurrency(balance.abs())}',
+            title: 'Deficit de ${_formatCurrency(ahorroDisponible.abs())}',
             message:
-                'Tus gastos y ahorro superan tus ingresos. Revisa las categorias de gasto para ajustar.',
+                'Tus gastos e inversiones superan tus ingresos. Revisa las categorias de gasto para ajustar.',
           ),
 
         const SizedBox(height: 16),

@@ -106,17 +106,14 @@ class _BudgetOverviewScreenState extends ConsumerState<BudgetOverviewScreen> {
     setState(() {
       var m = _month + delta;
       var y = _year;
-      if (m < 1) {
-        m = 12;
-        y--;
-      } else if (m > 12) {
-        m = 1;
-        y++;
-      }
+      while (m < 1) { m += 12; y--; }
+      while (m > 12) { m -= 12; y++; }
       _month = m;
       _year = y;
       _selectedBudgetId = null;
     });
+    // Ensure budgets for the new month
+    ref.read(financeNotifierProvider).ensureBudgetsForMonth(_month, _year);
   }
 
   @override
@@ -174,7 +171,6 @@ class _BudgetOverviewScreenState extends ConsumerState<BudgetOverviewScreen> {
         onAddBudget: () => _showSetBudgetDialog(context, ref, null),
         onSaveTemplate: () => _showSaveTemplateDialog(context, ref),
         onApplyTemplate: () => _showApplyTemplateDialog(context, ref),
-        onSetGlobalBudget: () => _showSetGlobalBudgetDialog(context, ref),
         onAnalytics: () => GoRouter.of(context)
             .go('/finance/budget-analytics'),
       ),
@@ -301,64 +297,6 @@ class _BudgetOverviewScreenState extends ConsumerState<BudgetOverviewScreen> {
     );
   }
 
-  void _showSetGlobalBudgetDialog(BuildContext context, WidgetRef ref) {
-    final controller = TextEditingController();
-    final dao = ref.read(financeDaoProvider);
-
-    // Pre-fill with existing global budget
-    dao.getMonthlyConfig(_month, _year).then((config) {
-      if (config?.globalBudgetCents != null) {
-        controller.text = config!.globalBudgetCents.toString();
-      }
-    });
-
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Presupuesto global del mes'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          keyboardType: TextInputType.number,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          decoration: const InputDecoration(
-            labelText: 'Monto total del mes',
-            prefixText: '\$',
-            hintText: '0',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.finance),
-            onPressed: () async {
-              final amount = int.tryParse(controller.text);
-              if (amount == null || amount <= 0) return;
-              final notifier = ref.read(financeNotifierProvider);
-              await notifier.setGlobalBudget(
-                amountCents: amount,
-                month: _month,
-                year: _year,
-              );
-              if (ctx.mounted) {
-                Navigator.of(ctx).pop();
-                setState(() {}); // Refresh
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content: Text('Presupuesto global actualizado')),
-                );
-              }
-            },
-            child: const Text('Guardar'),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -436,7 +374,6 @@ class _BudgetDataLoader extends StatelessWidget {
                             ungroupedItems: resolved.ungrouped,
                             totalBudgetCents: resolved.totalBudgetCents,
                             totalSpentCents: resolved.totalSpentCents,
-                            globalBudgetCents: resolved.globalBudgetCents,
                             month: month,
                             year: year,
                             selectedBudgetId: selectedBudgetId,
@@ -451,7 +388,6 @@ class _BudgetDataLoader extends StatelessWidget {
                           ungroupedItems: resolved.ungrouped,
                           totalBudgetCents: resolved.totalBudgetCents,
                           totalSpentCents: resolved.totalSpentCents,
-                          globalBudgetCents: resolved.globalBudgetCents,
                           month: month,
                           year: year,
                           onMonthChange: onMonthChange,
@@ -480,14 +416,12 @@ class _ResolvedBudgetData {
     required this.ungrouped,
     required this.totalBudgetCents,
     required this.totalSpentCents,
-    required this.globalBudgetCents,
   });
 
   final List<_GroupData> groups;
   final List<_BudgetWithCategory> ungrouped;
   final int totalBudgetCents;
   final int totalSpentCents;
-  final int? globalBudgetCents;
 }
 
 Future<_ResolvedBudgetData> _resolveBudgetData({
@@ -557,7 +491,6 @@ Future<_ResolvedBudgetData> _resolveBudgetData({
     ungrouped: ungrouped,
     totalBudgetCents: totalBudget,
     totalSpentCents: totalSpent,
-    globalBudgetCents: config?.globalBudgetCents,
   );
 }
 
@@ -571,7 +504,6 @@ class _DesktopLayout extends StatelessWidget {
     required this.ungroupedItems,
     required this.totalBudgetCents,
     required this.totalSpentCents,
-    required this.globalBudgetCents,
     required this.month,
     required this.year,
     required this.selectedBudgetId,
@@ -585,7 +517,6 @@ class _DesktopLayout extends StatelessWidget {
   final List<_BudgetWithCategory> ungroupedItems;
   final int totalBudgetCents;
   final int totalSpentCents;
-  final int? globalBudgetCents;
   final int month;
   final int year;
   final int? selectedBudgetId;
@@ -615,7 +546,6 @@ class _DesktopLayout extends StatelessWidget {
             ungroupedItems: ungroupedItems,
             totalBudgetCents: totalBudgetCents,
             totalSpentCents: totalSpentCents,
-            globalBudgetCents: globalBudgetCents,
             month: month,
             year: year,
             selectedBudgetId: selectedBudgetId,
@@ -652,7 +582,6 @@ class _PhoneLayout extends StatelessWidget {
     required this.ungroupedItems,
     required this.totalBudgetCents,
     required this.totalSpentCents,
-    required this.globalBudgetCents,
     required this.month,
     required this.year,
     required this.onMonthChange,
@@ -663,7 +592,6 @@ class _PhoneLayout extends StatelessWidget {
   final List<_BudgetWithCategory> ungroupedItems;
   final int totalBudgetCents;
   final int totalSpentCents;
-  final int? globalBudgetCents;
   final int month;
   final int year;
   final ValueChanged<int> onMonthChange;
@@ -702,8 +630,7 @@ class _PhoneLayout extends StatelessWidget {
                       key: const ValueKey('budget-summary-card'),
                       totalBudgetCents: totalBudgetCents,
                       totalSpentCents: totalSpentCents,
-                      globalBudgetCents: globalBudgetCents,
-                      month: month,
+                                month: month,
                       year: year,
                     ),
                     const SizedBox(height: 16),
@@ -757,7 +684,6 @@ class _SidebarContent extends StatelessWidget {
     required this.ungroupedItems,
     required this.totalBudgetCents,
     required this.totalSpentCents,
-    required this.globalBudgetCents,
     required this.month,
     required this.year,
     required this.selectedBudgetId,
@@ -769,7 +695,6 @@ class _SidebarContent extends StatelessWidget {
   final List<_BudgetWithCategory> ungroupedItems;
   final int totalBudgetCents;
   final int totalSpentCents;
-  final int? globalBudgetCents;
   final int month;
   final int year;
   final int? selectedBudgetId;
@@ -790,7 +715,6 @@ class _SidebarContent extends StatelessWidget {
         _BudgetSummaryCard(
           totalBudgetCents: totalBudgetCents,
           totalSpentCents: totalSpentCents,
-          globalBudgetCents: globalBudgetCents,
           month: month,
           year: year,
         ),
@@ -963,7 +887,7 @@ class _GroupSectionState extends State<_GroupSection> {
 // Month selector
 // ---------------------------------------------------------------------------
 
-class _MonthSelector extends StatelessWidget {
+class _MonthSelector extends StatefulWidget {
   const _MonthSelector({
     required this.month,
     required this.year,
@@ -975,34 +899,131 @@ class _MonthSelector extends StatelessWidget {
   final ValueChanged<int> onMonthChange;
 
   @override
+  State<_MonthSelector> createState() => _MonthSelectorState();
+}
+
+class _MonthSelectorState extends State<_MonthSelector> {
+  late final ScrollController _scrollController;
+
+  static const _kMonthNames = [
+    'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
+    'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelected());
+  }
+
+  @override
+  void didUpdateWidget(_MonthSelector oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.month != widget.month || oldWidget.year != widget.year) {
+      _scrollToSelected();
+    }
+  }
+
+  void _scrollToSelected() {
+    // Current month is at index based on offset from 6 months ago
+    const itemWidth = 72.0;
+    final targetOffset = 6 * itemWidth - (MediaQuery.of(context).size.width / 2 - itemWidth / 2);
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        targetOffset.clamp(0, _scrollController.position.maxScrollExtent),
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOutCubic,
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final label = DateFormat('MMMM yyyy', 'es').format(DateTime(year, month));
+    final brightness = theme.brightness;
+    final now = DateTime.now();
 
-    return Semantics(
-      label: 'Mes actual: $label. Usa las flechas para cambiar de mes.',
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          IconButton(
-            key: const ValueKey('month-prev'),
-            icon: const Icon(Icons.chevron_left),
-            onPressed: () => onMonthChange(-1),
-            tooltip: 'Mes anterior',
-          ),
-          Text(
-            label,
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
+    // Show 13 months: 6 before, current, 6 after
+    final months = List.generate(13, (i) {
+      final offset = i - 6;
+      var m = widget.month + offset;
+      var y = widget.year;
+      while (m < 1) { m += 12; y--; }
+      while (m > 12) { m -= 12; y++; }
+      return (month: m, year: y);
+    });
+
+    return SizedBox(
+      height: 64,
+      child: ListView.builder(
+        controller: _scrollController,
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        itemCount: months.length,
+        itemBuilder: (context, index) {
+          final item = months[index];
+          final isSelected =
+              item.month == widget.month && item.year == widget.year;
+          final isCurrent =
+              item.month == now.month && item.year == now.year;
+          final delta = index - 6;
+
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: GestureDetector(
+              onTap: () => widget.onMonthChange(delta),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 64,
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? AppColors.finance.withAlpha(brightness == Brightness.dark ? 25 : 15)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isSelected
+                        ? AppColors.finance
+                        : isCurrent
+                            ? AppColors.finance.withAlpha(40)
+                            : AppColors.borderColor(brightness),
+                    width: isSelected ? 2 : 1,
+                  ),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      _kMonthNames[item.month - 1],
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: isSelected
+                            ? AppColors.finance
+                            : AppColors.textSecondary(brightness),
+                        fontWeight:
+                            isSelected ? FontWeight.w700 : FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${item.year}',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: isSelected
+                            ? AppColors.finance.withAlpha(180)
+                            : AppColors.textSecondary(brightness).withAlpha(120),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ),
-          IconButton(
-            key: const ValueKey('month-next'),
-            icon: const Icon(Icons.chevron_right),
-            onPressed: () => onMonthChange(1),
-            tooltip: 'Mes siguiente',
-          ),
-        ],
+          );
+        },
       ),
     );
   }
@@ -1017,21 +1038,19 @@ class _BudgetSummaryCard extends StatelessWidget {
     super.key,
     required this.totalBudgetCents,
     required this.totalSpentCents,
-    required this.globalBudgetCents,
     required this.month,
     required this.year,
   });
 
   final int totalBudgetCents;
   final int totalSpentCents;
-  final int? globalBudgetCents;
   final int month;
   final int year;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final effectiveBudget = globalBudgetCents ?? totalBudgetCents;
+    final effectiveBudget = totalBudgetCents;
     final remaining = effectiveBudget - totalSpentCents;
     final utilization = effectiveBudget > 0
         ? (totalSpentCents / effectiveBudget).clamp(0.0, 1.0)
@@ -1071,22 +1090,6 @@ class _BudgetSummaryCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (globalBudgetCents != null) ...[
-                Row(
-                  children: [
-                    Icon(Icons.shield_outlined, size: 16, color: barColor),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Presupuesto global',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: barColor,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-              ],
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -1537,14 +1540,12 @@ class _BudgetFab extends StatelessWidget {
     required this.onAddBudget,
     required this.onSaveTemplate,
     required this.onApplyTemplate,
-    required this.onSetGlobalBudget,
     required this.onAnalytics,
   });
 
   final VoidCallback onAddBudget;
   final VoidCallback onSaveTemplate;
   final VoidCallback onApplyTemplate;
-  final VoidCallback onSetGlobalBudget;
   final VoidCallback onAnalytics;
 
   @override
@@ -1590,15 +1591,6 @@ class _BudgetFab extends StatelessWidget {
           ),
         ),
         const PopupMenuItem(
-          value: 'global',
-          child: ListTile(
-            leading: Icon(Icons.shield_outlined),
-            title: Text('Presupuesto global'),
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-          ),
-        ),
-        const PopupMenuItem(
           value: 'save',
           child: ListTile(
             leading: Icon(Icons.save_outlined),
@@ -1635,8 +1627,6 @@ class _BudgetFab extends StatelessWidget {
           }
         case 'add':
           onAddBudget();
-        case 'global':
-          onSetGlobalBudget();
         case 'save':
           onSaveTemplate();
         case 'apply':
