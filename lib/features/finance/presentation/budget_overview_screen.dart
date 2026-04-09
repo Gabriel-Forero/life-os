@@ -149,7 +149,7 @@ class _BudgetOverviewScreenState extends ConsumerState<BudgetOverviewScreen> {
                   'Define un presupuesto por categoria para controlar tus gastos',
               actionLabel: 'Crear presupuesto',
               actionColor: AppColors.finance,
-              onAction: () => _showSetBudgetDialog(context, ref, null),
+              onAction: () => GoRouter.of(context).push(AppRoutes.financeBudgetWizard),
             );
           }
 
@@ -163,12 +163,11 @@ class _BudgetOverviewScreenState extends ConsumerState<BudgetOverviewScreen> {
             onSelectBudget: (id) => setState(() => _selectedBudgetId = id),
             onEditBudget: (budget) =>
                 _showSetBudgetDialog(context, ref, budget),
-            onAddBudget: () => _showSetBudgetDialog(context, ref, null),
+            onAddBudget: () => GoRouter.of(context).push(AppRoutes.financeBudgetWizard),
           );
         },
       ),
       floatingActionButton: _BudgetFab(
-        onAddBudget: () => _showSetBudgetDialog(context, ref, null),
         onSaveTemplate: () => _showSaveTemplateDialog(context, ref),
         onApplyTemplate: () => _showApplyTemplateDialog(context, ref),
         onAnalytics: () => GoRouter.of(context)
@@ -1537,13 +1536,11 @@ class _StatTile extends StatelessWidget {
 
 class _BudgetFab extends StatelessWidget {
   const _BudgetFab({
-    required this.onAddBudget,
     required this.onSaveTemplate,
     required this.onApplyTemplate,
     required this.onAnalytics,
   });
 
-  final VoidCallback onAddBudget;
   final VoidCallback onSaveTemplate;
   final VoidCallback onApplyTemplate;
   final VoidCallback onAnalytics;
@@ -1575,16 +1572,7 @@ class _BudgetFab extends StatelessWidget {
         const PopupMenuItem(
           value: 'wizard',
           child: ListTile(
-            leading: Icon(Icons.auto_fix_high_outlined),
-            title: Text('Asistente de presupuesto'),
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-          ),
-        ),
-        const PopupMenuItem(
-          value: 'add',
-          child: ListTile(
-            leading: Icon(Icons.add_circle_outline),
+            leading: Icon(Icons.add_chart_rounded),
             title: Text('Nuevo presupuesto'),
             dense: true,
             contentPadding: EdgeInsets.zero,
@@ -1625,8 +1613,6 @@ class _BudgetFab extends StatelessWidget {
           if (context.mounted) {
             GoRouter.of(context).push(AppRoutes.financeBudgetWizard);
           }
-        case 'add':
-          onAddBudget();
         case 'save':
           onSaveTemplate();
         case 'apply':
