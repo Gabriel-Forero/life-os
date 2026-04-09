@@ -250,11 +250,11 @@ class _TicketScannerScreenState extends ConsumerState<TicketScannerScreen> {
                 key: const ValueKey('ticket_description_field'),
                 controller: _descController,
                 maxLines: 8,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'Contenido del ticket',
                   hintText:
                       'Ejemplo:\nSuperMercado XYZ\n2024-01-15\nLeche 1.50\nPan 2.00\nTotal: 3.50',
-                  border: const OutlineInputBorder(),
+                  border: OutlineInputBorder(),
                   alignLabelWithHint: true,
                 ),
               ),
@@ -515,6 +515,15 @@ class _TicketResultWidget extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _TicketItem {
+
+  factory _TicketItem.fromJson(Map<String, dynamic> json) {
+    return _TicketItem(
+      name: (json['name'] as String?) ?? 'Item',
+      price: _toDouble(json['price']),
+      category: (json['category'] as String?) ?? 'Otro',
+      isFood: (json['isFood'] as bool?) ?? false,
+    );
+  }
   const _TicketItem({
     required this.name,
     required this.price,
@@ -527,15 +536,6 @@ class _TicketItem {
   final String category;
   final bool isFood;
 
-  factory _TicketItem.fromJson(Map<String, dynamic> json) {
-    return _TicketItem(
-      name: (json['name'] as String?) ?? 'Item',
-      price: _toDouble(json['price']),
-      category: (json['category'] as String?) ?? 'Otro',
-      isFood: (json['isFood'] as bool?) ?? false,
-    );
-  }
-
   static double _toDouble(dynamic v) {
     if (v == null) return 0.0;
     if (v is double) return v;
@@ -545,6 +545,24 @@ class _TicketItem {
 }
 
 class _TicketResult {
+
+  factory _TicketResult.fromJson(Map<String, dynamic> json) {
+    final rawItems = json['items'];
+    final items = <_TicketItem>[];
+    if (rawItems is List) {
+      for (final item in rawItems) {
+        if (item is Map<String, dynamic>) {
+          items.add(_TicketItem.fromJson(item));
+        }
+      }
+    }
+    return _TicketResult(
+      store: (json['store'] as String?) ?? '',
+      date: (json['date'] as String?) ?? '',
+      items: items,
+      total: _TicketItem._toDouble(json['total']),
+    );
+  }
   const _TicketResult({
     required this.store,
     required this.date,
@@ -563,23 +581,5 @@ class _TicketResult {
     } on FormatException {
       return null;
     }
-  }
-
-  factory _TicketResult.fromJson(Map<String, dynamic> json) {
-    final rawItems = json['items'];
-    final items = <_TicketItem>[];
-    if (rawItems is List) {
-      for (final item in rawItems) {
-        if (item is Map<String, dynamic>) {
-          items.add(_TicketItem.fromJson(item));
-        }
-      }
-    }
-    return _TicketResult(
-      store: (json['store'] as String?) ?? '',
-      date: (json['date'] as String?) ?? '',
-      items: items,
-      total: _TicketItem._toDouble(json['total']),
-    );
   }
 }

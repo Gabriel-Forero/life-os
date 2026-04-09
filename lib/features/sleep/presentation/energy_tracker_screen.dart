@@ -112,7 +112,7 @@ class _EnergyTrackerScreenState extends ConsumerState<EnergyTrackerScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final sleepColor = AppColors.sleep;
+    const sleepColor = AppColors.sleep;
     final dao = ref.watch(sleepDaoProvider);
 
     return Scaffold(

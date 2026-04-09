@@ -204,7 +204,7 @@ class _NutritionGoalsScreenState
             if (_macrosMismatch) const SizedBox(height: 16),
 
             // --- Seccion: Energia ---
-            _SectionHeader(label: 'Energia diaria'),
+            const _SectionHeader(label: 'Energia diaria'),
             const SizedBox(height: 12),
 
             Semantics(
@@ -249,7 +249,7 @@ class _NutritionGoalsScreenState
             const SizedBox(height: 24),
 
             // --- Seccion: Macronutrientes ---
-            _SectionHeader(label: 'Macronutrientes'),
+            const _SectionHeader(label: 'Macronutrientes'),
             const SizedBox(height: 4),
             Text(
               'P × 4 + C × 4 + G × 9 = calorias. Se mostrara aviso si la '
@@ -271,15 +271,15 @@ class _NutritionGoalsScreenState
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
                 ],
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'Proteina',
                   suffixText: 'g',
-                  prefixIcon: const Icon(
+                  prefixIcon: Icon(
                     Icons.egg_outlined,
                     color: Color(0xFF3B82F6),
                   ),
-                  border: const OutlineInputBorder(),
-                  focusedBorder: const OutlineInputBorder(
+                  border: OutlineInputBorder(),
+                  focusedBorder: OutlineInputBorder(
                     borderSide: BorderSide(
                       color: Color(0xFF3B82F6),
                       width: 2,
@@ -305,15 +305,15 @@ class _NutritionGoalsScreenState
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
                 ],
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'Carbohidratos',
                   suffixText: 'g',
-                  prefixIcon: const Icon(
+                  prefixIcon: Icon(
                     Icons.grain_outlined,
                     color: Color(0xFF10B981),
                   ),
-                  border: const OutlineInputBorder(),
-                  focusedBorder: const OutlineInputBorder(
+                  border: OutlineInputBorder(),
+                  focusedBorder: OutlineInputBorder(
                     borderSide: BorderSide(
                       color: Color(0xFF10B981),
                       width: 2,
@@ -339,15 +339,15 @@ class _NutritionGoalsScreenState
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
                 ],
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'Grasa',
                   suffixText: 'g',
-                  prefixIcon: const Icon(
+                  prefixIcon: Icon(
                     Icons.water_drop_outlined,
                     color: Color(0xFFEC4899),
                   ),
-                  border: const OutlineInputBorder(),
-                  focusedBorder: const OutlineInputBorder(
+                  border: OutlineInputBorder(),
+                  focusedBorder: OutlineInputBorder(
                     borderSide: BorderSide(
                       color: Color(0xFFEC4899),
                       width: 2,
@@ -361,7 +361,7 @@ class _NutritionGoalsScreenState
             const SizedBox(height: 24),
 
             // --- Seccion: Hidratacion ---
-            _SectionHeader(label: 'Hidratacion'),
+            const _SectionHeader(label: 'Hidratacion'),
             const SizedBox(height: 12),
 
             Semantics(
@@ -372,15 +372,15 @@ class _NutritionGoalsScreenState
                 controller: _waterController,
                 keyboardType: TextInputType.number,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'Agua objetivo',
                   suffixText: 'ml',
-                  prefixIcon: const Icon(
+                  prefixIcon: Icon(
                     Icons.local_drink_outlined,
                     color: Color(0xFF3B82F6),
                   ),
-                  border: const OutlineInputBorder(),
-                  focusedBorder: const OutlineInputBorder(
+                  border: OutlineInputBorder(),
+                  focusedBorder: OutlineInputBorder(
                     borderSide: BorderSide(
                       color: Color(0xFF3B82F6),
                       width: 2,

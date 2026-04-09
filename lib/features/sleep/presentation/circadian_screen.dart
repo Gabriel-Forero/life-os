@@ -18,7 +18,7 @@ class CircadianScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final dao = ref.watch(sleepDaoProvider);
     final theme = Theme.of(context);
-    final sleepColor = AppColors.sleep;
+    const sleepColor = AppColors.sleep;
 
     final now = DateTime.now();
     final from = now.subtract(const Duration(days: 30));
@@ -172,10 +172,10 @@ class _CircadianBody extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   // Legend
-                  Row(
+                  const Row(
                     children: [
                       _LegendDot(color: AppColors.sleep, label: 'Hora de dormir'),
-                      const SizedBox(width: 16),
+                      SizedBox(width: 16),
                       _LegendDot(
                           color: AppColors.gym, label: 'Hora de despertar'),
                     ],
@@ -323,7 +323,7 @@ class _CircadianBody extends StatelessWidget {
                     Text(
                       'Consejo',
                       style: theme.textTheme.labelMedium?.copyWith(
-                        color: AppColors.darkTextSecondary,
+                        color: AppColors.textSecondary(theme.brightness),
                       ),
                     ),
                     const SizedBox(height: 4),

@@ -93,7 +93,7 @@ class _ManualFoodEntryScreenState
     if (mealResult.isSuccess) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('$name registrado! ${calories} cal, ${protein}g proteina'),
+          content: Text('$name registrado! $calories cal, ${protein}g proteina'),
           backgroundColor: AppColors.nutrition,
         ),
       );
@@ -264,7 +264,7 @@ class _ManualFoodEntryScreenState
             title: const Text('Guardar en mi biblioteca'),
             subtitle: const Text('Para usar de nuevo sin reingresar datos'),
             value: _saveToLibrary,
-            activeColor: AppColors.nutrition,
+            activeThumbColor: AppColors.nutrition,
             onChanged: (v) => setState(() => _saveToLibrary = v),
           ),
           const SizedBox(height: 24),

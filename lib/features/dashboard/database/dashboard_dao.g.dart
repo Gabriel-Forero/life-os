@@ -8,24 +8,4 @@ mixin _$DashboardDaoMixin on DatabaseAccessor<AppDatabase> {
   $ScoreComponentsTable get scoreComponents => attachedDatabase.scoreComponents;
   $DayScoreConfigsTable get dayScoreConfigs => attachedDatabase.dayScoreConfigs;
   $LifeSnapshotsTable get lifeSnapshots => attachedDatabase.lifeSnapshots;
-  DashboardDaoManager get managers => DashboardDaoManager(this);
-}
-
-class DashboardDaoManager {
-  final _$DashboardDaoMixin _db;
-  DashboardDaoManager(this._db);
-  $$DayScoresTableTableManager get dayScores =>
-      $$DayScoresTableTableManager(_db.attachedDatabase, _db.dayScores);
-  $$ScoreComponentsTableTableManager get scoreComponents =>
-      $$ScoreComponentsTableTableManager(
-        _db.attachedDatabase,
-        _db.scoreComponents,
-      );
-  $$DayScoreConfigsTableTableManager get dayScoreConfigs =>
-      $$DayScoreConfigsTableTableManager(
-        _db.attachedDatabase,
-        _db.dayScoreConfigs,
-      );
-  $$LifeSnapshotsTableTableManager get lifeSnapshots =>
-      $$LifeSnapshotsTableTableManager(_db.attachedDatabase, _db.lifeSnapshots);
 }

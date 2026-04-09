@@ -404,7 +404,7 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
                         Text(
                           'Ultimo respaldo',
                           style: theme.textTheme.bodySmall?.copyWith(
-                            color: AppColors.darkTextSecondary,
+                            color: AppColors.textSecondary(theme.brightness),
                           ),
                         ),
                         Text(
@@ -420,7 +420,7 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
                           Text(
                             _lastBackupPath!,
                             style: theme.textTheme.bodySmall?.copyWith(
-                              color: AppColors.darkTextSecondary,
+                              color: AppColors.textSecondary(theme.brightness),
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,

@@ -7,18 +7,7 @@ import 'package:life_os/core/providers/providers.dart';
 // GoalSuggestion model
 // ---------------------------------------------------------------------------
 
-class GoalSuggestion {
-  const GoalSuggestion({
-    required this.name,
-    required this.description,
-    required this.category,
-    required this.rationale,
-  });
-
-  final String name;
-  final String description;
-  final String category; // salud, finanzas, habitos, gym, etc.
-  final String rationale; // Why this was suggested
+class GoalSuggestion { // Why this was suggested
 
   factory GoalSuggestion.fromJson(Map<String, dynamic> json) {
     return GoalSuggestion(
@@ -37,6 +26,17 @@ class GoalSuggestion {
           '',
     );
   }
+  const GoalSuggestion({
+    required this.name,
+    required this.description,
+    required this.category,
+    required this.rationale,
+  });
+
+  final String name;
+  final String description;
+  final String category; // salud, finanzas, habitos, gym, etc.
+  final String rationale;
 }
 
 // ---------------------------------------------------------------------------
@@ -141,11 +141,11 @@ class GoalSuggestionsService {
       final sleepLogs = await sleepDao.watchSleepLogs(weekAgo, now).first;
       if (sleepLogs.isNotEmpty) {
         final withTimes = sleepLogs.where((l) =>
-            l.wakeTime != null && l.bedTime != null).toList();
+            l.bedTime != null).toList();
         if (withTimes.isNotEmpty) {
           // Check if sleep times are irregular
           final bedHours = withTimes
-              .map((l) => l.bedTime!.hour + l.bedTime!.minute / 60.0)
+              .map((l) => l.bedTime.hour + l.bedTime.minute / 60.0)
               .toList();
           final maxHour = bedHours.reduce((a, b) => a > b ? a : b);
           final minHour = bedHours.reduce((a, b) => a < b ? a : b);
@@ -157,7 +157,7 @@ class GoalSuggestionsService {
 
           final avgScore = sleepLogs
                   .where((l) => l.sleepScore != null)
-                  .map((l) => l.sleepScore!)
+                  .map((l) => l.sleepScore)
                   .fold(0, (a, b) => a + b) /
               sleepLogs.where((l) => l.sleepScore != null).length;
           lines.add('Calidad de sueno promedio: ${avgScore.toStringAsFixed(0)}/100');

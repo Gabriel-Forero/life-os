@@ -471,7 +471,7 @@ class _AIConfigScreenState extends ConsumerState<AIConfigScreen> {
                 label: 'Seleccionar proveedor de IA',
                 child: DropdownButtonFormField<String>(
                   key: const ValueKey('provider_dropdown'),
-                  value: _selectedProvider,
+                  initialValue: _selectedProvider,
                   decoration: const InputDecoration(
                     labelText: 'Proveedor',
                     border: OutlineInputBorder(),
@@ -531,7 +531,7 @@ class _AIConfigScreenState extends ConsumerState<AIConfigScreen> {
                   label: 'Seleccionar modelo',
                   child: DropdownButtonFormField<String>(
                     key: const ValueKey('model_dropdown'),
-                    value: _availableModels.contains(_modelController.text)
+                    initialValue: _availableModels.contains(_modelController.text)
                         ? _modelController.text
                         : _availableModels.first,
                     decoration: const InputDecoration(

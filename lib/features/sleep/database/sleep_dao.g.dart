@@ -8,19 +8,4 @@ mixin _$SleepDaoMixin on DatabaseAccessor<AppDatabase> {
   $SleepInterruptionsTable get sleepInterruptions =>
       attachedDatabase.sleepInterruptions;
   $EnergyLogsTable get energyLogs => attachedDatabase.energyLogs;
-  SleepDaoManager get managers => SleepDaoManager(this);
-}
-
-class SleepDaoManager {
-  final _$SleepDaoMixin _db;
-  SleepDaoManager(this._db);
-  $$SleepLogsTableTableManager get sleepLogs =>
-      $$SleepLogsTableTableManager(_db.attachedDatabase, _db.sleepLogs);
-  $$SleepInterruptionsTableTableManager get sleepInterruptions =>
-      $$SleepInterruptionsTableTableManager(
-        _db.attachedDatabase,
-        _db.sleepInterruptions,
-      );
-  $$EnergyLogsTableTableManager get energyLogs =>
-      $$EnergyLogsTableTableManager(_db.attachedDatabase, _db.energyLogs);
 }

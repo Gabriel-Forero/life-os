@@ -122,7 +122,7 @@ class _MoodLogScreenState extends ConsumerState<MoodLogScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final mentalColor = AppColors.mental;
+    const mentalColor = AppColors.mental;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -266,12 +266,12 @@ class _MoodLogScreenState extends ConsumerState<MoodLogScreen> {
                     ),
                     const SizedBox(height: 8),
                     // Axis labels
-                    Row(
+                    const Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('← Negativo', style: TextStyle(fontSize: 10)),
-                        const Text('Valencia', style: TextStyle(fontSize: 10)),
-                        const Text('Positivo →', style: TextStyle(fontSize: 10)),
+                        Text('← Negativo', style: TextStyle(fontSize: 10)),
+                        Text('Valencia', style: TextStyle(fontSize: 10)),
+                        Text('Positivo →', style: TextStyle(fontSize: 10)),
                       ],
                     ),
                   ],

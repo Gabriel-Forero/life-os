@@ -1,6 +1,5 @@
 import 'dart:ui';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_os/app.dart';
@@ -45,25 +44,23 @@ Future<void> _initializeApp(ProviderContainer container) async {
       nutritionDao: db.nutritionDao,
       dayScoreNotifier: container.read(dayScoreNotifierProvider),
       dashboardNotifier: container.read(dashboardNotifierProvider),
-      notificationScheduler: kIsWeb ? null : container.read(notificationSchedulerProvider),
+      notificationScheduler: container.read(notificationSchedulerProvider),
       logger: logger,
     );
 
-    if (!kIsWeb) {
-      // 6. Initialize notification scheduler (not available on web)
-      logger.info('Initializing notification scheduler...');
-      await container.read(notificationSchedulerProvider).initialize();
+    // 6. Initialize notification scheduler
+    logger.info('Initializing notification scheduler...');
+    await container.read(notificationSchedulerProvider).initialize();
 
-      // 7. Process any overdue recurring transactions
-      logger.info('Processing recurring transactions...');
-      final recurringResult =
-          await container.read(financeNotifierProvider).processRecurringTransactions();
-      final recurringCreated = recurringResult.valueOrNull ?? 0;
-      if (recurringCreated > 0) {
-        logger.info('Created $recurringCreated recurring transaction(s).');
-        container.read(recurringCreatedCountProvider.notifier).state =
-            recurringCreated;
-      }
+    // 7. Process any overdue recurring transactions
+    logger.info('Processing recurring transactions...');
+    final recurringResult =
+        await container.read(financeNotifierProvider).processRecurringTransactions();
+    final recurringCreated = recurringResult.valueOrNull ?? 0;
+    if (recurringCreated > 0) {
+      logger.info('Created $recurringCreated recurring transaction(s).');
+      container.read(recurringCreatedCountProvider.notifier).state =
+          recurringCreated;
     }
 
     logger.info('App initialization complete.');
@@ -82,48 +79,12 @@ Future<void> _initializeApp(ProviderContainer container) async {
 // ---------------------------------------------------------------------------
 
 void main() async {
-  // Capture ALL errors and show on screen
-  final List<String> errors = [];
-
-  void showErrorApp(String msg) {
-    runApp(MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: Scaffold(
-        backgroundColor: Colors.black,
-        body: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('LifeOS - Debug', style: TextStyle(color: Colors.green, fontSize: 20, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 16),
-                ...errors.map((e) => Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Text(e, style: const TextStyle(color: Colors.red, fontSize: 12, fontFamily: 'monospace')),
-                )),
-                Text(msg, style: const TextStyle(color: Colors.yellow, fontSize: 12, fontFamily: 'monospace')),
-              ],
-            ),
-          ),
-        ),
-      ),
-    ));
-  }
-
-  try {
-    WidgetsFlutterBinding.ensureInitialized();
-  } catch (e) {
-    errors.add('WidgetsBinding failed: $e');
-    showErrorApp('Crash in WidgetsBinding');
-    return;
-  }
+  WidgetsFlutterBinding.ensureInitialized();
 
   final logger = AppLogger(tag: 'Main');
 
-  // Global error handlers — show on screen
+  // Global error handlers
   FlutterError.onError = (details) {
-    errors.add('FlutterError: ${details.exceptionAsString()}');
     logger.error(
       'Flutter framework error: ${details.exceptionAsString()}',
       error: details.exception,
@@ -132,7 +93,6 @@ void main() async {
   };
 
   PlatformDispatcher.instance.onError = (error, stack) {
-    errors.add('PlatformError: $error');
     logger.error(
       'Unhandled platform error: $error',
       error: error,
@@ -141,28 +101,23 @@ void main() async {
     return true;
   };
 
-  // Error widget shows REAL error text
+  // Error widget for production-style error display
   ErrorWidget.builder = (FlutterErrorDetails details) {
-    return Material(
-      color: Colors.black,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
+    return const Material(
+      child: Center(
         child: Text(
-          'WIDGET ERROR:\n${details.exceptionAsString()}\n\n${details.stack?.toString().split('\n').take(10).join('\n') ?? ''}',
-          style: const TextStyle(color: Colors.red, fontSize: 11, fontFamily: 'monospace'),
+          'Algo salio mal',
+          style: TextStyle(color: Colors.red),
         ),
       ),
     );
   };
 
-  try {
-    final container = ProviderContainer();
-    runApp(_SplashWrapper(container: container));
-  } catch (e, st) {
-    errors.add('Fatal: $e');
-    errors.add('Stack: ${st.toString().split('\n').take(5).join('\n')}');
-    showErrorApp('CRASH in main()');
-  }
+  // Create a ProviderContainer so we can run async initialization before
+  // runApp, then hand it to UncontrolledProviderScope.
+  final container = ProviderContainer();
+
+  runApp(_SplashWrapper(container: container));
 }
 
 // ---------------------------------------------------------------------------

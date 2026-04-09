@@ -72,7 +72,7 @@ class _GratitudeScreenState extends ConsumerState<GratitudeScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final mentalColor = AppColors.mental;
+    const mentalColor = AppColors.mental;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,

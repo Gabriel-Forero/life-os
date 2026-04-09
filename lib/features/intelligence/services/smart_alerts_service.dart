@@ -221,7 +221,7 @@ class SmartAlertsService {
       final sorted = logs..sort((a, b) => a.date.compareTo(b.date));
       final scores = sorted
           .where((l) => l.sleepScore != null)
-          .map((l) => l.sleepScore!)
+          .map((l) => l.sleepScore)
           .toList();
 
       if (scores.length < 3) return;

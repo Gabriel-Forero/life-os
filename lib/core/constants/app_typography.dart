@@ -4,84 +4,96 @@ import 'package:google_fonts/google_fonts.dart';
 abstract final class AppTypography {
   static TextTheme textTheme(Brightness brightness) {
     final color = brightness == Brightness.dark
-        ? const Color(0xFFF5F5F5)
-        : const Color(0xFF1A1A1A);
+        ? const Color(0xFFFAFAFA)
+        : const Color(0xFF0F172A);
 
+    // Sora — geometric, confident, distinctive for headings
+    // DM Sans — warm, readable for body
     return TextTheme(
-      displayLarge: GoogleFonts.inter(
+      displayLarge: GoogleFonts.sora(
         fontSize: 32,
         fontWeight: FontWeight.w700,
         color: color,
+        letterSpacing: -0.5,
       ),
-      displayMedium: GoogleFonts.inter(
+      displayMedium: GoogleFonts.sora(
         fontSize: 28,
         fontWeight: FontWeight.w700,
         color: color,
+        letterSpacing: -0.5,
       ),
-      displaySmall: GoogleFonts.inter(
+      displaySmall: GoogleFonts.sora(
         fontSize: 24,
         fontWeight: FontWeight.w600,
         color: color,
+        letterSpacing: -0.3,
       ),
-      headlineLarge: GoogleFonts.inter(
+      headlineLarge: GoogleFonts.sora(
         fontSize: 22,
         fontWeight: FontWeight.w600,
         color: color,
+        letterSpacing: -0.3,
       ),
-      headlineMedium: GoogleFonts.inter(
+      headlineMedium: GoogleFonts.sora(
         fontSize: 20,
         fontWeight: FontWeight.w600,
         color: color,
+        letterSpacing: -0.2,
       ),
-      headlineSmall: GoogleFonts.inter(
+      headlineSmall: GoogleFonts.sora(
         fontSize: 18,
         fontWeight: FontWeight.w600,
         color: color,
+        letterSpacing: -0.2,
       ),
-      titleLarge: GoogleFonts.inter(
+      titleLarge: GoogleFonts.dmSans(
         fontSize: 16,
         fontWeight: FontWeight.w600,
         color: color,
       ),
-      titleMedium: GoogleFonts.inter(
+      titleMedium: GoogleFonts.dmSans(
         fontSize: 14,
         fontWeight: FontWeight.w500,
         color: color,
       ),
-      titleSmall: GoogleFonts.inter(
+      titleSmall: GoogleFonts.dmSans(
         fontSize: 12,
         fontWeight: FontWeight.w500,
         color: color,
       ),
-      bodyLarge: GoogleFonts.inter(
+      bodyLarge: GoogleFonts.dmSans(
         fontSize: 16,
         fontWeight: FontWeight.w400,
         color: color,
+        height: 1.5,
       ),
-      bodyMedium: GoogleFonts.inter(
+      bodyMedium: GoogleFonts.dmSans(
         fontSize: 14,
         fontWeight: FontWeight.w400,
         color: color,
+        height: 1.5,
       ),
-      bodySmall: GoogleFonts.inter(
+      bodySmall: GoogleFonts.dmSans(
         fontSize: 12,
         fontWeight: FontWeight.w400,
-        color: color.withAlpha(179),
+        color: color.withAlpha(160),
+        height: 1.4,
       ),
-      labelLarge: GoogleFonts.inter(
+      labelLarge: GoogleFonts.dmSans(
         fontSize: 14,
-        fontWeight: FontWeight.w500,
+        fontWeight: FontWeight.w600,
         color: color,
       ),
-      labelMedium: GoogleFonts.inter(
+      labelMedium: GoogleFonts.dmSans(
         fontSize: 12,
         fontWeight: FontWeight.w500,
         color: color,
       ),
-      labelSmall: GoogleFonts.inter(
+      labelSmall: GoogleFonts.dmSans(
         fontSize: 10,
         fontWeight: FontWeight.w500,
-        color: color.withAlpha(179),
+        color: color.withAlpha(160),
+        letterSpacing: 0.5,
       ),
     );
   }

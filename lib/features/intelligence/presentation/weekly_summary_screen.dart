@@ -143,14 +143,14 @@ class _WeeklySummaryScreenState extends ConsumerState<WeeklySummaryScreen> {
         final scores = sleepLogs.where((l) => l.sleepScore != null).toList();
         if (scores.isNotEmpty) {
           avgSleepScore =
-              scores.map((l) => l.sleepScore!).reduce((a, b) => a + b) /
+              scores.map((l) => l.sleepScore).reduce((a, b) => a + b) /
                   scores.length;
         }
         final withTimes = sleepLogs.where((l) =>
-            l.wakeTime != null && l.bedTime != null).toList();
+            l.bedTime != null).toList();
         if (withTimes.isNotEmpty) {
           final totalMinutes = withTimes
-              .map((l) => l.wakeTime!.difference(l.bedTime!).inMinutes.abs())
+              .map((l) => l.wakeTime.difference(l.bedTime).inMinutes.abs())
               .reduce((a, b) => a + b);
           avgSleepHours = totalMinutes / withTimes.length / 60;
         }

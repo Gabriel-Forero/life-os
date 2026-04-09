@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:life_os/core/constants/app_decorations.dart';
 
 class ChartCard extends StatelessWidget {
   const ChartCard({
@@ -17,25 +18,30 @@ class ChartCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final brightness = theme.brightness;
 
     return Semantics(
       label: 'Grafico: $title',
-      child: Card(
+      child: Container(
         key: testId != null ? ValueKey(testId) : null,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(title, style: theme.textTheme.titleMedium),
-              const SizedBox(height: 12),
-              SizedBox(
-                height: height,
-                child: child,
+        decoration: AppDecorations.card(brightness),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              title,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: height,
+              child: child,
+            ),
+          ],
         ),
       ),
     );

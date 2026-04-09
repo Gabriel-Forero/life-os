@@ -389,8 +389,8 @@ class _NutritionValuationScreenState
           ),
 
         // --- Seccion Macros ---
-        _SectionHeader(
-          key: const ValueKey('nutrition-val-macros-header'),
+        const _SectionHeader(
+          key: ValueKey('nutrition-val-macros-header'),
           icon: Icons.restaurant_outlined,
           title: 'Macros (promedio diario)',
           color: AppColors.nutrition,
@@ -455,8 +455,8 @@ class _NutritionValuationScreenState
         const SizedBox(height: 20),
 
         // --- Seccion Consistencia ---
-        _SectionHeader(
-          key: const ValueKey('nutrition-val-consistencia-header'),
+        const _SectionHeader(
+          key: ValueKey('nutrition-val-consistencia-header'),
           icon: Icons.track_changes_outlined,
           title: 'Consistencia',
           color: AppColors.nutrition,
@@ -502,8 +502,8 @@ class _NutritionValuationScreenState
         const SizedBox(height: 20),
 
         // --- Seccion Hidratacion ---
-        _SectionHeader(
-          key: const ValueKey('nutrition-val-agua-header'),
+        const _SectionHeader(
+          key: ValueKey('nutrition-val-agua-header'),
           icon: Icons.water_drop_outlined,
           title: 'Hidratacion',
           color: AppColors.nutrition,

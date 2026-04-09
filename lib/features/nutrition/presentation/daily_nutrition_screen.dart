@@ -575,15 +575,11 @@ class _CalorieCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(8),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(
+          color: Theme.of(context).dividerColor,
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -669,15 +665,11 @@ class _MacroProgressCard extends StatelessWidget {
     final theme = Theme.of(context);
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(8),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(
+          color: Theme.of(context).dividerColor,
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -701,7 +693,7 @@ class _MacroProgressCard extends StatelessWidget {
 }
 
 class _MacroProgressRow extends StatelessWidget {
-  const _MacroProgressRow({super.key, required this.macro});
+  const _MacroProgressRow({required this.macro});
 
   final _Macro macro;
 

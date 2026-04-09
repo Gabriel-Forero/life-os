@@ -50,7 +50,7 @@ class _MentalHistoryScreenState extends ConsumerState<MentalHistoryScreen>
   Widget build(BuildContext context) {
     final dao = ref.watch(mentalDaoProvider);
     final theme = Theme.of(context);
-    final mentalColor = AppColors.mental;
+    const mentalColor = AppColors.mental;
 
     final now = DateTime.now();
     final monthStart = DateTime(now.year, now.month, 1);

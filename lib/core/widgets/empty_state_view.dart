@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:life_os/core/constants/app_colors.dart';
 
 class EmptyStateView extends StatelessWidget {
   const EmptyStateView({
@@ -23,6 +24,8 @@ class EmptyStateView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final brightness = theme.brightness;
+    final muted = AppColors.textSecondary(brightness);
 
     return Semantics(
       label: '$title. $message',
@@ -33,12 +36,17 @@ class EmptyStateView extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                icon,
-                size: 64,
-                color: theme.textTheme.bodySmall?.color,
+              // Icon in a soft circle
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: muted.withAlpha(12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, size: 36, color: muted),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
               Text(
                 title,
                 style: theme.textTheme.headlineSmall,
@@ -47,7 +55,7 @@ class EmptyStateView extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 message,
-                style: theme.textTheme.bodyMedium,
+                style: theme.textTheme.bodyMedium?.copyWith(color: muted),
                 textAlign: TextAlign.center,
               ),
               if (actionLabel != null && onAction != null) ...[

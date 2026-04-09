@@ -4,25 +4,6 @@ import 'package:http/http.dart' as http;
 
 /// DTO representing a food item returned from the Open Food Facts API.
 class FoodItemDto {
-  const FoodItemDto({
-    required this.name,
-    this.barcode,
-    this.brand,
-    required this.caloriesPer100g,
-    required this.proteinPer100g,
-    required this.carbsPer100g,
-    required this.fatPer100g,
-    required this.servingSizeG,
-  });
-
-  final String name;
-  final String? barcode;
-  final String? brand;
-  final int caloriesPer100g;
-  final double proteinPer100g;
-  final double carbsPer100g;
-  final double fatPer100g;
-  final double servingSizeG;
 
   factory FoodItemDto.fromProductJson(Map<String, dynamic> product) {
     final name = (product['product_name'] as String?)?.trim().isNotEmpty == true
@@ -49,6 +30,25 @@ class FoodItemDto {
       servingSizeG: serving,
     );
   }
+  const FoodItemDto({
+    required this.name,
+    this.barcode,
+    this.brand,
+    required this.caloriesPer100g,
+    required this.proteinPer100g,
+    required this.carbsPer100g,
+    required this.fatPer100g,
+    required this.servingSizeG,
+  });
+
+  final String name;
+  final String? barcode;
+  final String? brand;
+  final int caloriesPer100g;
+  final double proteinPer100g;
+  final double carbsPer100g;
+  final double fatPer100g;
+  final double servingSizeG;
 
   static int _parseInt(dynamic value) {
     if (value == null) return 0;

@@ -41,7 +41,7 @@ class _SleepHistoryScreenState extends ConsumerState<SleepHistoryScreen>
   Widget build(BuildContext context) {
     final dao = ref.watch(sleepDaoProvider);
     final theme = Theme.of(context);
-    final sleepColor = AppColors.sleep;
+    const sleepColor = AppColors.sleep;
 
     final now = DateTime.now();
     final weekStart = now.subtract(Duration(days: now.weekday - 1 + 6));
@@ -490,13 +490,13 @@ class _MonthlyView extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           // Legend
-          Row(
+          const Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               _LegendItem(color: AppColors.success, label: 'Bueno (80+)'),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               _LegendItem(color: AppColors.warning, label: 'Regular (60-79)'),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               _LegendItem(color: AppColors.error, label: 'Bajo (<60)'),
             ],
           ),

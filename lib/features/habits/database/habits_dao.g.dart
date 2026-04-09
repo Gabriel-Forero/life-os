@@ -6,14 +6,4 @@ part of 'habits_dao.dart';
 mixin _$HabitsDaoMixin on DatabaseAccessor<AppDatabase> {
   $HabitsTable get habits => attachedDatabase.habits;
   $HabitLogsTable get habitLogs => attachedDatabase.habitLogs;
-  HabitsDaoManager get managers => HabitsDaoManager(this);
-}
-
-class HabitsDaoManager {
-  final _$HabitsDaoMixin _db;
-  HabitsDaoManager(this._db);
-  $$HabitsTableTableManager get habits =>
-      $$HabitsTableTableManager(_db.attachedDatabase, _db.habits);
-  $$HabitLogsTableTableManager get habitLogs =>
-      $$HabitLogsTableTableManager(_db.attachedDatabase, _db.habitLogs);
 }

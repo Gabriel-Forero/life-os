@@ -178,7 +178,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               // ------------------------------------------------------------------
               // Appearance
               // ------------------------------------------------------------------
-              _SectionHeader(title: 'Apariencia'),
+              const _SectionHeader(title: 'Apariencia'),
               _SettingsCard(
                 children: [
                   Semantics(
@@ -195,7 +195,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             'Tema',
                             style: Theme.of(context).textTheme.bodyMedium
                                 ?.copyWith(
-                                  color: AppColors.darkTextSecondary,
+                                  color: AppColors.textSecondary(
+                                    Theme.of(context).brightness,
+                                  ),
                                 ),
                           ),
                           const SizedBox(height: 8),
@@ -269,7 +271,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               // ------------------------------------------------------------------
               // Security
               // ------------------------------------------------------------------
-              _SectionHeader(title: 'Seguridad'),
+              const _SectionHeader(title: 'Seguridad'),
               _SettingsCard(
                 children: [
                   Semantics(
@@ -291,7 +293,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               // ------------------------------------------------------------------
               // Data
               // ------------------------------------------------------------------
-              _SectionHeader(title: 'Datos'),
+              const _SectionHeader(title: 'Datos'),
               _SettingsCard(
                 children: [
                   Semantics(
@@ -344,7 +346,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               // ------------------------------------------------------------------
               // Notifications
               // ------------------------------------------------------------------
-              _SectionHeader(title: 'Notificaciones'),
+              const _SectionHeader(title: 'Notificaciones'),
               _SettingsCard(
                 children: [
                   Semantics(
@@ -388,7 +390,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               // ------------------------------------------------------------------
               // Health Integration
               // ------------------------------------------------------------------
-              _SectionHeader(title: 'Salud'),
+              const _SectionHeader(title: 'Salud'),
               _SettingsCard(
                 children: [
                   ListTile(
@@ -424,7 +426,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               // ------------------------------------------------------------------
               // Backup
               // ------------------------------------------------------------------
-              _SectionHeader(title: 'Respaldo'),
+              const _SectionHeader(title: 'Respaldo'),
               _SettingsCard(
                 children: [
                   ListTile(
@@ -441,7 +443,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               // ------------------------------------------------------------------
               // AI Configuration
               // ------------------------------------------------------------------
-              _SectionHeader(title: 'Inteligencia Artificial'),
+              const _SectionHeader(title: 'Inteligencia Artificial'),
               _SettingsCard(
                 children: [
                   ListTile(
@@ -460,18 +462,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               // ------------------------------------------------------------------
               // About
               // ------------------------------------------------------------------
-              _SectionHeader(title: 'Acerca de'),
-              _SettingsCard(
+              const _SectionHeader(title: 'Acerca de'),
+              const _SettingsCard(
                 children: [
                   ListTile(
-                    key: const ValueKey('app_version_tile'),
-                    leading: const Icon(Icons.shield_outlined,
+                    key: ValueKey('app_version_tile'),
+                    leading: Icon(Icons.shield_outlined,
                         color: AppColors.finance),
-                    title: const Text('LifeOS'),
-                    subtitle: const Text('Version 0.1.0'),
+                    title: Text('LifeOS'),
+                    subtitle: Text('Version 0.1.0'),
                   ),
-                  const Divider(height: 1),
-                  const ListTile(
+                  Divider(height: 1),
+                  ListTile(
                     key: ValueKey('made_with_love_tile'),
                     leading: Icon(Icons.favorite_outline,
                         color: AppColors.mental),
@@ -502,11 +504,11 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 6),
+      padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
       child: Text(
         title.toUpperCase(),
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: AppColors.darkTextSecondary,
+              color: AppColors.textSecondary(Theme.of(context).brightness),
               letterSpacing: 1.2,
               fontWeight: FontWeight.w600,
             ),

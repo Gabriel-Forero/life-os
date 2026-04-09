@@ -64,8 +64,9 @@ class MentalNotifier {
     BreathingSessionInput input,
   ) async {
     final techniqueResult = validateBreathingTechnique(input.techniqueName);
-    if (techniqueResult.isFailure)
+    if (techniqueResult.isFailure) {
       return Failure(techniqueResult.failureOrNull!);
+    }
 
     final durationResult = validateBreathingDuration(input.durationSeconds);
     if (durationResult.isFailure) return Failure(durationResult.failureOrNull!);
