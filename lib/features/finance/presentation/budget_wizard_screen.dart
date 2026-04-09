@@ -57,7 +57,8 @@ class _BudgetWizardScreenState extends ConsumerState<BudgetWizardScreen> {
   final List<_InvestmentEntry> _investments = [];
 
   // ── Carry-over from previous month ───────────────────────────────────────
-  int _previousMonthAhorro = 0;
+  final _ahorroAnteriorController = TextEditingController();
+  bool _ahorroManuallyEdited = false;
 
   // ── Saving state ────────────────────────────────────────────────────────
   bool _isSaving = false;
@@ -82,8 +83,10 @@ class _BudgetWizardScreenState extends ConsumerState<BudgetWizardScreen> {
     // Investments are tracked as expenses in savings-related categories
     // For now, use: ahorro = income - expenses (net leftover)
     final ahorro = income - expenses;
-    if (mounted) {
-      setState(() => _previousMonthAhorro = ahorro > 0 ? ahorro : 0);
+    if (mounted && !_ahorroManuallyEdited) {
+      final value = ahorro > 0 ? ahorro : 0;
+      _ahorroAnteriorController.text = value > 0 ? value.toString() : '';
+      setState(() {});
     }
   }
 
@@ -91,6 +94,7 @@ class _BudgetWizardScreenState extends ConsumerState<BudgetWizardScreen> {
   void dispose() {
     _pageController.dispose();
     _salaryController.dispose();
+    _ahorroAnteriorController.dispose();
     _emergencyGoalController.dispose();
     _emergencyMonthlyController.dispose();
     for (final e in _extraIncomes) {
@@ -147,6 +151,8 @@ class _BudgetWizardScreenState extends ConsumerState<BudgetWizardScreen> {
   /// Ahorro disponible = lo que sobra del mes (ingresos - gastos - inversiones)
   int get _ahorroDisponible =>
       _totalIncome - _totalExpenses - _totalSavings;
+
+  int get _previousMonthAhorro => _parseCents(_ahorroAnteriorController.text);
 
   /// Total disponible este mes = ingresos + ahorro del mes anterior
   int get _totalDisponible => _totalIncome + _previousMonthAhorro;
@@ -337,12 +343,17 @@ class _BudgetWizardScreenState extends ConsumerState<BudgetWizardScreen> {
                   totalSavings: _totalSavings,
                   ahorroDisponible: _ahorroDisponible,
                   previousMonthAhorro: _previousMonthAhorro,
+                  ahorroAnteriorController: _ahorroAnteriorController,
                   totalDisponible: _totalDisponible,
                   expensePercent: _expensePercent,
                   savingsPercent: _savingsPercent,
                   debtPercent: _debtPercent,
                   isSaving: _isSaving,
                   onSave: _saveBudget,
+                  onAhorroChanged: () {
+                    _ahorroManuallyEdited = true;
+                    setState(() {});
+                  },
                 ),
               ],
             ),
@@ -1293,12 +1304,14 @@ class _SummaryPage extends StatelessWidget {
     required this.totalSavings,
     required this.ahorroDisponible,
     required this.previousMonthAhorro,
+    required this.ahorroAnteriorController,
     required this.totalDisponible,
     required this.expensePercent,
     required this.savingsPercent,
     required this.debtPercent,
     required this.isSaving,
     required this.onSave,
+    required this.onAhorroChanged,
   });
 
   final int totalIncome;
@@ -1308,17 +1321,20 @@ class _SummaryPage extends StatelessWidget {
   final int totalSavings;
   final int ahorroDisponible;
   final int previousMonthAhorro;
+  final TextEditingController ahorroAnteriorController;
   final int totalDisponible;
   final double expensePercent;
   final double savingsPercent;
   final double debtPercent;
   final bool isSaving;
   final VoidCallback onSave;
+  final VoidCallback onAhorroChanged;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final brightness = theme.brightness;
+    final isDark = brightness == Brightness.dark;
 
     // 50/30/20 analysis
     final fixedPct =
@@ -1369,34 +1385,53 @@ class _SummaryPage extends StatelessWidget {
 
         const SizedBox(height: 16),
 
-        // Previous month carry-over (if any)
-        if (previousMonthAhorro > 0)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Container(
-              decoration: BoxDecoration(
-                color: AppColors.finance.withAlpha(brightness == Brightness.dark ? 15 : 8),
-                borderRadius: BorderRadius.circular(AppDecorations.radiusSm),
-                border: Border.all(color: AppColors.finance.withAlpha(brightness == Brightness.dark ? 40 : 25)),
-              ),
-              padding: const EdgeInsets.all(14),
-              child: Row(
-                children: [
-                  const Icon(Icons.savings_outlined, color: AppColors.finance, size: 20),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'Ahorro del mes anterior: ${_formatCurrency(previousMonthAhorro)}',
+        // Ahorro del mes anterior — auto-calculated, manually editable
+        Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: AppColors.finance.withAlpha(isDark ? 15 : 8),
+            borderRadius: BorderRadius.circular(AppDecorations.radiusSm),
+            border: Border.all(color: AppColors.finance.withAlpha(isDark ? 40 : 25)),
+          ),
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              const Icon(Icons.savings_outlined, color: AppColors.finance, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Ahorro del mes anterior',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: AppColors.finance,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 2),
+                    Text(
+                      'Auto-calculado. Editalo si difiere.',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: AppColors.textSecondary(brightness),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
+              const SizedBox(width: 10),
+              SizedBox(
+                width: 120,
+                child: _AmountField(
+                  controller: ahorroAnteriorController,
+                  hint: '0',
+                  prefix: '\$',
+                  onChanged: (_) => onAhorroChanged(),
+                ),
+              ),
+            ],
           ),
+        ),
 
         // Breakdown rows
         _SummaryRow('Ingresos del mes', totalIncome, const Color(0xFF10B981)),
