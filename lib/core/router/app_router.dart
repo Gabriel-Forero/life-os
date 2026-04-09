@@ -860,7 +860,7 @@ class _AppShellState extends State<_AppShell> {
                 // sub-pages use their own AppBar with back button.
                 if (_isMainHub(context))
                   Container(
-                    color: Colors.white,
+                    color: Theme.of(context).cardColor,
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                     child: Row(
                       children: [
