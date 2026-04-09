@@ -10,6 +10,7 @@ import 'package:life_os/features/finance/database/finance_dao.dart';
 import 'package:life_os/core/widgets/empty_state_view.dart';
 import 'package:life_os/features/finance/domain/amount_formatting.dart';
 import 'package:go_router/go_router.dart';
+import 'package:life_os/core/router/app_router.dart';
 import 'package:life_os/l10n/app_localizations.dart';
 
 // ---------------------------------------------------------------------------
@@ -1571,6 +1572,15 @@ class _BudgetFab extends StatelessWidget {
       ),
       items: [
         const PopupMenuItem(
+          value: 'wizard',
+          child: ListTile(
+            leading: Icon(Icons.auto_fix_high_outlined),
+            title: Text('Asistente de presupuesto'),
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+          ),
+        ),
+        const PopupMenuItem(
           value: 'add',
           child: ListTile(
             leading: Icon(Icons.add_circle_outline),
@@ -1619,6 +1629,10 @@ class _BudgetFab extends StatelessWidget {
     ).then((value) {
       if (value == null) return;
       switch (value) {
+        case 'wizard':
+          if (context.mounted) {
+            GoRouter.of(context).push(AppRoutes.financeBudgetWizard);
+          }
         case 'add':
           onAddBudget();
         case 'global':
