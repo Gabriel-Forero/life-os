@@ -85,9 +85,14 @@ Future<void> _initializeApp(ProviderContainer container) async {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (e) {
+    // Firebase init may fail on some platforms — continue anyway
+    debugPrint('Firebase init error (non-fatal): $e');
+  }
 
   final logger = AppLogger(tag: 'Main');
 
