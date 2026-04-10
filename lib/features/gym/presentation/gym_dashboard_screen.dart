@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:life_os/core/constants/app_colors.dart';
-import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
 import 'package:life_os/core/router/app_router.dart';
 import 'package:life_os/core/widgets/animated_list_item.dart';
 import 'package:life_os/core/widgets/pressable_card.dart';
-import 'package:life_os/features/gym/database/gym_dao.dart';
+import 'package:life_os/features/gym/data/gym_repository.dart';
+import 'package:life_os/features/gym/domain/models/routine_exercise_model.dart';
+import 'package:life_os/features/gym/domain/models/routine_model.dart';
+import 'package:life_os/features/gym/domain/models/workout_model.dart';
+import 'package:life_os/features/gym/domain/models/workout_set_model.dart';
 import 'package:life_os/features/gym/presentation/active_workout_screen.dart';
 import 'package:life_os/features/gym/presentation/routine_day_picker_screen.dart';
 
@@ -24,7 +27,7 @@ class GymDashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final dao = ref.watch(gymDaoProvider);
+    final repo = ref.watch(gymRepositoryProvider);
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -67,8 +70,8 @@ class GymDashboardScreen extends ConsumerWidget {
           ),
 
           SliverToBoxAdapter(
-            child: StreamBuilder<List<Routine>>(
-              stream: dao.watchRoutines(),
+            child: StreamBuilder<List<RoutineModel>>(
+              stream: repo.watchRoutines(),
               builder: (context, snapshot) {
                 final routines = snapshot.data ?? [];
                 if (routines.isEmpty) {
@@ -91,7 +94,7 @@ class GymDashboardScreen extends ConsumerWidget {
                       child: _RoutineCard(
                         key: ValueKey('routine-card-${routine.id}'),
                         routine: routine,
-                        dao: dao,
+                        repo: repo,
                         onTap: () => _openRoutine(context, routine),
                       ),
                     );
@@ -133,8 +136,8 @@ class GymDashboardScreen extends ConsumerWidget {
           ),
 
           SliverToBoxAdapter(
-            child: StreamBuilder<List<Workout>>(
-              stream: dao.watchWorkouts(limit: 5),
+            child: StreamBuilder<List<WorkoutModel>>(
+              stream: repo.watchWorkouts(limit: 5),
               builder: (context, snapshot) {
                 final workouts = snapshot.data ?? [];
                 if (workouts.isEmpty) {
@@ -159,7 +162,7 @@ class GymDashboardScreen extends ConsumerWidget {
                       child: _RecentWorkoutCard(
                         key: ValueKey('recent-workout-${workout.id}'),
                         workout: workout,
-                        dao: dao,
+                        repo: repo,
                       ),
                     );
                   },
@@ -193,7 +196,7 @@ class GymDashboardScreen extends ConsumerWidget {
     );
   }
 
-  void _openRoutine(BuildContext context, Routine routine) {
+  void _openRoutine(BuildContext context, RoutineModel routine) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (ctx) => RoutineDayPickerScreen(routine: routine),
@@ -214,20 +217,20 @@ class _RoutineCard extends StatelessWidget {
   const _RoutineCard({
     super.key,
     required this.routine,
-    required this.dao,
+    required this.repo,
     required this.onTap,
   });
 
-  final Routine routine;
-  final GymDao dao;
+  final RoutineModel routine;
+  final GymRepository repo;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return StreamBuilder<List<RoutineExercise>>(
-      stream: dao.watchRoutineExercises(routine.id),
+    return StreamBuilder<List<RoutineExerciseModel>>(
+      stream: repo.watchRoutineExercises(routine.id),
       builder: (context, snapshot) {
         final exercises = snapshot.data ?? [];
 
@@ -336,7 +339,7 @@ class _RoutineCard extends StatelessWidget {
 
   Widget _buildDayLabels(
     BuildContext context,
-    List<RoutineExercise> exercises,
+    List<RoutineExerciseModel> exercises,
     List<int> days,
   ) {
     final theme = Theme.of(context);
@@ -380,11 +383,11 @@ class _RecentWorkoutCard extends StatelessWidget {
   const _RecentWorkoutCard({
     super.key,
     required this.workout,
-    required this.dao,
+    required this.repo,
   });
 
-  final Workout workout;
-  final GymDao dao;
+  final WorkoutModel workout;
+  final GymRepository repo;
 
   String _formatDate(DateTime date) {
     final now = DateTime.now();
@@ -400,7 +403,7 @@ class _RecentWorkoutCard extends StatelessWidget {
     return '${date.day} ${months[date.month - 1]}';
   }
 
-  String _formatDuration(Workout w) {
+  String _formatDuration(WorkoutModel w) {
     if (w.finishedAt == null) return '';
     final m = w.finishedAt!.difference(w.startedAt).inMinutes;
     if (m < 60) return '$m min';
@@ -412,8 +415,8 @@ class _RecentWorkoutCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return StreamBuilder<List<WorkoutSet>>(
-      stream: dao.watchWorkoutSets(workout.id),
+    return StreamBuilder<List<WorkoutSetModel>>(
+      stream: repo.watchWorkoutSets(workout.id),
       builder: (context, snapshot) {
         final sets = snapshot.data ?? [];
         final exerciseCount = sets.map((s) => s.exerciseId).toSet().length;

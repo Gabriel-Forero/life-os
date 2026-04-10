@@ -3,8 +3,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_os/core/constants/app_colors.dart';
-import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
+import 'package:life_os/features/dashboard/domain/models/life_snapshot_model.dart';
 import 'package:intl/intl.dart';
 
 // ---------------------------------------------------------------------------
@@ -78,8 +78,8 @@ class _FinanceValuationScreenState
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final financeDao = ref.read(financeDaoProvider);
-      final dashDao = ref.read(dashboardDaoProvider);
+      final financeRepo = ref.read(financeRepositoryProvider);
+      final dashRepo = ref.read(dashboardRepositoryProvider);
       final now = DateTime.now();
 
       // --- Mes actual ---
@@ -88,9 +88,9 @@ class _FinanceValuationScreenState
           DateTime(now.year, now.month + 1, 0, 23, 59, 59);
 
       final incomeThisMonth =
-          await financeDao.sumByType('income', fromThisMonth, toThisMonth);
+          await financeRepo.sumByType('income', fromThisMonth, toThisMonth);
       final expensesThisMonth =
-          await financeDao.sumByType('expense', fromThisMonth, toThisMonth);
+          await financeRepo.sumByType('expense', fromThisMonth, toThisMonth);
       final balance = incomeThisMonth - expensesThisMonth;
       final savingsRate = incomeThisMonth > 0
           ? (balance / incomeThisMonth * 100).clamp(0.0, 100.0)
@@ -103,31 +103,31 @@ class _FinanceValuationScreenState
       final toPrevMonth = DateTime(prevYear, prevMonth + 1, 0, 23, 59, 59);
 
       final prevIncome =
-          await financeDao.sumByType('income', fromPrevMonth, toPrevMonth);
+          await financeRepo.sumByType('income', fromPrevMonth, toPrevMonth);
       final prevExpenses =
-          await financeDao.sumByType('expense', fromPrevMonth, toPrevMonth);
+          await financeRepo.sumByType('expense', fromPrevMonth, toPrevMonth);
       final prevBalance = prevIncome - prevExpenses;
 
       // --- Presupuesto ---
       final budgets =
-          await financeDao.watchBudgets(now.month, now.year).first;
+          await financeRepo.watchBudgets(now.month, now.year).first;
       int totalBudgetCents = 0;
       int totalSpentCents = 0;
       for (final b in budgets) {
         totalBudgetCents += b.amountCents;
         totalSpentCents +=
-            await financeDao.spentInBudget(b.categoryId, now.month, now.year);
+            await financeRepo.spentInBudget(b.categoryId, now.month, now.year);
       }
       final budgetUsedPercent = totalBudgetCents > 0
           ? (totalSpentCents / totalBudgetCents * 100).clamp(0.0, 150.0)
           : 0.0;
 
       // --- Top 3 categorias ---
-      final categories = await financeDao.watchCategories().first;
+      final categories = await financeRepo.watchCategories().first;
       final categorySpends = <_CategorySpend>[];
       for (final cat in categories) {
         if (cat.type == 'income') continue;
-        final spent = await financeDao.spentInBudget(
+        final spent = await financeRepo.spentInBudget(
             cat.id, now.month, now.year);
         if (spent > 0) {
           categorySpends.add(_CategorySpend(name: cat.name, amountCents: spent));
@@ -145,7 +145,7 @@ class _FinanceValuationScreenState
       final projected = avgDailySpend * daysInMonth;
 
       // --- Recurrentes activos ---
-      final allTx = await financeDao.watchTransactions(
+      final allTx = await financeRepo.watchTransactions(
           fromThisMonth, toThisMonth).first;
       final activeRecurrings =
           allTx.where((t) => t.recurringId != null).map((t) => t.recurringId).toSet().length;
@@ -166,7 +166,7 @@ class _FinanceValuationScreenState
       );
 
       // --- Ultima valoracion previa ---
-      final snapshots = await dashDao.getAllSnapshots();
+      final snapshots = await dashRepo.getAllSnapshots();
       Map<String, dynamic>? prevData;
       for (final snap in snapshots) {
         try {
@@ -222,9 +222,9 @@ class _FinanceValuationScreenState
     if (_current == null || _saving) return;
     setState(() => _saving = true);
     try {
-      final dashDao = ref.read(dashboardDaoProvider);
+      final dashRepo = ref.read(dashboardRepositoryProvider);
       final data = _serializeMetrics();
-      await dashDao.insertValuationSnapshot(
+      await dashRepo.insertValuationSnapshot(
         moduleKey: 'finance',
         data: data,
       );
@@ -866,7 +866,7 @@ class _ValuationHistoryScreen extends ConsumerStatefulWidget {
 
 class _ValuationHistoryScreenState
     extends ConsumerState<_ValuationHistoryScreen> {
-  List<LifeSnapshot> _snapshots = [];
+  List<LifeSnapshotModel> _snapshots = [];
   bool _loading = true;
 
   @override
@@ -876,8 +876,8 @@ class _ValuationHistoryScreenState
   }
 
   Future<void> _load() async {
-    final dashDao = ref.read(dashboardDaoProvider);
-    final all = await dashDao.getAllSnapshots();
+    final dashRepo = ref.read(dashboardRepositoryProvider);
+    final all = await dashRepo.getAllSnapshots();
     final filtered = all.where((s) {
       try {
         final decoded = jsonDecode(s.metricsJson) as Map<String, dynamic>;

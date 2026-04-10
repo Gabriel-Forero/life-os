@@ -1,19 +1,18 @@
-import 'package:drift/drift.dart';
-import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/domain/app_failure.dart';
 import 'package:life_os/core/domain/result.dart';
-import 'package:life_os/features/nutrition/database/nutrition_dao.dart';
+import 'package:life_os/features/nutrition/data/nutrition_data_repository.dart';
+import 'package:life_os/features/nutrition/domain/models/meal_log_item_model.dart';
 import 'package:life_os/features/nutrition/domain/nutrition_input.dart';
 import 'package:life_os/features/nutrition/domain/nutrition_validators.dart';
 
 class NutritionNotifier {
-  NutritionNotifier({required this.dao});
+  NutritionNotifier({required this.repository});
 
-  final NutritionDao dao;
+  final NutritionDataRepository repository;
 
   // --- Meal Logging ---
 
-  Future<Result<int>> logMeal(MealLogInput input) async {
+  Future<Result<String>> logMeal(MealLogInput input) async {
     final typeResult = validateMealType(input.mealType);
     if (typeResult.isFailure) return Failure(typeResult.failureOrNull!);
 
@@ -34,25 +33,26 @@ class NutritionNotifier {
       final now = DateTime.now();
       final date = input.date ?? now;
 
-      final mealId = await dao.insertMealLog(MealLogsCompanion.insert(
+      final mealId = await repository.insertMealLog(
         date: DateTime(date.year, date.month, date.day),
         mealType: input.mealType,
-        note: Value(input.note),
+        note: input.note,
         createdAt: now,
         updatedAt: now,
-      ));
+      );
 
       final companions = input.items
           .map(
-            (item) => MealLogItemsCompanion.insert(
+            (item) => MealLogItemModel(
+              id: '', // ignored by setMealLogItems
               mealLogId: mealId,
-              foodItemId: item.foodItemId,
+              foodItemId: item.foodItemId.toString(),
               quantityG: item.quantityG,
               createdAt: now,
             ),
           )
           .toList();
-      await dao.setMealLogItems(mealId, companions);
+      await repository.setMealLogItems(mealId, companions);
 
       return Success(mealId);
     } on Exception catch (e) {
@@ -64,9 +64,9 @@ class NutritionNotifier {
     }
   }
 
-  Future<Result<void>> deleteMeal(int mealId) async {
+  Future<Result<void>> deleteMeal(String mealId) async {
     try {
-      await dao.deleteMealLog(mealId);
+      await repository.deleteMealLog(mealId);
       return const Success(null);
     } on Exception catch (e) {
       return Failure(DatabaseFailure(
@@ -79,7 +79,7 @@ class NutritionNotifier {
 
   // --- Custom Food ---
 
-  Future<Result<int>> addCustomFood(CustomFoodInput input) async {
+  Future<Result<String>> addCustomFood(CustomFoodInput input) async {
     final nameResult = validateFoodItemName(input.name);
     if (nameResult.isFailure) return Failure(nameResult.failureOrNull!);
 
@@ -87,19 +87,19 @@ class NutritionNotifier {
     if (calResult.isFailure) return Failure(calResult.failureOrNull!);
 
     try {
-      final id = await dao.insertFoodItem(FoodItemsCompanion.insert(
+      final id = await repository.insertFoodItem(
         name: nameResult.valueOrNull!,
-        brand: Value(input.brand),
+        brand: input.brand,
         caloriesPer100g: input.caloriesPer100g,
-        proteinPer100g: Value(input.proteinPer100g),
-        carbsPer100g: Value(input.carbsPer100g),
-        fatPer100g: Value(input.fatPer100g),
-        servingSizeG: Value(input.servingSizeG),
-        isFavorite: const Value(false),
-        isCustom: const Value(true),
-        isFromApi: const Value(false),
+        proteinPer100g: input.proteinPer100g,
+        carbsPer100g: input.carbsPer100g,
+        fatPer100g: input.fatPer100g,
+        servingSizeG: input.servingSizeG,
+        isFavorite: false,
+        isCustom: true,
+        isFromApi: false,
         createdAt: DateTime.now(),
-      ));
+      );
       return Success(id);
     } on Exception catch (e) {
       return Failure(DatabaseFailure(
@@ -112,9 +112,9 @@ class NutritionNotifier {
 
   // --- Favorites ---
 
-  Future<Result<void>> toggleFavorite(int foodItemId, bool isFavorite) async {
+  Future<Result<void>> toggleFavorite(String foodItemId, bool isFavorite) async {
     try {
-      await dao.toggleFavorite(foodItemId, isFavorite);
+      await repository.toggleFavorite(foodItemId, isFavorite);
       return const Success(null);
     } on Exception catch (e) {
       return Failure(DatabaseFailure(
@@ -127,18 +127,18 @@ class NutritionNotifier {
 
   // --- Water ---
 
-  Future<Result<int>> logWater(int amountMl) async {
+  Future<Result<String>> logWater(int amountMl) async {
     final result = validateWaterAmount(amountMl);
     if (result.isFailure) return Failure(result.failureOrNull!);
 
     try {
       final now = DateTime.now();
-      final id = await dao.insertWaterLog(WaterLogsCompanion.insert(
+      final id = await repository.insertWaterLog(
         date: DateTime(now.year, now.month, now.day),
         amountMl: amountMl,
         time: now,
         createdAt: now,
-      ));
+      );
       return Success(id);
     } on Exception catch (e) {
       return Failure(DatabaseFailure(
@@ -149,9 +149,9 @@ class NutritionNotifier {
     }
   }
 
-  Future<Result<void>> removeWaterLog(int id) async {
+  Future<Result<void>> removeWaterLog(String id) async {
     try {
-      await dao.deleteWaterLog(id);
+      await repository.deleteWaterLog(id);
       return const Success(null);
     } on Exception catch (e) {
       return Failure(DatabaseFailure(
@@ -164,7 +164,7 @@ class NutritionNotifier {
 
   // --- Nutrition Goals ---
 
-  Future<Result<int>> setNutritionGoal(NutritionGoalInput input) async {
+  Future<Result<String>> setNutritionGoal(NutritionGoalInput input) async {
     if (input.caloriesKcal <= 0) {
       return const Failure(ValidationFailure(
         userMessage: 'Las calorias deben ser mayor a 0',
@@ -175,15 +175,15 @@ class NutritionNotifier {
 
     try {
       final now = DateTime.now();
-      final id = await dao.insertNutritionGoal(NutritionGoalsCompanion.insert(
+      final id = await repository.insertNutritionGoal(
         caloriesKcal: input.caloriesKcal,
-        proteinG: Value(input.proteinG),
-        carbsG: Value(input.carbsG),
-        fatG: Value(input.fatG),
-        waterMl: Value(input.waterMl),
+        proteinG: input.proteinG,
+        carbsG: input.carbsG,
+        fatG: input.fatG,
+        waterMl: input.waterMl,
         effectiveDate: now,
         createdAt: now,
-      ));
+      );
       return Success(id);
     } on Exception catch (e) {
       return Failure(DatabaseFailure(
@@ -196,7 +196,7 @@ class NutritionNotifier {
 
   // --- Templates ---
 
-  Future<Result<int>> saveAsTemplate({
+  Future<Result<String>> saveAsTemplate({
     required String name,
     required String mealType,
     required String itemsJson,
@@ -210,12 +210,12 @@ class NutritionNotifier {
     }
 
     try {
-      final id = await dao.insertMealTemplate(MealTemplatesCompanion.insert(
+      final id = await repository.insertMealTemplate(
         name: name.trim(),
         mealType: mealType,
         itemsJson: itemsJson,
         createdAt: DateTime.now(),
-      ));
+      );
       return Success(id);
     } on Exception catch (e) {
       return Failure(DatabaseFailure(

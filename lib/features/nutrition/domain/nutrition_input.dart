@@ -18,7 +18,7 @@ class MealItemInput {
     required this.quantityG,
   });
 
-  final int foodItemId;
+  final String foodItemId;
   final double quantityG;
 }
 

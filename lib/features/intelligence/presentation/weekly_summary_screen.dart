@@ -56,7 +56,7 @@ class _WeeklySummaryScreenState extends ConsumerState<WeeklySummaryScreen> {
       setState(() => _weeklyData = data);
 
       final notifier = ref.read(aiNotifierProvider);
-      final config = await notifier.dao.getDefaultConfiguration();
+      final config = await notifier.repository.getDefaultConfiguration();
 
       if (config == null) {
         setState(() {
@@ -118,14 +118,14 @@ class _WeeklySummaryScreenState extends ConsumerState<WeeklySummaryScreen> {
     final prevWeekStart = now.subtract(const Duration(days: 14));
 
     // Finance
-    final financeDao = ref.read(financeDaoProvider);
-    final income = await financeDao.sumByType('income', weekStart, now);
-    final expenses = await financeDao.sumByType('expense', weekStart, now);
+    final financeRepo = ref.read(financeRepositoryProvider);
+    final income = await financeRepo.sumByType('income', weekStart, now);
+    final expenses = await financeRepo.sumByType('expense', weekStart, now);
 
     // Gym workouts
     int gymWorkouts = 0;
     try {
-      final workouts = await ref.read(gymDaoProvider).watchWorkouts(limit: 50).first;
+      final workouts = await ref.read(gymRepositoryProvider).watchWorkouts(limit: 50).first;
       gymWorkouts = workouts.where((w) {
         if (w.finishedAt == null) return false;
         return w.finishedAt!.isAfter(weekStart);
@@ -138,7 +138,7 @@ class _WeeklySummaryScreenState extends ConsumerState<WeeklySummaryScreen> {
     double avgSleepScore = 0;
     double avgSleepHours = 0;
     try {
-      final sleepLogs = await ref.read(sleepDaoProvider).watchSleepLogs(weekStart, now).first;
+      final sleepLogs = await ref.read(sleepRepositoryProvider).watchSleepLogs(weekStart, now).first;
       if (sleepLogs.isNotEmpty) {
         final scores = sleepLogs.where((l) => l.sleepScore != null).toList();
         if (scores.isNotEmpty) {
@@ -163,7 +163,7 @@ class _WeeklySummaryScreenState extends ConsumerState<WeeklySummaryScreen> {
     double habitCompletionRate = 0;
     int bestStreak = 0;
     try {
-      final habitsDao = ref.read(habitsDaoProvider);
+      final habitsDao = ref.read(habitsRepositoryProvider);
       final activeHabits = await habitsDao.watchActiveHabits().first;
       if (activeHabits.isNotEmpty) {
         double totalRate = 0;
@@ -181,7 +181,7 @@ class _WeeklySummaryScreenState extends ConsumerState<WeeklySummaryScreen> {
     // Mood
     double avgMood = 0;
     try {
-      final moodLogs = await ref.read(mentalDaoProvider).getMoodLogs(weekStart, now);
+      final moodLogs = await ref.read(mentalRepositoryProvider).getMoodLogs(weekStart, now);
       if (moodLogs.isNotEmpty) {
         avgMood = moodLogs.map((m) {
               final v = (m.valence - 1) / 4.0 * 50.0;
@@ -198,7 +198,7 @@ class _WeeklySummaryScreenState extends ConsumerState<WeeklySummaryScreen> {
     int activeGoals = 0;
     double avgGoalProgress = 0;
     try {
-      final goals = await ref.read(goalsDaoProvider).getAllGoals();
+      final goals = await ref.read(goalsRepositoryProvider).getAllGoals();
       final active = goals.where((g) => g.status == 'active').toList();
       activeGoals = active.length;
       if (active.isNotEmpty) {

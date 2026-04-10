@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:life_os/core/constants/app_colors.dart';
-import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/domain/notification_config.dart';
 import 'package:life_os/core/providers/providers.dart';
 import 'package:life_os/core/router/app_router.dart';
 import 'package:life_os/core/services/theme_notifier.dart';
+import 'package:life_os/features/settings/domain/models/app_settings_model.dart';
 
 // ---------------------------------------------------------------------------
 // Supported currencies
@@ -43,21 +43,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   // Helpers
   // ---------------------------------------------------------------------------
 
-  Future<AppSettingsTableData?> _getSettings() =>
-      ref.read(appSettingsDaoProvider).getSettings();
+  Future<AppSettingsModel?> _getSettings() =>
+      ref.read(settingsRepositoryProvider).getSettings();
 
   Future<void> _ensureSettingsRow() async {
-    final dao = ref.read(appSettingsDaoProvider);
-    final existing = await dao.getSettings();
+    final repo = ref.read(settingsRepositoryProvider);
+    final existing = await repo.getSettings();
     if (existing == null) {
       final now = DateTime.now();
-      await dao.createSettings(
-        AppSettingsTableCompanion.insert(
-          userName: 'Usuario',
-          primaryGoal: 'balance',
-          createdAt: now,
-          updatedAt: now,
-        ),
+      await repo.createSettings(
+        userName: 'Usuario',
+        language: 'es',
+        currency: 'COP',
+        primaryGoal: 'balance',
+        enabledModules: '["finance"]',
+        themeMode: 'dark',
+        useBiometric: false,
+        onboardingCompleted: false,
+        createdAt: now,
+        updatedAt: now,
       );
     }
   }
@@ -75,7 +79,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Future<void> _onThemeChanged(String mode) async {
     await _ensureSettingsRow();
-    await ref.read(appSettingsDaoProvider).updateThemeMode(mode);
+    await ref.read(settingsRepositoryProvider).updateThemeMode(mode);
     ref.read(themeNotifierProvider.notifier).setThemeModeFromString(mode);
   }
 
@@ -92,7 +96,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       }
     }
     await _ensureSettingsRow();
-    await ref.read(appSettingsDaoProvider).updateBiometric(value);
+    await ref.read(settingsRepositoryProvider).updateBiometric(value);
     setState(() {});
   }
 
@@ -162,7 +166,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: FutureBuilder<AppSettingsTableData?>(
+      body: FutureBuilder<AppSettingsModel?>(
         future: _getSettings(),
         builder: (context, snap) {
           final settings = snap.data;
@@ -256,7 +260,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             onSelectionChanged: (selection) async {
                               await _ensureSettingsRow();
                               await ref
-                                  .read(appSettingsDaoProvider)
+                                  .read(settingsRepositoryProvider)
                                   .updateLanguage(selection.first);
                               setState(() {});
                             },
@@ -331,7 +335,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               if (value == null) return;
                               await _ensureSettingsRow();
                               await ref
-                                  .read(appSettingsDaoProvider)
+                                  .read(settingsRepositoryProvider)
                                   .updateCurrency(value);
                               setState(() {});
                             },

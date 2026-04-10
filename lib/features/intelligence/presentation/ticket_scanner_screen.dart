@@ -49,7 +49,7 @@ class _TicketScannerScreenState extends ConsumerState<TicketScannerScreen> {
 
     try {
       final notifier = ref.read(aiNotifierProvider);
-      final config = await notifier.dao.getDefaultConfiguration();
+      final config = await notifier.repository.getDefaultConfiguration();
       if (config == null) {
         setState(() {
           _isAnalyzing = false;
@@ -125,12 +125,12 @@ class _TicketScannerScreenState extends ConsumerState<TicketScannerScreen> {
 
     try {
       final financeNotifier = ref.read(financeNotifierProvider);
-      final financeDao = ref.read(financeDaoProvider);
+      final financeRepo = ref.read(financeRepositoryProvider);
       final items = _result!.items;
 
       // Get or create a generic expense category
-      var categoryId = 1; // fallback
-      final categories = await financeDao.getCategoriesByType('expense');
+      String categoryId = '1'; // fallback
+      final categories = await financeRepo.getCategoriesByType('expense');
       if (categories.isNotEmpty) {
         categoryId = categories.first.id;
       }
@@ -145,7 +145,7 @@ class _TicketScannerScreenState extends ConsumerState<TicketScannerScreen> {
         final amountCents = (item.price * 100).round();
 
         // Try to find a matching category by name
-        int? matchedCategoryId;
+        String? matchedCategoryId;
         for (final cat in categories) {
           if (_categoryMatches(cat.name, item.category)) {
             matchedCategoryId = cat.id;

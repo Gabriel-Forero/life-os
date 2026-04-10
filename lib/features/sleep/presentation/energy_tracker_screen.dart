@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_os/core/constants/app_colors.dart';
-import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
+import 'package:life_os/features/sleep/domain/models/energy_log_model.dart';
+import 'package:life_os/features/sleep/domain/models/sleep_log_model.dart';
 import 'package:life_os/features/sleep/domain/sleep_input.dart';
 
 // ---------------------------------------------------------------------------
@@ -113,7 +114,7 @@ class _EnergyTrackerScreenState extends ConsumerState<EnergyTrackerScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     const sleepColor = AppColors.sleep;
-    final dao = ref.watch(sleepDaoProvider);
+    final dao = ref.watch(sleepRepositoryProvider);
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -124,7 +125,7 @@ class _EnergyTrackerScreenState extends ConsumerState<EnergyTrackerScreen> {
         centerTitle: true,
         foregroundColor: sleepColor,
       ),
-      body: StreamBuilder<List<EnergyLog>>(
+      body: StreamBuilder<List<EnergyLogModel>>(
         stream: dao.watchEnergyLogsForDate(DateTime.now()),
         builder: (context, snapshot) {
           // Pre-fill slots from DB data when available
@@ -146,7 +147,7 @@ class _EnergyTrackerScreenState extends ConsumerState<EnergyTrackerScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 // Feature 5: Correlation with last sleep
-                FutureBuilder<SleepLog?>(
+                FutureBuilder<SleepLogModel?>(
                   future: dao.getSleepLogForDate(DateTime.now()),
                   builder: (ctx, sleepSnap) {
                     final sleepLog = sleepSnap.data;

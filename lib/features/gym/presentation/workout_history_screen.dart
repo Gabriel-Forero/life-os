@@ -3,12 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:life_os/core/constants/app_colors.dart';
-import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
 import 'package:life_os/core/router/app_router.dart';
 import 'package:life_os/core/widgets/animated_list_item.dart';
 import 'package:life_os/core/widgets/chart_card.dart';
 import 'package:life_os/core/widgets/pressable_card.dart';
+import 'package:life_os/features/gym/data/gym_repository.dart';
+import 'package:life_os/features/gym/domain/models/workout_model.dart';
+import 'package:life_os/features/gym/domain/models/workout_set_model.dart';
 
 // ---------------------------------------------------------------------------
 // Pantalla: historial de entrenamientos
@@ -24,7 +26,7 @@ class WorkoutHistoryScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final dao = ref.watch(gymDaoProvider);
+    final repo = ref.watch(gymRepositoryProvider);
 
     return Scaffold(
       key: const ValueKey('workout-history-screen'),
@@ -61,8 +63,8 @@ class WorkoutHistoryScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: StreamBuilder<List<Workout>>(
-        stream: dao.watchWorkouts(),
+      body: StreamBuilder<List<WorkoutModel>>(
+        stream: repo.watchWorkouts(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -84,7 +86,7 @@ class WorkoutHistoryScreen extends ConsumerWidget {
                   child: _WorkoutChartsSection(
                     key: const ValueKey('workout-charts-section'),
                     workouts: workouts,
-                    dao: dao,
+                    repo: repo,
                   ),
                 ),
               ),
@@ -118,7 +120,7 @@ class WorkoutHistoryScreen extends ConsumerWidget {
     );
   }
 
-  void _openDetail(BuildContext context, Workout workout) {
+  void _openDetail(BuildContext context, WorkoutModel workout) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (ctx) => _WorkoutDetailScreen(workout: workout),
@@ -138,7 +140,7 @@ class _WorkoutSessionCard extends ConsumerWidget {
     required this.onTap,
   });
 
-  final Workout workout;
+  final WorkoutModel workout;
   final VoidCallback onTap;
 
   String _formatDate(DateTime date) {
@@ -157,7 +159,7 @@ class _WorkoutSessionCard extends ConsumerWidget {
     return '${date.day} ${months[date.month - 1]} ${date.year}';
   }
 
-  String _formatDuration(Workout w) {
+  String _formatDuration(WorkoutModel w) {
     if (w.finishedAt == null) return '—';
     final minutes = w.finishedAt!.difference(w.startedAt).inMinutes;
     if (minutes < 60) return '$minutes min';
@@ -169,10 +171,10 @@ class _WorkoutSessionCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final dao = ref.watch(gymDaoProvider);
+    final repo = ref.watch(gymRepositoryProvider);
 
-    return StreamBuilder<List<WorkoutSet>>(
-      stream: dao.watchWorkoutSets(workout.id),
+    return StreamBuilder<List<WorkoutSetModel>>(
+      stream: repo.watchWorkoutSets(workout.id),
       builder: (context, snapshot) {
         final sets = snapshot.data ?? [];
         final workSets = sets.where((s) => !s.isWarmup).toList();
@@ -311,7 +313,7 @@ class _StatChip extends StatelessWidget {
 class _WorkoutDetailScreen extends ConsumerWidget {
   const _WorkoutDetailScreen({required this.workout});
 
-  final Workout workout;
+  final WorkoutModel workout;
 
   String _formatDate(DateTime date) {
     final months = [
@@ -321,7 +323,7 @@ class _WorkoutDetailScreen extends ConsumerWidget {
     return '${date.day} de ${months[date.month - 1]} de ${date.year}';
   }
 
-  String _formatDuration(Workout w) {
+  String _formatDuration(WorkoutModel w) {
     if (w.finishedAt == null) return '—';
     final minutes = w.finishedAt!.difference(w.startedAt).inMinutes;
     if (minutes < 60) return '$minutes min';
@@ -333,7 +335,7 @@ class _WorkoutDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final dao = ref.watch(gymDaoProvider);
+    final repo = ref.watch(gymRepositoryProvider);
 
     return Scaffold(
       key: const ValueKey('workout-detail-screen'),
@@ -357,8 +359,8 @@ class _WorkoutDetailScreen extends ConsumerWidget {
           ),
         ),
       ),
-      body: StreamBuilder<List<WorkoutSet>>(
-        stream: dao.watchWorkoutSets(workout.id),
+      body: StreamBuilder<List<WorkoutSetModel>>(
+        stream: repo.watchWorkoutSets(workout.id),
         builder: (context, snapshot) {
           final sets = snapshot.data ?? [];
           final workSets = sets.where((s) => !s.isWarmup).toList();
@@ -368,7 +370,7 @@ class _WorkoutDetailScreen extends ConsumerWidget {
           final exerciseIds = sets.map((s) => s.exerciseId).toSet();
 
           // Group sets by exerciseId preserving order
-          final Map<int, List<WorkoutSet>> byExercise = {};
+          final Map<String, List<WorkoutSetModel>> byExercise = {};
           for (final s in sets) {
             byExercise.putIfAbsent(s.exerciseId, () => []).add(s);
           }
@@ -457,7 +459,7 @@ class _WorkoutDetailScreen extends ConsumerWidget {
                         children: [
                           // Encabezado del ejercicio
                           StreamBuilder(
-                            stream: dao.watchExercises(),
+                            stream: repo.watchExercises(),
                             builder: (ctx, snap) {
                               final exName = snap.data
                                       ?.where((e) => e.id == exerciseId)
@@ -676,18 +678,18 @@ class _WorkoutChartsSection extends ConsumerWidget {
   const _WorkoutChartsSection({
     super.key,
     required this.workouts,
-    required this.dao,
+    required this.repo,
   });
 
-  final List<Workout> workouts;
-  final dynamic dao;
+  final List<WorkoutModel> workouts;
+  final GymRepository repo;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final gymDao = ref.watch(gymDaoProvider);
+    final gymRepo = ref.watch(gymRepositoryProvider);
 
-    return StreamBuilder<List<Workout>>(
-      stream: gymDao.watchWorkouts(),
+    return StreamBuilder<List<WorkoutModel>>(
+      stream: gymRepo.watchWorkouts(),
       builder: (context, snapshot) {
         final allWorkouts = snapshot.data ?? [];
 

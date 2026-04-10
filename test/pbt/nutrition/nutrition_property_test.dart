@@ -4,6 +4,8 @@ import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_os/core/database/app_database.dart';
+import 'package:life_os/features/nutrition/data/drift_nutrition_data_repository.dart';
+import 'package:life_os/features/nutrition/data/nutrition_data_repository.dart';
 import 'package:life_os/features/nutrition/database/nutrition_dao.dart';
 import 'package:life_os/features/nutrition/domain/nutrition_input.dart';
 import 'package:life_os/features/nutrition/domain/nutrition_validators.dart';
@@ -12,12 +14,14 @@ import 'package:life_os/features/nutrition/providers/nutrition_notifier.dart';
 void main() {
   late AppDatabase db;
   late NutritionDao dao;
+  late NutritionDataRepository repository;
   late NutritionNotifier notifier;
 
   setUp(() async {
     db = AppDatabase(NativeDatabase.memory());
     dao = db.nutritionDao;
-    notifier = NutritionNotifier(dao: dao);
+    repository = DriftNutritionDataRepository(dao: dao);
+    notifier = NutritionNotifier(repository: repository);
   });
 
   tearDown(() async {
@@ -139,7 +143,7 @@ void main() {
         proteinG: 180,
       ));
 
-      final goal = await dao.getActiveGoal(DateTime.now());
+      final goal = await repository.getActiveGoal(DateTime.now());
       expect(goal, isNotNull);
       expect(goal!.caloriesKcal, 2500);
     });

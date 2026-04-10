@@ -1,15 +1,13 @@
 import 'dart:convert';
 import 'dart:ui';
 
-import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_os/core/constants/app_constants.dart';
-import 'package:life_os/core/database/app_database.dart';
-import 'package:life_os/core/database/daos/app_settings_dao.dart';
 import 'package:life_os/core/domain/app_failure.dart';
 import 'package:life_os/core/domain/result.dart';
 import 'package:life_os/core/domain/validators.dart';
 import 'package:life_os/core/providers/providers.dart';
+import 'package:life_os/features/settings/data/settings_repository.dart';
 
 enum OnboardingStep {
   welcome,
@@ -68,9 +66,9 @@ class OnboardingState {
 }
 
 class OnboardingNotifier extends StateNotifier<OnboardingState> {
-  OnboardingNotifier(this._dao) : super(const OnboardingState());
+  OnboardingNotifier(this._repo) : super(const OnboardingState());
 
-  final AppSettingsDao _dao;
+  final SettingsRepository _repo;
 
   void detectSystemLanguage() {
     final locale = PlatformDispatcher.instance.locale;
@@ -159,20 +157,20 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
 
   Future<Result<void>> _persistSettings() async {
     try {
-      final settings = AppSettingsTableCompanion.insert(
+      final now = DateTime.now();
+      await _repo.createSettings(
         userName: state.userName.trim(),
-        language: Value(state.language),
-        currency: Value(state.currency),
+        language: state.language,
+        currency: state.currency,
         primaryGoal: state.primaryGoal ?? AppConstants.defaultPrimaryGoal,
-        enabledModules: Value(jsonEncode(state.enabledModules)),
-        themeMode: const Value('dark'),
-        useBiometric: const Value(false),
-        onboardingCompleted: const Value(true),
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
+        enabledModules: jsonEncode(state.enabledModules),
+        themeMode: 'dark',
+        useBiometric: false,
+        onboardingCompleted: true,
+        createdAt: now,
+        updatedAt: now,
       );
 
-      await _dao.createSettings(settings);
       state = state.copyWith(
         currentStep: OnboardingStep.complete,
         isLoading: false,
@@ -193,6 +191,6 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
 
 final onboardingNotifierProvider =
     StateNotifierProvider<OnboardingNotifier, OnboardingState>((ref) {
-  final dao = ref.watch(appSettingsDaoProvider);
-  return OnboardingNotifier(dao);
+  final repo = ref.watch(settingsRepositoryProvider);
+  return OnboardingNotifier(repo);
 });

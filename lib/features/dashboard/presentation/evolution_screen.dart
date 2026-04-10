@@ -64,24 +64,24 @@ class _EvolutionScreenState extends ConsumerState<EvolutionScreen> {
 
   Future<_LifeSnapshot> _buildCurrentSnapshot() async {
     final now = DateTime.now();
-    final gymDao = ref.read(gymDaoProvider);
-    final financeDao = ref.read(financeDaoProvider);
-    final nutritionDao = ref.read(nutritionDaoProvider);
-    final habitsDao = ref.read(habitsDaoProvider);
-    final sleepDao = ref.read(sleepDaoProvider);
-    final mentalDao = ref.read(mentalDaoProvider);
-    final goalsDao = ref.read(goalsDaoProvider);
+    final gymRepo = ref.read(gymRepositoryProvider);
+    final financeRepo = ref.read(financeRepositoryProvider);
+    final nutritionRepo = ref.read(nutritionDataRepositoryProvider);
+    final habitsDao = ref.read(habitsRepositoryProvider);
+    final sleepDao = ref.read(sleepRepositoryProvider);
+    final mentalRepo = ref.read(mentalRepositoryProvider);
+    final goalsDao = ref.read(goalsRepositoryProvider);
 
     // GYM
     final monthStart = DateTime(now.year, now.month, 1);
     final weekStart = DateTime(now.year, now.month, now.day)
         .subtract(const Duration(days: 7));
-    final workouts = await gymDao.watchWorkouts(limit: 100).first;
+    final workouts = await gymRepo.watchWorkouts(limit: 100).first;
     final monthWorkouts = workouts.where((w) =>
         w.finishedAt != null && w.finishedAt!.isAfter(monthStart)).toList();
     double totalVolume = 0;
     for (final w in monthWorkouts) {
-      final sets = await gymDao.watchWorkoutSets(w.id).first;
+      final sets = await gymRepo.watchWorkoutSets(w.id).first;
       for (final s in sets) {
         if (!s.isWarmup && s.weightKg != null) {
           totalVolume += s.weightKg! * s.reps;
@@ -92,17 +92,17 @@ class _EvolutionScreenState extends ConsumerState<EvolutionScreen> {
     // FINANCE
     final finMonthEnd = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
     final income =
-        await financeDao.sumByType('income', monthStart, finMonthEnd);
+        await financeRepo.sumByType('income', monthStart, finMonthEnd);
     final expense =
-        await financeDao.sumByType('expense', monthStart, finMonthEnd);
+        await financeRepo.sumByType('expense', monthStart, finMonthEnd);
     final budgets =
-        await financeDao.watchBudgets(now.month, now.year).first;
+        await financeRepo.watchBudgets(now.month, now.year).first;
     int totalBudgetCents = 0;
     int totalSpentCents = 0;
     for (final b in budgets) {
       totalBudgetCents += b.amountCents;
       totalSpentCents +=
-          await financeDao.spentInBudget(b.categoryId, now.month, now.year);
+          await financeRepo.spentInBudget(b.categoryId, now.month, now.year);
     }
     final budgetUtil = totalBudgetCents > 0
         ? (totalSpentCents / totalBudgetCents * 100).clamp(0, 100).toDouble()
@@ -115,13 +115,13 @@ class _EvolutionScreenState extends ConsumerState<EvolutionScreen> {
     int nutritionDays = 0;
     for (int d = 0; d < 7; d++) {
       final day = today.subtract(Duration(days: d));
-      final meals = await nutritionDao.watchMealLogs(day).first;
+      final meals = await nutritionRepo.watchMealLogs(day).first;
       if (meals.isEmpty) continue;
       nutritionDays++;
       for (final meal in meals) {
-        final items = await nutritionDao.watchMealLogItems(meal.id).first;
+        final items = await nutritionRepo.watchMealLogItems(meal.id).first;
         for (final item in items) {
-          final food = await nutritionDao.getFoodItemById(item.foodItemId);
+          final food = await nutritionRepo.getFoodItemById(item.foodItemId);
           if (food != null) {
             final factor = item.quantityG / 100;
             totalCal += food.caloriesPer100g * factor;
@@ -166,12 +166,12 @@ class _EvolutionScreenState extends ConsumerState<EvolutionScreen> {
     // MENTAL (avg last 30 days)
     final mentalFrom = DateTime(now.year, now.month, now.day)
         .subtract(const Duration(days: 30));
-    final moodLogs = await mentalDao.getMoodLogs(mentalFrom, now);
+    final moodLogs = await mentalRepo.getMoodLogs(mentalFrom, now);
     final avgMood = moodLogs.isEmpty
         ? 0.0
         : moodLogs.fold<double>(0, (s, m) => s + m.valence) / moodLogs.length;
     final breathingSessions =
-        await mentalDao.getBreathingSessions(monthStart, now);
+        await mentalRepo.getBreathingSessions(monthStart, now);
     final completedBreathing =
         breathingSessions.where((b) => b.isCompleted).length;
 
@@ -183,8 +183,8 @@ class _EvolutionScreenState extends ConsumerState<EvolutionScreen> {
         : active.fold<double>(0, (s, g) => s + g.progress) / active.length;
 
     // DAY SCORE
-    final dashDao = ref.read(dashboardDaoProvider);
-    final todayScore = await dashDao.getDayScoreForDate(now);
+    final dashRepo = ref.read(dashboardRepositoryProvider);
+    final todayScore = await dashRepo.getDayScoreForDate(now);
     final avgDayScore = todayScore?.totalScore ?? 0;
 
     return _LifeSnapshot(
@@ -216,16 +216,16 @@ class _EvolutionScreenState extends ConsumerState<EvolutionScreen> {
   }
 
   Future<_LifeSnapshot?> _loadPreviousSnapshot() async {
-    final dao = ref.read(dashboardDaoProvider);
-    final snapshots = await dao.getAllSnapshots();
+    final repo = ref.read(dashboardRepositoryProvider);
+    final snapshots = await repo.getAllSnapshots();
     if (snapshots.isEmpty) return null;
     final latest = snapshots.first;
     return _LifeSnapshot.fromJson(latest.metricsJson, latest.date);
   }
 
   Future<List<_SnapshotEntry>> _loadHistory() async {
-    final dao = ref.read(dashboardDaoProvider);
-    final snapshots = await dao.getAllSnapshots();
+    final repo = ref.read(dashboardRepositoryProvider);
+    final snapshots = await repo.getAllSnapshots();
     return snapshots
         .map((s) => _SnapshotEntry(
               date: s.date,
@@ -239,8 +239,8 @@ class _EvolutionScreenState extends ConsumerState<EvolutionScreen> {
     if (_current == null) return;
     setState(() => _isSaving = true);
     try {
-      final dao = ref.read(dashboardDaoProvider);
-      await dao.insertLifeSnapshot(
+      final repo = ref.read(dashboardRepositoryProvider);
+      await repo.insertLifeSnapshot(
         date: DateTime.now(),
         totalScore: _current!.avgDayScore,
         metrics: _current!.toJson(),

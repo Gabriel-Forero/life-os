@@ -1,4 +1,4 @@
-import 'package:life_os/core/database/app_database.dart';
+import 'package:life_os/features/finance/domain/models/transaction_model.dart';
 
 class CategoryExpenseSlice {
   const CategoryExpenseSlice({
@@ -7,7 +7,7 @@ class CategoryExpenseSlice {
     required this.percentage,
   });
 
-  final int categoryId;
+  final String categoryId;
   final int totalCents;
   final double percentage;
 }
@@ -34,11 +34,11 @@ class CumulativePoint {
   final int cumulativeCents;
 }
 
-List<CategoryExpenseSlice> computePieChartData(List<Transaction> transactions) {
+List<CategoryExpenseSlice> computePieChartData(List<TransactionModel> transactions) {
   final expenses = transactions.where((t) => t.type == 'expense');
   if (expenses.isEmpty) return [];
 
-  final byCategory = <int, int>{};
+  final byCategory = <String, int>{};
   for (final tx in expenses) {
     byCategory[tx.categoryId] =
         (byCategory[tx.categoryId] ?? 0) + tx.amountCents;
@@ -60,7 +60,7 @@ List<CategoryExpenseSlice> computePieChartData(List<Transaction> transactions) {
 }
 
 List<DailyBar> computeBarChartData(
-  List<Transaction> transactions,
+  List<TransactionModel> transactions,
   DateTime from,
   DateTime to,
 ) {
@@ -90,10 +90,10 @@ List<DailyBar> computeBarChartData(
 }
 
 List<CumulativePoint> computeLineChartData(
-  List<Transaction> transactions,
+  List<TransactionModel> transactions,
   DateTime from,
 ) {
-  final sorted = List<Transaction>.from(transactions)
+  final sorted = List<TransactionModel>.from(transactions)
     ..sort((a, b) => a.date.compareTo(b.date));
 
   final byDay = <DateTime, int>{};

@@ -1,5 +1,3 @@
-import 'package:drift/drift.dart';
-import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/domain/app_event.dart';
 import 'package:life_os/core/services/app_logger.dart';
 import 'package:life_os/core/services/event_bus.dart';
@@ -7,7 +5,7 @@ import 'package:life_os/core/services/notification_scheduler.dart';
 import 'package:life_os/features/dashboard/providers/dashboard_notifier.dart';
 import 'package:life_os/features/dashboard/providers/day_score_notifier.dart';
 import 'package:life_os/features/habits/providers/habits_notifier.dart';
-import 'package:life_os/features/nutrition/database/nutrition_dao.dart';
+import 'package:life_os/features/nutrition/data/nutrition_data_repository.dart';
 
 /// Sets up ALL cross-module EventBus subscriptions.
 ///
@@ -17,7 +15,7 @@ import 'package:life_os/features/nutrition/database/nutrition_dao.dart';
 List<void Function()> wireEventBus({
   required EventBus eventBus,
   required HabitsNotifier habitsNotifier,
-  required NutritionDao nutritionDao,
+  required NutritionDataRepository nutritionRepo,
   required DayScoreNotifier dayScoreNotifier,
   required DashboardNotifier dashboardNotifier,
   NotificationScheduler? notificationScheduler,
@@ -37,7 +35,7 @@ List<void Function()> wireEventBus({
       await habitsNotifier.onWorkoutCompleted(event);
 
       // 2. Adjust today's nutrition goals (+15% cal, +20% protein, +10% carbs)
-      await _adjustNutritionForTraining(nutritionDao, log);
+      await _adjustNutritionForTraining(nutritionRepo, log);
 
       // 3. Recalculate day score
       await dayScoreNotifier.calculateDayScore(DateTime.now());
@@ -150,11 +148,11 @@ List<void Function()> wireEventBus({
 /// Reads today's active nutrition goal and inserts an adjusted copy
 /// for training days: +15% calories, +20% protein, +10% carbs, fat unchanged.
 Future<void> _adjustNutritionForTraining(
-  NutritionDao dao,
+  NutritionDataRepository repo,
   AppLogger log,
 ) async {
   final today = DateTime.now();
-  final goal = await dao.getActiveGoal(today);
+  final goal = await repo.getActiveGoal(today);
 
   if (goal == null) {
     log.warning('No active nutrition goal found; training adjustment skipped');
@@ -165,16 +163,14 @@ Future<void> _adjustNutritionForTraining(
   final adjustedProtein = goal.proteinG * 1.20;
   final adjustedCarbs = goal.carbsG * 1.10;
 
-  await dao.insertNutritionGoal(
-    NutritionGoalsCompanion.insert(
-      caloriesKcal: adjustedCalories,
-      proteinG: Value(adjustedProtein),
-      carbsG: Value(adjustedCarbs),
-      fatG: Value(goal.fatG), // unchanged
-      waterMl: Value(goal.waterMl),
-      effectiveDate: DateTime(today.year, today.month, today.day),
-      createdAt: DateTime.now(),
-    ),
+  await repo.insertNutritionGoal(
+    caloriesKcal: adjustedCalories,
+    proteinG: adjustedProtein,
+    carbsG: adjustedCarbs,
+    fatG: goal.fatG, // unchanged
+    waterMl: goal.waterMl,
+    effectiveDate: DateTime(today.year, today.month, today.day),
+    createdAt: DateTime.now(),
   );
 
   log.info(

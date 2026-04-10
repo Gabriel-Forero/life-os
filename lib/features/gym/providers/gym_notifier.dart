@@ -1,25 +1,24 @@
 import 'dart:convert';
 
-import 'package:drift/drift.dart';
-import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/domain/app_event.dart';
 import 'package:life_os/core/domain/app_failure.dart';
 import 'package:life_os/core/domain/result.dart';
 import 'package:life_os/core/services/event_bus.dart';
-import 'package:life_os/features/gym/database/gym_dao.dart';
+import 'package:life_os/features/gym/data/gym_repository.dart';
 import 'package:life_os/features/gym/domain/gym_input.dart';
 import 'package:life_os/features/gym/domain/gym_validators.dart';
+import 'package:life_os/features/gym/domain/models/routine_exercise_model.dart';
 
 class GymNotifier {
-  GymNotifier({required this.dao, required this.eventBus});
+  GymNotifier({required this.repository, required this.eventBus});
 
-  final GymDao dao;
+  final GymRepository repository;
   final EventBus eventBus;
 
   // --- Workout Lifecycle ---
 
-  Future<Result<int>> startWorkout({int? routineId}) async {
-    final active = await dao.getActiveWorkout();
+  Future<Result<String>> startWorkout({String? routineId}) async {
+    final active = await repository.getActiveWorkout();
     if (active != null) {
       return const Failure(ValidationFailure(
         userMessage: 'Ya tienes un entrenamiento en curso',
@@ -29,11 +28,11 @@ class GymNotifier {
     }
 
     try {
-      final id = await dao.insertWorkout(WorkoutsCompanion.insert(
-        routineId: Value(routineId),
+      final id = await repository.insertWorkout(
+        routineId: routineId,
         startedAt: DateTime.now(),
         createdAt: DateTime.now(),
-      ));
+      );
       return Success(id);
     } on Exception catch (e) {
       return Failure(DatabaseFailure(
@@ -44,9 +43,9 @@ class GymNotifier {
     }
   }
 
-  Future<Result<int>> logSet(
-    int workoutId,
-    int exerciseId,
+  Future<Result<String>> logSet(
+    String workoutId,
+    String exerciseId,
     SetInput input,
   ) async {
     final repsResult = validateReps(input.reps);
@@ -60,21 +59,21 @@ class GymNotifier {
 
     try {
       // Determine set number
-      final existingSets = await dao.watchWorkoutSets(workoutId).first;
+      final existingSets = await repository.watchWorkoutSets(workoutId).first;
       final exerciseSets =
           existingSets.where((s) => s.exerciseId == exerciseId);
       final setNumber = exerciseSets.length + 1;
 
-      final id = await dao.insertWorkoutSet(WorkoutSetsCompanion.insert(
+      final id = await repository.insertWorkoutSet(
         workoutId: workoutId,
         exerciseId: exerciseId,
         setNumber: setNumber,
         reps: input.reps,
-        weightKg: Value(input.weightKg),
-        rir: Value(input.rir),
-        isWarmup: Value(input.isWarmup),
+        weightKg: input.weightKg,
+        rir: input.rir,
+        isWarmup: input.isWarmup,
         createdAt: DateTime.now(),
-      ));
+      );
       return Success(id);
     } on Exception catch (e) {
       return Failure(DatabaseFailure(
@@ -85,33 +84,32 @@ class GymNotifier {
     }
   }
 
-  Future<Result<void>> finishWorkout(int workoutId, {String? note}) async {
+  Future<Result<void>> finishWorkout(String workoutId,
+      {String? note}) async {
     try {
       final now = DateTime.now();
-      await dao.finishWorkout(workoutId, now);
+      await repository.finishWorkout(workoutId, now);
 
       if (note != null) {
-        await (dao.db.update(dao.db.workouts)
-              ..where((w) => w.id.equals(workoutId)))
-            .write(WorkoutsCompanion(note: Value(note)));
+        await repository.updateWorkoutNote(workoutId, note);
       }
 
       // Compute summary for event
-      final sets = await dao.watchWorkoutSets(workoutId).first;
+      final sets = await repository.watchWorkoutSets(workoutId).first;
       final workSets = sets.where((s) => !s.isWarmup);
       final totalVolume = workSets
           .where((s) => s.weightKg != null)
           .fold<double>(0.0, (sum, s) => sum + s.weightKg! * s.reps);
 
-      final workout = (await dao.watchWorkouts().first)
-          .where((w) => w.id == workoutId)
-          .firstOrNull;
+      final allWorkouts = await repository.watchWorkouts().first;
+      final workout =
+          allWorkouts.where((w) => w.id == workoutId).firstOrNull;
       final duration = workout != null && workout.finishedAt != null
           ? workout.finishedAt!.difference(workout.startedAt)
           : Duration.zero;
 
       eventBus.emit(WorkoutCompletedEvent(
-        workoutId: workoutId,
+        workoutId: int.tryParse(workoutId) ?? 0,
         duration: duration,
         totalVolume: totalVolume,
       ));
@@ -126,9 +124,9 @@ class GymNotifier {
     }
   }
 
-  Future<Result<void>> discardWorkout(int workoutId) async {
+  Future<Result<void>> discardWorkout(String workoutId) async {
     try {
-      await dao.deleteWorkout(workoutId);
+      await repository.deleteWorkout(workoutId);
       return const Success(null);
     } on Exception catch (e) {
       return Failure(DatabaseFailure(
@@ -141,7 +139,7 @@ class GymNotifier {
 
   // --- Routines ---
 
-  Future<Result<int>> createRoutine(RoutineInput input) async {
+  Future<Result<String>> createRoutine(RoutineInput input) async {
     final nameResult = validateRoutineName(input.name);
     if (nameResult.isFailure) return Failure(nameResult.failureOrNull!);
 
@@ -155,12 +153,12 @@ class GymNotifier {
 
     try {
       final now = DateTime.now();
-      final routineId = await dao.insertRoutine(RoutinesCompanion.insert(
+      final routineId = await repository.insertRoutine(
         name: nameResult.valueOrNull!,
-        description: Value(input.description),
+        description: input.description,
         createdAt: now,
         updatedAt: now,
-      ));
+      );
 
       // Compute per-day position counters so sortOrder encodes
       // dayNumber * 1000 + positionWithinDay.
@@ -172,21 +170,22 @@ class GymNotifier {
           ifAbsent: () => 0,
         );
         final sort = ex.dayNumber * 1000 + pos;
-        return RoutineExercisesCompanion.insert(
+        return RoutineExerciseModel(
+          id: '0', // ignored during insert
           routineId: routineId,
           exerciseId: ex.exerciseId,
-          sortOrder: Value(sort),
-          dayNumber: Value(ex.dayNumber),
-          dayName: Value(ex.dayName),
-          defaultSets: Value(ex.defaultSets),
-          defaultReps: Value(ex.defaultReps),
-          defaultWeightKg: Value(ex.defaultWeightKg),
-          restSeconds: Value(ex.restSeconds),
+          sortOrder: sort,
+          dayNumber: ex.dayNumber,
+          dayName: ex.dayName,
+          defaultSets: ex.defaultSets,
+          defaultReps: ex.defaultReps,
+          defaultWeightKg: ex.defaultWeightKg,
+          restSeconds: ex.restSeconds,
           createdAt: now,
         );
       }).toList();
 
-      await dao.setRoutineExercises(routineId, companions);
+      await repository.setRoutineExercises(routineId, companions);
       return Success(routineId);
     } on Exception catch (e) {
       return Failure(DatabaseFailure(
@@ -199,7 +198,7 @@ class GymNotifier {
 
   // --- Custom Exercises ---
 
-  Future<Result<int>> addCustomExercise({
+  Future<Result<String>> addCustomExercise({
     required String name,
     required String primaryMuscle,
     String? equipment,
@@ -210,18 +209,17 @@ class GymNotifier {
     if (nameResult.isFailure) return Failure(nameResult.failureOrNull!);
 
     try {
-      final id = await dao.insertExercise(ExercisesCompanion.insert(
+      final id = await repository.insertExercise(
         name: nameResult.valueOrNull!,
         primaryMuscle: primaryMuscle,
-        secondaryMuscles: Value(
-          secondaryMuscles != null ? jsonEncode(secondaryMuscles) : null,
-        ),
-        equipment: Value(equipment),
-        instructions: Value(instructions),
-        isCustom: const Value(true),
-        isDownloaded: const Value(false),
+        secondaryMuscles:
+            secondaryMuscles != null ? jsonEncode(secondaryMuscles) : null,
+        equipment: equipment,
+        instructions: instructions,
+        isCustom: true,
+        isDownloaded: false,
         createdAt: DateTime.now(),
-      ));
+      );
       return Success(id);
     } on Exception catch (e) {
       if (e.toString().contains('UNIQUE')) {
@@ -239,8 +237,8 @@ class GymNotifier {
     }
   }
 
-  Future<Result<void>> deleteCustomExercise(int exerciseId) async {
-    final setsCount = await dao.countSetsForExercise(exerciseId);
+  Future<Result<void>> deleteCustomExercise(String exerciseId) async {
+    final setsCount = await repository.countSetsForExercise(exerciseId);
     if (setsCount > 0) {
       return Failure(ValidationFailure(
         userMessage:
@@ -252,15 +250,8 @@ class GymNotifier {
     }
 
     try {
-      // Also remove from any routines
-      await dao.db.transaction(() async {
-        await (dao.db.delete(dao.db.routineExercises)
-              ..where((re) => re.exerciseId.equals(exerciseId)))
-            .go();
-        await (dao.db.delete(dao.db.exercises)
-              ..where((e) => e.id.equals(exerciseId)))
-            .go();
-      });
+      await repository.deleteExerciseFromRoutines(exerciseId);
+      await repository.deleteExercise(exerciseId);
       return const Success(null);
     } on Exception catch (e) {
       return Failure(DatabaseFailure(
@@ -273,7 +264,7 @@ class GymNotifier {
 
   // --- Body Measurements ---
 
-  Future<Result<int>> logMeasurement(MeasurementInput input) async {
+  Future<Result<String>> logMeasurement(MeasurementInput input) async {
     if (!input.hasAnyValue) {
       return const Failure(ValidationFailure(
         userMessage: 'Ingresa al menos una medida',
@@ -283,28 +274,28 @@ class GymNotifier {
     }
 
     try {
-      final id = await dao.insertMeasurement(BodyMeasurementsCompanion.insert(
+      final id = await repository.insertMeasurement(
         date: DateTime.now(),
-        weightKg: Value(input.weightKg),
-        bodyFatPercent: Value(input.bodyFatPercent),
-        waistCm: Value(input.waistCm),
-        chestCm: Value(input.chestCm),
-        armCm: Value(input.armCm),
-        neckCm: Value(input.neckCm),
-        shouldersCm: Value(input.shouldersCm),
-        forearmCm: Value(input.forearmCm),
-        thighCm: Value(input.thighCm),
-        calfCm: Value(input.calfCm),
-        hipCm: Value(input.hipCm),
-        muscleMassKg: Value(input.muscleMassKg),
-        bodyWaterPercent: Value(input.bodyWaterPercent),
-        heightCm: Value(input.heightCm),
-        photoFrontPath: Value(input.photoFrontPath),
-        photoSidePath: Value(input.photoSidePath),
-        photoBackPath: Value(input.photoBackPath),
-        note: Value(input.note),
+        weightKg: input.weightKg,
+        bodyFatPercent: input.bodyFatPercent,
+        waistCm: input.waistCm,
+        chestCm: input.chestCm,
+        armCm: input.armCm,
+        neckCm: input.neckCm,
+        shouldersCm: input.shouldersCm,
+        forearmCm: input.forearmCm,
+        thighCm: input.thighCm,
+        calfCm: input.calfCm,
+        hipCm: input.hipCm,
+        muscleMassKg: input.muscleMassKg,
+        bodyWaterPercent: input.bodyWaterPercent,
+        heightCm: input.heightCm,
+        photoFrontPath: input.photoFrontPath,
+        photoSidePath: input.photoSidePath,
+        photoBackPath: input.photoBackPath,
+        note: input.note,
         createdAt: DateTime.now(),
-      ));
+      );
       return Success(id);
     } on Exception catch (e) {
       return Failure(DatabaseFailure(

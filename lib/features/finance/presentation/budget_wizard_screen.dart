@@ -73,13 +73,13 @@ class _BudgetWizardScreenState extends ConsumerState<BudgetWizardScreen> {
     final now = DateTime.now();
     final prevMonth = now.month == 1 ? 12 : now.month - 1;
     final prevYear = now.month == 1 ? now.year - 1 : now.year;
-    final dao = ref.read(financeDaoProvider);
+    final repo = ref.read(financeRepositoryProvider);
 
     // Calculate previous month: income - expenses - investments
     final from = DateTime(prevYear, prevMonth);
     final to = DateTime(prevYear, prevMonth + 1, 0, 23, 59, 59);
-    final income = await dao.sumByType('income', from, to);
-    final expenses = await dao.sumByType('expense', from, to);
+    final income = await repo.sumByType('income', from, to);
+    final expenses = await repo.sumByType('expense', from, to);
     // Investments are tracked as expenses in savings-related categories
     // For now, use: ahorro = income - expenses (net leftover)
     final ahorro = income - expenses;
@@ -194,7 +194,7 @@ class _BudgetWizardScreenState extends ConsumerState<BudgetWizardScreen> {
     final month = now.month;
     final year = now.year;
     final notifier = ref.read(financeNotifierProvider);
-    final dao = ref.read(financeDaoProvider);
+    final repo = ref.read(financeRepositoryProvider);
 
     try {
       // Map expenses to categories and create budgets
@@ -226,7 +226,7 @@ class _BudgetWizardScreenState extends ConsumerState<BudgetWizardScreen> {
 
       for (final entry in allMappings.entries) {
         if (entry.value <= 0) continue;
-        final cat = await dao.getCategoryByName(entry.key);
+        final cat = await repo.getCategoryByName(entry.key);
         if (cat == null) continue;
         await notifier.setBudget(
           categoryId: cat.id,

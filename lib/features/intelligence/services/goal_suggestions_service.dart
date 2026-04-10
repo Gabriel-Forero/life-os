@@ -54,7 +54,7 @@ class GoalSuggestionsService {
 
     try {
       final aiNotifier = ref.read(aiNotifierProvider);
-      final config = await aiNotifier.dao.getDefaultConfiguration();
+      final config = await aiNotifier.repository.getDefaultConfiguration();
       if (config == null) return _fallbackSuggestions();
 
       const systemPrompt =
@@ -94,10 +94,10 @@ class GoalSuggestionsService {
 
     // Finance trend
     try {
-      final financeDao = ref.read(financeDaoProvider);
+      final financeRepo = ref.read(financeRepositoryProvider);
       final thisMonthExpenses =
-          await financeDao.sumByType('expense', monthAgo, now);
-      final prevMonthExpenses = await financeDao.sumByType(
+          await financeRepo.sumByType('expense', monthAgo, now);
+      final prevMonthExpenses = await financeRepo.sumByType(
         'expense',
         now.subtract(const Duration(days: 60)),
         monthAgo,
@@ -121,8 +121,8 @@ class GoalSuggestionsService {
 
     // Gym frequency
     try {
-      final gymDao = ref.read(gymDaoProvider);
-      final workouts = await gymDao.watchWorkouts(limit: 30).first;
+      final gymRepo = ref.read(gymRepositoryProvider);
+      final workouts = await gymRepo.watchWorkouts(limit: 30).first;
       final recentWorkouts = workouts.where((w) {
         if (w.finishedAt == null) return false;
         return w.finishedAt!.isAfter(weekAgo);
@@ -137,7 +137,7 @@ class GoalSuggestionsService {
 
     // Sleep patterns
     try {
-      final sleepDao = ref.read(sleepDaoProvider);
+      final sleepDao = ref.read(sleepRepositoryProvider);
       final sleepLogs = await sleepDao.watchSleepLogs(weekAgo, now).first;
       if (sleepLogs.isNotEmpty) {
         final withTimes = sleepLogs.where((l) =>
@@ -169,7 +169,7 @@ class GoalSuggestionsService {
 
     // Habit completion
     try {
-      final habitsDao = ref.read(habitsDaoProvider);
+      final habitsDao = ref.read(habitsRepositoryProvider);
       final activeHabits = await habitsDao.watchActiveHabits().first;
       if (activeHabits.isNotEmpty) {
         double totalRate = 0;
@@ -192,7 +192,7 @@ class GoalSuggestionsService {
 
     // Active goals
     try {
-      final goalsDao = ref.read(goalsDaoProvider);
+      final goalsDao = ref.read(goalsRepositoryProvider);
       final goals = await goalsDao.getAllGoals();
       final active = goals.where((g) => g.status == 'active').toList();
       lines.add('Objetivos activos: ${active.length}');

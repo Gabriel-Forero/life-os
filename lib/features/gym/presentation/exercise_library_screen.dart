@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_os/core/constants/app_colors.dart';
-import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
+import 'package:life_os/features/gym/domain/models/exercise_model.dart';
 
 // ---------------------------------------------------------------------------
 // Muscle group filter labels (string-based, matching DB values)
@@ -88,7 +88,7 @@ class _ExerciseLibraryScreenState
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final dao = ref.watch(gymDaoProvider);
+    final repo = ref.watch(gymRepositoryProvider);
 
     return Scaffold(
       key: const ValueKey('exercise-library-screen'),
@@ -114,8 +114,8 @@ class _ExerciseLibraryScreenState
           ),
         ],
       ),
-      body: StreamBuilder<List<Exercise>>(
-        stream: dao.watchExercises(
+      body: StreamBuilder<List<ExerciseModel>>(
+        stream: repo.watchExercises(
           muscleGroup: _selectedMuscle,
           query: _searchQuery.isEmpty ? null : _searchQuery,
         ),
@@ -315,7 +315,7 @@ class _ExerciseCard extends StatelessWidget {
     required this.onTap,
   });
 
-  final Exercise exercise;
+  final ExerciseModel exercise;
   final VoidCallback onTap;
 
   @override

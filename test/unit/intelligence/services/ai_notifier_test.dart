@@ -1,7 +1,7 @@
-import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_os/core/database/app_database.dart';
+import 'package:life_os/features/intelligence/data/drift_ai_repository.dart';
 import 'package:life_os/features/intelligence/database/ai_dao.dart';
 import 'package:life_os/features/intelligence/domain/ai_provider.dart';
 import 'package:life_os/features/intelligence/providers/ai_notifier.dart';
@@ -50,28 +50,28 @@ class _ErrorAIProvider implements AIProvider {
 // Helpers
 // ---------------------------------------------------------------------------
 
-Future<int> _insertConfig(
-  AiDao dao, {
+Future<String> _insertConfig(
+  DriftAiRepository repository, {
   String providerKey = 'openai',
   String modelName = 'gpt-4o',
   bool isDefault = true,
 }) {
   final now = DateTime.now();
-  return dao.insertConfiguration(AiConfigurationsCompanion.insert(
+  return repository.insertConfiguration(
     providerKey: providerKey,
     modelName: modelName,
-    isDefault: Value(isDefault),
+    isDefault: isDefault,
     createdAt: now,
     updatedAt: now,
-  ));
+  );
 }
 
 AINotifier _buildNotifier(
-  AiDao dao,
+  DriftAiRepository repository,
   AIProvider provider,
 ) =>
     AINotifier(
-      dao: dao,
+      repository: repository,
       providerFactory: (_) => provider,
     );
 
@@ -82,11 +82,13 @@ AINotifier _buildNotifier(
 void main() {
   late AppDatabase db;
   late AiDao dao;
+  late DriftAiRepository repository;
   late _FakeAIProvider fakeProvider;
 
   setUp(() {
     db = _createInMemoryDb();
     dao = AiDao(db);
+    repository = DriftAiRepository(dao: dao);
     fakeProvider = _FakeAIProvider();
   });
 
@@ -98,8 +100,8 @@ void main() {
 
   group('initialize', () {
     test('loads configurations and conversations on init', () async {
-      await _insertConfig(dao, modelName: 'gpt-4o');
-      final notifier = _buildNotifier(dao, fakeProvider);
+      await _insertConfig(repository, modelName: 'gpt-4o');
+      final notifier = _buildNotifier(repository, fakeProvider);
       await notifier.initialize();
 
       expect(notifier.state.configurations.length, equals(1));
@@ -108,7 +110,7 @@ void main() {
     });
 
     test('initial state has isLoading=false after init', () async {
-      final notifier = _buildNotifier(dao, fakeProvider);
+      final notifier = _buildNotifier(repository, fakeProvider);
       await notifier.initialize();
       expect(notifier.state.isLoading, isFalse);
       notifier.dispose();
@@ -121,7 +123,7 @@ void main() {
 
   group('addConfiguration', () {
     test('adds valid configuration', () async {
-      final notifier = _buildNotifier(dao, fakeProvider);
+      final notifier = _buildNotifier(repository, fakeProvider);
 
       final result = await notifier.addConfiguration(
         providerKey: 'openai',
@@ -130,13 +132,13 @@ void main() {
       );
 
       expect(result.isSuccess, isTrue);
-      final configs = await dao.getAllConfigurations();
+      final configs = await repository.getAllConfigurations();
       expect(configs.length, equals(1));
       notifier.dispose();
     });
 
     test('rejects empty providerKey', () async {
-      final notifier = _buildNotifier(dao, fakeProvider);
+      final notifier = _buildNotifier(repository, fakeProvider);
       final result = await notifier.addConfiguration(
         providerKey: '',
         modelName: 'gpt-4o',
@@ -146,7 +148,7 @@ void main() {
     });
 
     test('rejects unknown providerKey', () async {
-      final notifier = _buildNotifier(dao, fakeProvider);
+      final notifier = _buildNotifier(repository, fakeProvider);
       final result = await notifier.addConfiguration(
         providerKey: 'google',
         modelName: 'gemini',
@@ -156,7 +158,7 @@ void main() {
     });
 
     test('rejects empty modelName', () async {
-      final notifier = _buildNotifier(dao, fakeProvider);
+      final notifier = _buildNotifier(repository, fakeProvider);
       final result = await notifier.addConfiguration(
         providerKey: 'openai',
         modelName: '   ',
@@ -168,7 +170,7 @@ void main() {
 
   group('setDefaultProvider', () {
     test('sets default and clears others', () async {
-      final notifier = _buildNotifier(dao, fakeProvider);
+      final notifier = _buildNotifier(repository, fakeProvider);
       final r1 = await notifier.addConfiguration(
         providerKey: 'openai',
         modelName: 'gpt-4',
@@ -182,7 +184,7 @@ void main() {
 
       await notifier.setDefaultProvider(r2.valueOrNull!);
 
-      final def = await dao.getDefaultConfiguration();
+      final def = await repository.getDefaultConfiguration();
       expect(def?.id, equals(r2.valueOrNull));
       expect(r1.isSuccess, isTrue);
       notifier.dispose();
@@ -191,11 +193,11 @@ void main() {
 
   group('deleteConfiguration', () {
     test('removes configuration', () async {
-      final notifier = _buildNotifier(dao, fakeProvider);
-      final id = await _insertConfig(dao);
+      final notifier = _buildNotifier(repository, fakeProvider);
+      final id = await _insertConfig(repository);
       final result = await notifier.deleteConfiguration(id);
       expect(result.isSuccess, isTrue);
-      final config = await dao.getConfigurationById(id);
+      final config = await repository.getConfigurationById(id);
       expect(config, isNull);
       notifier.dispose();
     });
@@ -207,7 +209,7 @@ void main() {
 
   group('createConversation', () {
     test('creates conversation with valid title', () async {
-      final notifier = _buildNotifier(dao, fakeProvider);
+      final notifier = _buildNotifier(repository, fakeProvider);
       final result = await notifier.createConversation(title: 'Mi chat');
       expect(result.isSuccess, isTrue);
       expect(notifier.state.activeConversationId, equals(result.valueOrNull));
@@ -215,14 +217,14 @@ void main() {
     });
 
     test('rejects empty title', () async {
-      final notifier = _buildNotifier(dao, fakeProvider);
+      final notifier = _buildNotifier(repository, fakeProvider);
       final result = await notifier.createConversation(title: '');
       expect(result.isFailure, isTrue);
       notifier.dispose();
     });
 
     test('rejects title exceeding 100 chars', () async {
-      final notifier = _buildNotifier(dao, fakeProvider);
+      final notifier = _buildNotifier(repository, fakeProvider);
       final result = await notifier.createConversation(title: 'A' * 101);
       expect(result.isFailure, isTrue);
       notifier.dispose();
@@ -231,8 +233,8 @@ void main() {
 
   group('openConversation', () {
     test('loads messages for conversation', () async {
-      final configId = await _insertConfig(dao);
-      final notifier = _buildNotifier(dao, fakeProvider);
+      final configId = await _insertConfig(repository);
+      final notifier = _buildNotifier(repository, fakeProvider);
 
       final convResult = await notifier.createConversation(
         title: 'Prueba',
@@ -240,13 +242,13 @@ void main() {
       );
       final convId = convResult.valueOrNull!;
 
-      await dao.insertMessage(AiMessagesCompanion.insert(
+      await repository.insertMessage(
         conversationId: convId,
         role: 'user',
         content: 'Hola',
-        tokenCount: const Value(null),
+        tokenCount: null,
         createdAt: DateTime.now(),
-      ));
+      );
 
       await notifier.openConversation(convId);
       expect(notifier.state.messages.length, equals(1));
@@ -256,36 +258,36 @@ void main() {
 
   group('deleteConversation', () {
     test('deletes and clears activeConversationId', () async {
-      final notifier = _buildNotifier(dao, fakeProvider);
+      final notifier = _buildNotifier(repository, fakeProvider);
       final result = await notifier.createConversation(title: 'A borrar');
       final convId = result.valueOrNull!;
 
       await notifier.deleteConversation(convId);
       expect(notifier.state.activeConversationId, isNull);
 
-      final conv = await dao.getConversationById(convId);
+      final conv = await repository.getConversationById(convId);
       expect(conv, isNull);
       notifier.dispose();
     });
   });
 
   group('listConversations', () {
-    test('returns all conversations from DAO', () async {
-      final configId = await _insertConfig(dao);
+    test('returns all conversations from repository', () async {
+      final configId = await _insertConfig(repository);
       final now = DateTime.now();
-      await dao.insertConversation(AiConversationsCompanion.insert(
-        configId: Value(configId),
+      await repository.insertConversation(
+        configId: configId,
         title: 'Conv 1',
         createdAt: now,
         updatedAt: now,
-      ));
-      await dao.insertConversation(AiConversationsCompanion.insert(
-        configId: Value(configId),
+      );
+      await repository.insertConversation(
+        configId: configId,
         title: 'Conv 2',
         createdAt: now,
         updatedAt: now,
-      ));
-      final notifier = _buildNotifier(dao, fakeProvider);
+      );
+      final notifier = _buildNotifier(repository, fakeProvider);
       final list = await notifier.listConversations();
       expect(list.length, equals(2));
       notifier.dispose();
@@ -298,8 +300,8 @@ void main() {
 
   group('sendMessage', () {
     test('persists user and assistant messages', () async {
-      await _insertConfig(dao, isDefault: true);
-      final notifier = _buildNotifier(dao, fakeProvider);
+      await _insertConfig(repository, isDefault: true);
+      final notifier = _buildNotifier(repository, fakeProvider);
       final convResult = await notifier.createConversation(title: 'Chat');
       final convId = convResult.valueOrNull!;
 
@@ -308,7 +310,7 @@ void main() {
         chunks.add(chunk);
       }
 
-      final msgs = await dao.getMessagesForConversation(convId);
+      final msgs = await repository.getMessagesForConversation(convId);
       expect(msgs.length, equals(2));
       expect(msgs.first.role, equals('user'));
       expect(msgs.last.role, equals('assistant'));
@@ -316,11 +318,11 @@ void main() {
     });
 
     test('streams token chunks', () async {
-      await _insertConfig(dao, isDefault: true);
+      await _insertConfig(repository, isDefault: true);
       fakeProvider = _FakeAIProvider(
         responseChunks: ['Chunk1 ', 'Chunk2 ', 'Chunk3'],
       );
-      final notifier = _buildNotifier(dao, fakeProvider);
+      final notifier = _buildNotifier(repository, fakeProvider);
       final convResult = await notifier.createConversation(title: 'Chat');
       final convId = convResult.valueOrNull!;
 
@@ -334,8 +336,8 @@ void main() {
     });
 
     test('skips empty user messages', () async {
-      await _insertConfig(dao, isDefault: true);
-      final notifier = _buildNotifier(dao, fakeProvider);
+      await _insertConfig(repository, isDefault: true);
+      final notifier = _buildNotifier(repository, fakeProvider);
       final convResult = await notifier.createConversation(title: 'Chat');
       final convId = convResult.valueOrNull!;
 
@@ -345,14 +347,14 @@ void main() {
       }
 
       expect(chunks, isEmpty);
-      final msgs = await dao.getMessagesForConversation(convId);
+      final msgs = await repository.getMessagesForConversation(convId);
       expect(msgs, isEmpty);
       notifier.dispose();
     });
 
     test('yields error chunk when no provider configured', () async {
       // No configuration inserted
-      final notifier = _buildNotifier(dao, fakeProvider);
+      final notifier = _buildNotifier(repository, fakeProvider);
       final convResult = await notifier.createConversation(title: 'Chat');
       final convId = convResult.valueOrNull!;
 
@@ -366,8 +368,8 @@ void main() {
     });
 
     test('provider call count increments per message', () async {
-      await _insertConfig(dao, isDefault: true);
-      final notifier = _buildNotifier(dao, fakeProvider);
+      await _insertConfig(repository, isDefault: true);
+      final notifier = _buildNotifier(repository, fakeProvider);
       final convResult = await notifier.createConversation(title: 'Chat');
       final convId = convResult.valueOrNull!;
 

@@ -4,8 +4,8 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_os/core/constants/app_colors.dart';
-import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
+import 'package:life_os/features/sleep/domain/models/sleep_log_model.dart';
 
 // ---------------------------------------------------------------------------
 // Circadian Rhythm Screen
@@ -16,7 +16,7 @@ class CircadianScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final dao = ref.watch(sleepDaoProvider);
+    final dao = ref.watch(sleepRepositoryProvider);
     final theme = Theme.of(context);
     const sleepColor = AppColors.sleep;
 
@@ -32,7 +32,7 @@ class CircadianScreen extends ConsumerWidget {
         centerTitle: true,
         foregroundColor: sleepColor,
       ),
-      body: StreamBuilder<List<SleepLog>>(
+      body: StreamBuilder<List<SleepLogModel>>(
         stream: dao.watchSleepLogs(from, now),
         builder: (context, snapshot) {
           final data = snapshot.data ?? [];
@@ -54,7 +54,7 @@ class _CircadianBody extends StatelessWidget {
     required this.theme,
   });
 
-  final List<SleepLog> data;
+  final List<SleepLogModel> data;
   final Color sleepColor;
   final ThemeData theme;
 

@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_os/core/constants/app_colors.dart';
-import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
+import 'package:life_os/features/nutrition/domain/models/food_item_model.dart';
 import 'package:life_os/features/nutrition/domain/nutrition_input.dart';
 import 'package:life_os/features/nutrition/presentation/food_search_screen.dart';
 
@@ -41,11 +41,11 @@ String _suggestMealType() {
 class _LoggedFoodItem {
   _LoggedFoodItem({required this.food, required this.quantityG});
 
-  final FoodItem food;
+  final FoodItemModel food;
   double quantityG;
 
   // Convenience delegates
-  int get id => food.id;
+  String get id => food.id;
   String get name => food.name;
 
   double get calories => food.caloriesPer100g * quantityG / 100;
@@ -113,7 +113,7 @@ class _MealLogScreenState extends ConsumerState<MealLogScreen> {
   }
 
   Future<void> _openFoodSearch() async {
-    final result = await Navigator.of(context).push<FoodItem>(
+    final result = await Navigator.of(context).push<FoodItemModel>(
       MaterialPageRoute(
         builder: (_) => const FoodSearchScreen(returnFood: true),
       ),

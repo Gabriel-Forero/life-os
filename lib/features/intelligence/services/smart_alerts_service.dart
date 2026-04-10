@@ -59,7 +59,7 @@ class SmartAlertsService {
 
   Future<void> _checkProteinTrend(List<SmartAlert> alerts) async {
     try {
-      final nutritionDao = ref.read(nutritionDaoProvider);
+      final nutritionRepo = ref.read(nutritionDataRepositoryProvider);
       final now = DateTime.now();
       final thisWeekStart = now.subtract(const Duration(days: 7));
       final lastWeekStart = now.subtract(const Duration(days: 14));
@@ -67,7 +67,7 @@ class SmartAlertsService {
 
       // Get meal log items for both weeks and compute protein
       // We use a simplified approach: get food items from meal logs
-      final thisWeekMeals = await nutritionDao.watchMealLogs(now).first;
+      final thisWeekMeals = await nutritionRepo.watchMealLogs(now).first;
       final _ = thisWeekMeals; // suppress unused warning - we use dates below
 
       // Gather protein from this week vs last week by checking food item logs
@@ -78,8 +78,8 @@ class SmartAlertsService {
       final lastWeekEnd0 = DateTime(lastWeekEnd.year, lastWeekEnd.month, lastWeekEnd.day);
 
       // Count meal logs (proxy for food activity)
-      final thisWeekCount = await _countMealLogs(nutritionDao, thisWeekStart0, now);
-      final lastWeekCount = await _countMealLogs(nutritionDao, lastWeekStart0, lastWeekEnd0);
+      final thisWeekCount = await _countMealLogs(nutritionRepo, thisWeekStart0, now);
+      final lastWeekCount = await _countMealLogs(nutritionRepo, lastWeekStart0, lastWeekEnd0);
 
       if (lastWeekCount > 0 && thisWeekCount < lastWeekCount * 0.8) {
         alerts.add(const SmartAlert(
@@ -120,11 +120,11 @@ class SmartAlertsService {
 
   Future<void> _checkWorkoutFrequency(List<SmartAlert> alerts) async {
     try {
-      final gymDao = ref.read(gymDaoProvider);
+      final gymRepo = ref.read(gymRepositoryProvider);
       final now = DateTime.now();
 
       // Get workouts in last 14 days
-      final workouts = await gymDao.watchWorkouts(limit: 20).first;
+      final workouts = await gymRepo.watchWorkouts(limit: 20).first;
       final recent = workouts.where((w) {
         if (w.finishedAt == null) return false;
         return now.difference(w.finishedAt!).inDays <= 14;
@@ -161,15 +161,15 @@ class SmartAlertsService {
 
   Future<void> _checkBudget(List<SmartAlert> alerts) async {
     try {
-      final financeDao = ref.read(financeDaoProvider);
+      final financeRepo = ref.read(financeRepositoryProvider);
       final now = DateTime.now();
       final monthStart = DateTime(now.year, now.month);
       final monthEnd = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
       final daysInMonth = monthEnd.day;
       final dayOfMonth = now.day;
 
-      final totalExpenses = await financeDao.sumByType('expense', monthStart, monthEnd);
-      final budgets = await financeDao.watchBudgets(now.month, now.year).first;
+      final totalExpenses = await financeRepo.sumByType('expense', monthStart, monthEnd);
+      final budgets = await financeRepo.watchBudgets(now.month, now.year).first;
 
       if (budgets.isEmpty || totalExpenses == 0) return;
 
@@ -210,7 +210,7 @@ class SmartAlertsService {
 
   Future<void> _checkSleepTrend(List<SmartAlert> alerts) async {
     try {
-      final sleepDao = ref.read(sleepDaoProvider);
+      final sleepDao = ref.read(sleepRepositoryProvider);
       final now = DateTime.now();
       final from = now.subtract(const Duration(days: 4));
 
@@ -253,7 +253,7 @@ class SmartAlertsService {
 
   Future<void> _checkHabitStreaks(List<SmartAlert> alerts) async {
     try {
-      final habitsDao = ref.read(habitsDaoProvider);
+      final habitsDao = ref.read(habitsRepositoryProvider);
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
       final yesterday = today.subtract(const Duration(days: 1));

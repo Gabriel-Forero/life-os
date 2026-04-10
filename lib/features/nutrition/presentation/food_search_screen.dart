@@ -1,13 +1,12 @@
 import 'dart:convert';
-import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:life_os/core/constants/app_colors.dart';
-import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
 import 'package:life_os/core/router/app_router.dart';
 import 'package:life_os/features/nutrition/data/open_food_facts_client.dart';
+import 'package:life_os/features/nutrition/domain/models/food_item_model.dart';
 import 'package:life_os/features/nutrition/domain/nutrition_input.dart';
 
 String _suggestMealType() {
@@ -57,7 +56,7 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen>
   late final TabController _tabController;
   final _searchController = TextEditingController();
   String _query = '';
-  List<FoodItem> _searchResults = [];
+  List<FoodItemModel> _searchResults = [];
   bool _isSearching = false;
 
   @override
@@ -93,8 +92,8 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen>
         });
       }
     } catch (_) {
-      final dao = ref.read(nutritionDaoProvider);
-      final results = await dao.searchFoodItems(query.trim());
+      final dataRepo = ref.read(nutritionDataRepositoryProvider);
+      final results = await dataRepo.searchFoodItems(query.trim());
       if (mounted) {
         setState(() {
           _searchResults = results;
@@ -105,7 +104,7 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen>
   }
 
   /// Handle food tap: either return to caller or quick-log immediately.
-  Future<void> _handleFoodTap(FoodItem food) async {
+  Future<void> _handleFoodTap(FoodItemModel food) async {
     if (widget.returnFood) {
       Navigator.of(context).pop(food);
       return;
@@ -162,7 +161,7 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen>
 
   Future<void> _showSaveTemplateDialog({
     required String mealType,
-    required int foodItemId,
+    required String foodItemId,
     required double quantityG,
     required String foodName,
   }) async {
@@ -221,39 +220,37 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen>
     }
   }
 
-  Future<void> _toggleFavorite(FoodItem food) async {
+  Future<void> _toggleFavorite(FoodItemModel food) async {
     await ref
         .read(nutritionNotifierProvider)
         .toggleFavorite(food.id, !food.isFavorite);
   }
 
   Future<void> _handleBarcodeResult(FoodItemDto result) async {
-    final dao = ref.read(nutritionDaoProvider);
+    final dataRepo = ref.read(nutritionDataRepositoryProvider);
 
     // Check if already in DB by barcode
-    FoodItem? existing;
+    FoodItemModel? existing;
     if (result.barcode != null) {
-      existing = await dao.getFoodItemByBarcode(result.barcode!);
+      existing = await dataRepo.getFoodItemByBarcode(result.barcode!);
     }
 
     if (existing == null) {
       // Insert into DB
-      final id = await dao.insertFoodItem(
-        FoodItemsCompanion(
-          name: drift.Value(result.name),
-          barcode: drift.Value(result.barcode),
-          brand: drift.Value(result.brand),
-          caloriesPer100g: drift.Value(result.caloriesPer100g),
-          proteinPer100g: drift.Value(result.proteinPer100g),
-          carbsPer100g: drift.Value(result.carbsPer100g),
-          fatPer100g: drift.Value(result.fatPer100g),
-          servingSizeG: drift.Value(result.servingSizeG),
-          isFromApi: const drift.Value(true),
-          createdAt: drift.Value(DateTime.now()),
-        ),
+      final id = await dataRepo.insertFoodItem(
+        name: result.name,
+        barcode: result.barcode,
+        brand: result.brand,
+        caloriesPer100g: result.caloriesPer100g,
+        proteinPer100g: result.proteinPer100g,
+        carbsPer100g: result.carbsPer100g,
+        fatPer100g: result.fatPer100g,
+        servingSizeG: result.servingSizeG,
+        isFromApi: true,
+        createdAt: DateTime.now(),
       );
       // Find in DB by ID
-      final items = await dao.searchFoodItems(result.name);
+      final items = await dataRepo.searchFoodItems(result.name);
       existing = items.where((f) => f.id == id).firstOrNull ??
           items.firstOrNull;
     }
@@ -446,8 +443,8 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen>
                 ),
 
                 // Pestana Favoritos
-                StreamBuilder<List<FoodItem>>(
-                  stream: ref.watch(nutritionDaoProvider).watchFavorites(),
+                StreamBuilder<List<FoodItemModel>>(
+                  stream: ref.watch(nutritionDataRepositoryProvider).watchFavorites(),
                   builder: (context, snapshot) => _FoodResultList(
                     key: const ValueKey('food-search-favorites-list'),
                     items: snapshot.data ?? [],
@@ -458,9 +455,9 @@ class _FoodSearchScreenState extends ConsumerState<FoodSearchScreen>
                 ),
 
                 // Pestana Recientes
-                StreamBuilder<List<FoodItem>>(
+                StreamBuilder<List<FoodItemModel>>(
                   stream: ref
-                      .watch(nutritionDaoProvider)
+                      .watch(nutritionDataRepositoryProvider)
                       .watchRecentFoodItems(count: 20),
                   builder: (context, snapshot) => _FoodResultList(
                     key: const ValueKey('food-search-recents-list'),
@@ -492,10 +489,10 @@ class _FoodResultList extends StatelessWidget {
     required this.onToggleFavorite,
   });
 
-  final List<FoodItem> items;
+  final List<FoodItemModel> items;
   final String emptyMessage;
-  final ValueChanged<FoodItem> onTap;
-  final ValueChanged<FoodItem> onToggleFavorite;
+  final ValueChanged<FoodItemModel> onTap;
+  final ValueChanged<FoodItemModel> onToggleFavorite;
 
   @override
   Widget build(BuildContext context) {

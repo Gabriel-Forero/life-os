@@ -35,7 +35,7 @@ class RoutineExerciseInput {
     this.restSeconds = 90,
   });
 
-  final int exerciseId;
+  final String exerciseId;
   /// 1-based day number. Single-day routines always use 1.
   final int dayNumber;
   /// Optional label for the day, e.g. "Push", "Pull".

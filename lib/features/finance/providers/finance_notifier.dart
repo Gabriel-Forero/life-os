@@ -1,13 +1,12 @@
 import 'dart:async';
-import 'package:drift/drift.dart';
-import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/domain/app_event.dart';
 import 'package:life_os/core/domain/app_failure.dart';
 import 'package:life_os/core/domain/result.dart';
 import 'package:life_os/core/services/event_bus.dart';
-import 'package:life_os/features/finance/database/finance_dao.dart';
+import 'package:life_os/features/finance/data/finance_repository.dart';
 import 'package:life_os/features/finance/domain/finance_input.dart';
 import 'package:life_os/features/finance/domain/finance_validators.dart';
+import 'package:life_os/features/finance/domain/models/transaction_model.dart';
 
 // ---------------------------------------------------------------------------
 // Pending-delete helper
@@ -18,21 +17,21 @@ import 'package:life_os/features/finance/domain/finance_validators.dart';
 class _PendingDelete {
   _PendingDelete({required this.transaction, required this.timer});
 
-  final Transaction transaction;
+  final TransactionModel transaction;
   final Timer timer;
 }
 
 class FinanceNotifier {
-  FinanceNotifier({required this.dao, required this.eventBus});
+  FinanceNotifier({required this.repository, required this.eventBus});
 
-  final FinanceDao dao;
+  final FinanceRepository repository;
   final EventBus eventBus;
 
   _PendingDelete? _pendingDelete;
 
   // --- Transactions ---
 
-  Future<Result<int>> addTransaction(TransactionInput input) async {
+  Future<Result<String>> addTransaction(TransactionInput input) async {
     // Validate
     final typeResult = validateTransactionType(input.type);
     if (typeResult.isFailure) return Failure(typeResult.failureOrNull!);
@@ -52,26 +51,26 @@ class FinanceNotifier {
 
     try {
       final now = DateTime.now();
-      final id = await dao.insertTransaction(TransactionsCompanion.insert(
+      final id = await repository.insertTransaction(
         type: input.type,
         amountCents: input.amountCents,
         categoryId: categoryId,
-        note: Value(noteResult.valueOrNull),
+        note: noteResult.valueOrNull,
         date: date,
         createdAt: now,
         updatedAt: now,
-      ));
+      );
 
       // Post-insert: emit events for expenses
       if (input.type == 'expense') {
-        final category = await dao.getCategoriesByType('expense');
+        final category = await repository.getCategoriesByType('expense');
         final catName = category
             .where((c) => c.id == categoryId)
             .map((c) => c.name)
             .firstOrNull ?? 'Otros';
 
         eventBus.emit(ExpenseAddedEvent(
-          transactionId: id,
+          transactionId: int.tryParse(id) ?? 0,
           categoryName: catName,
           amount: input.amountCents.toDouble(),
         ));
@@ -90,7 +89,7 @@ class FinanceNotifier {
     }
   }
 
-  Future<Result<void>> editTransaction(int id, TransactionInput input) async {
+  Future<Result<void>> editTransaction(String id, TransactionInput input) async {
     final amountResult = validateTransactionAmount(input.amountCents);
     if (amountResult.isFailure) return Failure(amountResult.failureOrNull!);
 
@@ -101,16 +100,15 @@ class FinanceNotifier {
     final date = input.date ?? DateTime.now();
 
     try {
-      await (dao.db.update(dao.db.transactions)
-            ..where((t) => t.id.equals(id)))
-          .write(TransactionsCompanion(
-        type: Value(input.type),
-        amountCents: Value(input.amountCents),
-        categoryId: Value(categoryId),
-        note: Value(noteResult.valueOrNull),
-        date: Value(date),
-        updatedAt: Value(DateTime.now()),
-      ));
+      await repository.updateTransaction(
+        id: id,
+        type: input.type,
+        amountCents: input.amountCents,
+        categoryId: categoryId,
+        note: noteResult.valueOrNull,
+        date: date,
+        updatedAt: DateTime.now(),
+      );
       return const Success(null);
     } on Exception catch (e) {
       return Failure(DatabaseFailure(
@@ -121,9 +119,9 @@ class FinanceNotifier {
     }
   }
 
-  Future<Result<void>> removeTransaction(int id) async {
+  Future<Result<void>> removeTransaction(String id) async {
     try {
-      await dao.deleteTransaction(id);
+      await repository.deleteTransaction(id);
       return const Success(null);
     } on Exception catch (e) {
       return Failure(DatabaseFailure(
@@ -139,10 +137,10 @@ class FinanceNotifier {
   /// the timer fires the transaction is silently restored.
   ///
   /// Returns [Success] immediately so the caller can show the undo SnackBar.
-  Future<Result<void>> removeTransactionWithUndo(int id) async {
+  Future<Result<void>> removeTransactionWithUndo(String id) async {
     try {
       // Fetch the transaction before hiding it.
-      final allTxs = await dao.watchTransactions(
+      final allTxs = await repository.watchTransactions(
         DateTime(2000),
         DateTime(2100),
       ).first;
@@ -161,7 +159,7 @@ class FinanceNotifier {
 
       // Schedule physical deletion after 5 seconds.
       final timer = Timer(const Duration(seconds: 5), () async {
-        await dao.deleteTransaction(id);
+        await repository.deleteTransaction(id);
         _pendingDelete = null;
       });
 
@@ -187,18 +185,18 @@ class FinanceNotifier {
   bool get hasPendingDelete => _pendingDelete != null;
 
   /// The ID of the transaction currently pending deletion (null if none).
-  int? get pendingDeleteId => _pendingDelete?.transaction.id;
+  String? get pendingDeleteId => _pendingDelete?.transaction.id;
 
   // --- Categories ---
 
-  Future<Result<int>> addCategory(CategoryInput input) async {
+  Future<Result<String>> addCategory(CategoryInput input) async {
     final nameResult = validateCategoryName(input.name);
     if (nameResult.isFailure) return Failure(nameResult.failureOrNull!);
 
     final trimmedName = nameResult.valueOrNull!;
 
     // Check uniqueness
-    final existing = await dao.getCategoryByName(trimmedName);
+    final existing = await repository.getCategoryByName(trimmedName);
     if (existing != null) {
       return const Failure(ValidationFailure(
         userMessage: 'Ya existe una categoria con ese nombre',
@@ -208,15 +206,15 @@ class FinanceNotifier {
     }
 
     try {
-      final id = await dao.insertCategory(CategoriesCompanion.insert(
+      final id = await repository.insertCategory(
         name: trimmedName,
-        icon: Value(input.icon),
-        color: Value(input.color),
-        type: Value(input.type),
-        isPredefined: const Value(false),
-        sortOrder: const Value(99),
+        icon: input.icon,
+        color: input.color,
+        type: input.type,
+        isPredefined: false,
+        sortOrder: 99,
         createdAt: DateTime.now(),
-      ));
+      );
       return Success(id);
     } on Exception catch (e) {
       return Failure(DatabaseFailure(
@@ -228,17 +226,16 @@ class FinanceNotifier {
   }
 
   Future<Result<void>> editPredefinedCategory(
-    int id, {
+    String id, {
     String? icon,
     int? color,
   }) async {
     try {
-      await (dao.db.update(dao.db.categories)
-            ..where((c) => c.id.equals(id)))
-          .write(CategoriesCompanion(
-        icon: icon != null ? Value(icon) : const Value.absent(),
-        color: color != null ? Value(color) : const Value.absent(),
-      ));
+      await repository.updateCategory(
+        id: id,
+        icon: icon,
+        color: color,
+      );
       return const Success(null);
     } on Exception catch (e) {
       return Failure(DatabaseFailure(
@@ -249,13 +246,11 @@ class FinanceNotifier {
     }
   }
 
-  Future<Result<void>> deleteCategory(int id, int targetCategoryId) async {
+  Future<Result<void>> deleteCategory(String id, String targetCategoryId) async {
     try {
-      await dao.db.transaction(() async {
-        await dao.reassignTransactions(id, targetCategoryId);
-        await dao.deleteBudgetsForCategory(id);
-        await dao.deleteCategory(id);
-      });
+      await repository.reassignTransactions(id, targetCategoryId);
+      await repository.deleteBudgetsForCategory(id);
+      await repository.deleteCategory(id);
       return const Success(null);
     } on Exception catch (e) {
       return Failure(DatabaseFailure(
@@ -269,7 +264,7 @@ class FinanceNotifier {
   // --- Budgets ---
 
   Future<Result<void>> setBudget({
-    required int categoryId,
+    required String categoryId,
     required int amountCents,
     required int month,
     required int year,
@@ -278,23 +273,22 @@ class FinanceNotifier {
     if (amountResult.isFailure) return Failure(amountResult.failureOrNull!);
 
     try {
-      final existing = await dao.getBudget(categoryId, month, year);
+      final existing = await repository.getBudget(categoryId, month, year);
       if (existing != null) {
-        await (dao.db.update(dao.db.budgets)
-              ..where((b) => b.id.equals(existing.id)))
-            .write(BudgetsCompanion(
-          amountCents: Value(amountCents),
-          updatedAt: Value(DateTime.now()),
-        ));
+        await repository.updateBudget(
+          id: existing.id,
+          amountCents: amountCents,
+          updatedAt: DateTime.now(),
+        );
       } else {
-        await dao.insertBudget(BudgetsCompanion.insert(
+        await repository.insertBudget(
           categoryId: categoryId,
           amountCents: amountCents,
           month: month,
           year: year,
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
-        ));
+        );
       }
       return const Success(null);
     } on Exception catch (e) {
@@ -314,31 +308,31 @@ class FinanceNotifier {
   /// target month already had budgets.
   Future<Result<bool>> ensureBudgetsForMonth(int month, int year) async {
     try {
-      final existing = await dao.getBudgetsForMonth(month, year);
+      final existing = await repository.getBudgetsForMonth(month, year);
       if (existing.isNotEmpty) return const Success(false);
 
       // Determine previous month
       final prevMonth = month == 1 ? 12 : month - 1;
       final prevYear = month == 1 ? year - 1 : year;
 
-      final prevBudgets = await dao.getBudgetsForMonth(prevMonth, prevYear);
+      final prevBudgets = await repository.getBudgetsForMonth(prevMonth, prevYear);
       if (prevBudgets.isEmpty) return const Success(false);
 
-      await dao.copyBudgetsToMonth(
+      await repository.copyBudgetsToMonth(
         fromMonth: prevMonth,
         fromYear: prevYear,
         toMonth: month,
         toYear: year,
       );
 
-      await dao.copyMonthlyConfig(
+      await repository.copyMonthlyConfig(
         fromMonth: prevMonth,
         fromYear: prevYear,
         toMonth: month,
         toYear: year,
       );
 
-      await dao.copyGroupBudgetsToMonth(
+      await repository.copyGroupBudgetsToMonth(
         fromMonth: prevMonth,
         fromYear: prevYear,
         toMonth: month,
@@ -357,7 +351,7 @@ class FinanceNotifier {
 
   // --- Budget Templates ---
 
-  Future<Result<int>> saveAsTemplate({
+  Future<Result<String>> saveAsTemplate({
     required String name,
     required int month,
     required int year,
@@ -366,7 +360,7 @@ class FinanceNotifier {
     if (nameResult.isFailure) return Failure(nameResult.failureOrNull!);
 
     try {
-      final templateId = await dao.saveCurrentBudgetsAsTemplate(
+      final templateId = await repository.saveCurrentBudgetsAsTemplate(
         name: nameResult.valueOrNull!,
         month: month,
         year: year,
@@ -382,12 +376,12 @@ class FinanceNotifier {
   }
 
   Future<Result<void>> applyTemplate({
-    required int templateId,
+    required String templateId,
     required int month,
     required int year,
   }) async {
     try {
-      await dao.applyTemplate(
+      await repository.applyTemplate(
         templateId: templateId,
         month: month,
         year: year,
@@ -402,9 +396,9 @@ class FinanceNotifier {
     }
   }
 
-  Future<Result<void>> deleteTemplate(int templateId) async {
+  Future<Result<void>> deleteTemplate(String templateId) async {
     try {
-      await dao.deleteTemplate(templateId);
+      await repository.deleteTemplate(templateId);
       return const Success(null);
     } on Exception catch (e) {
       return Failure(DatabaseFailure(
@@ -417,7 +411,7 @@ class FinanceNotifier {
 
   // --- Category Groups ---
 
-  Future<Result<int>> addGroup({
+  Future<Result<String>> addGroup({
     required String name,
     required int color,
   }) async {
@@ -425,11 +419,11 @@ class FinanceNotifier {
     if (nameResult.isFailure) return Failure(nameResult.failureOrNull!);
 
     try {
-      final id = await dao.insertGroup(CategoryGroupsCompanion.insert(
+      final id = await repository.insertGroup(
         name: nameResult.valueOrNull!,
-        color: Value(color),
+        color: color,
         createdAt: DateTime.now(),
-      ));
+      );
       return Success(id);
     } on Exception catch (e) {
       return Failure(DatabaseFailure(
@@ -440,9 +434,9 @@ class FinanceNotifier {
     }
   }
 
-  Future<Result<void>> removeGroup(int groupId) async {
+  Future<Result<void>> removeGroup(String groupId) async {
     try {
-      await dao.deleteGroup(groupId);
+      await repository.deleteGroup(groupId);
       return const Success(null);
     } on Exception catch (e) {
       return Failure(DatabaseFailure(
@@ -454,9 +448,9 @@ class FinanceNotifier {
   }
 
   Future<Result<void>> assignCategoryToGroup(
-      int groupId, int categoryId) async {
+      String groupId, String categoryId) async {
     try {
-      await dao.addCategoryToGroup(groupId, categoryId);
+      await repository.addCategoryToGroup(groupId, categoryId);
       return const Success(null);
     } on Exception catch (e) {
       return Failure(DatabaseFailure(
@@ -468,9 +462,9 @@ class FinanceNotifier {
   }
 
   Future<Result<void>> unassignCategoryFromGroup(
-      int groupId, int categoryId) async {
+      String groupId, String categoryId) async {
     try {
-      await dao.removeCategoryFromGroup(groupId, categoryId);
+      await repository.removeCategoryFromGroup(groupId, categoryId);
       return const Success(null);
     } on Exception catch (e) {
       return Failure(DatabaseFailure(
@@ -482,7 +476,7 @@ class FinanceNotifier {
   }
 
   Future<Result<void>> setGroupBudget({
-    required int groupId,
+    required String groupId,
     required int amountCents,
     required int month,
     required int year,
@@ -491,7 +485,7 @@ class FinanceNotifier {
     if (amountResult.isFailure) return Failure(amountResult.failureOrNull!);
 
     try {
-      await dao.setGroupBudget(
+      await repository.setGroupBudget(
         groupId: groupId,
         amountCents: amountCents,
         month: month,
@@ -518,7 +512,7 @@ class FinanceNotifier {
     if (amountResult.isFailure) return Failure(amountResult.failureOrNull!);
 
     try {
-      await dao.setGlobalBudget(
+      await repository.setGlobalBudget(
         amountCents: amountCents,
         month: month,
         year: year,
@@ -535,7 +529,7 @@ class FinanceNotifier {
 
   // --- Savings Goals ---
 
-  Future<Result<int>> addSavingsGoal(SavingsGoalInput input) async {
+  Future<Result<String>> addSavingsGoal(SavingsGoalInput input) async {
     final targetResult = validateSavingsGoalTarget(input.targetCents);
     if (targetResult.isFailure) return Failure(targetResult.failureOrNull!);
 
@@ -547,15 +541,15 @@ class FinanceNotifier {
 
     try {
       final now = DateTime.now();
-      final id = await dao.insertSavingsGoal(SavingsGoalsCompanion.insert(
+      final id = await repository.insertSavingsGoal(
         name: nameResult.valueOrNull!,
         targetCents: input.targetCents,
-        currentCents: const Value(0),
-        deadline: Value(input.deadline),
-        isCompleted: const Value(false),
+        currentCents: 0,
+        deadline: input.deadline,
+        isCompleted: false,
         createdAt: now,
         updatedAt: now,
-      ));
+      );
       return Success(id);
     } on Exception catch (e) {
       return Failure(DatabaseFailure(
@@ -566,7 +560,7 @@ class FinanceNotifier {
     }
   }
 
-  Future<Result<void>> contributeToGoal(int goalId, int amountCents) async {
+  Future<Result<void>> contributeToGoal(String goalId, int amountCents) async {
     if (amountCents <= 0) {
       return const Failure(ValidationFailure(
         userMessage: 'El monto debe ser mayor a \$0',
@@ -576,7 +570,7 @@ class FinanceNotifier {
     }
 
     try {
-      final goals = await dao.watchSavingsGoals().first;
+      final goals = await repository.watchSavingsGoals().first;
       final goal = goals.where((g) => g.id == goalId).firstOrNull;
       if (goal == null) {
         return Failure(NotFoundFailure(
@@ -590,13 +584,12 @@ class FinanceNotifier {
       final newCurrent = goal.currentCents + amountCents;
       final isCompleted = newCurrent >= goal.targetCents;
 
-      await (dao.db.update(dao.db.savingsGoals)
-            ..where((g) => g.id.equals(goalId)))
-          .write(SavingsGoalsCompanion(
-        currentCents: Value(newCurrent),
-        isCompleted: Value(isCompleted),
-        updatedAt: Value(DateTime.now()),
-      ));
+      await repository.updateSavingsGoal(
+        id: goalId,
+        currentCents: newCurrent,
+        isCompleted: isCompleted,
+        updatedAt: DateTime.now(),
+      );
 
       return const Success(null);
     } on Exception catch (e) {
@@ -621,7 +614,7 @@ class FinanceNotifier {
   Future<Result<int>> processRecurringTransactions() async {
     try {
       final now = DateTime.now();
-      final dueRecurrings = await dao.getDueRecurrings(now);
+      final dueRecurrings = await repository.getDueRecurrings(now);
 
       if (dueRecurrings.isEmpty) return const Success(0);
 
@@ -631,25 +624,24 @@ class FinanceNotifier {
 
         // Create all overdue occurrences (handles multi-day app inactivity).
         while (!nextDate.isAfter(now)) {
-          await dao.insertTransaction(TransactionsCompanion.insert(
+          await repository.insertTransaction(
             type: recurring.type,
             amountCents: recurring.amountCents,
             categoryId: recurring.categoryId,
-            note: Value(
-              '${recurring.note?.isNotEmpty == true ? '${recurring.note} ' : ''}(recurrente)'
-                  .trim(),
-            ),
+            note:
+                '${recurring.note?.isNotEmpty == true ? '${recurring.note} ' : ''}(recurrente)'
+                    .trim(),
             date: nextDate,
-            recurringId: Value(recurring.id),
+            recurringId: recurring.id,
             createdAt: now,
             updatedAt: now,
-          ));
+          );
           created++;
           nextDate = _advanceDate(nextDate, recurring.frequency);
         }
 
         // Persist the updated nextOccurrence.
-        await dao.updateNextOccurrence(recurring.id, nextDate);
+        await repository.updateNextOccurrence(recurring.id, nextDate);
       }
 
       return Success(created);
@@ -675,20 +667,20 @@ class FinanceNotifier {
 
   // --- Private helpers ---
 
-  Future<int> _resolveCategory(int? categoryId, String type) async {
+  Future<String> _resolveCategory(String? categoryId, String type) async {
     if (categoryId != null) return categoryId;
 
     final defaultName = type == 'income' ? 'General' : 'Otros';
-    final cat = await dao.getCategoryByName(defaultName);
+    final cat = await repository.getCategoryByName(defaultName);
     if (cat != null) return cat.id;
 
     // Fallback: first category of matching type
-    final cats = await dao.getCategoriesByType(type);
+    final cats = await repository.getCategoriesByType(type);
     if (cats.isNotEmpty) return cats.first.id;
 
     // Last resort: any category
-    final all = await dao.watchCategories().first;
-    return all.isNotEmpty ? all.first.id : 1;
+    final all = await repository.watchCategories().first;
+    return all.isNotEmpty ? all.first.id : '1';
   }
 
   static const _thresholds = [
@@ -699,20 +691,20 @@ class FinanceNotifier {
   ];
 
   Future<void> _checkBudgetThreshold(
-    int categoryId,
+    String categoryId,
     int expenseAmount,
   ) async {
     final now = DateTime.now();
-    final budget = await dao.getBudget(categoryId, now.month, now.year);
+    final budget = await repository.getBudget(categoryId, now.month, now.year);
     if (budget == null) return;
 
-    final totalSpent = await dao.spentInBudget(categoryId, now.month, now.year);
+    final totalSpent = await repository.spentInBudget(categoryId, now.month, now.year);
     final previousSpent = totalSpent - expenseAmount;
 
     final currentUtil = totalSpent / budget.amountCents;
     final previousUtil = previousSpent / budget.amountCents;
 
-    final catName = (await dao.getCategoriesByType('expense'))
+    final catName = (await repository.getCategoriesByType('expense'))
         .where((c) => c.id == categoryId)
         .map((c) => c.name)
         .firstOrNull ?? '';
@@ -720,7 +712,7 @@ class FinanceNotifier {
     for (final t in _thresholds) {
       if (previousUtil < t.value && currentUtil >= t.value) {
         eventBus.emit(BudgetThresholdEvent(
-          budgetId: budget.id,
+          budgetId: int.tryParse(budget.id) ?? 0,
           categoryName: catName,
           percentage: currentUtil,
           threshold: t.label,
@@ -730,16 +722,16 @@ class FinanceNotifier {
     }
 
     // Check group-level threshold
-    final groupId = await dao.getCategoryGroupId(categoryId);
+    final groupId = await repository.getCategoryGroupId(categoryId);
     if (groupId != null) {
-      final gb = await dao.getGroupBudget(groupId, now.month, now.year);
+      final gb = await repository.getGroupBudget(groupId, now.month, now.year);
       if (gb != null) {
-        final groupSpent = await dao.spentInGroup(groupId, now.month, now.year);
+        final groupSpent = await repository.spentInGroup(groupId, now.month, now.year);
         final groupPrevSpent = groupSpent - expenseAmount;
         final groupUtil = groupSpent / gb.amountCents;
         final groupPrevUtil = groupPrevSpent / gb.amountCents;
 
-        final groups = await dao.watchGroups().first;
+        final groups = await repository.watchGroups().first;
         final groupName = groups
             .where((g) => g.id == groupId)
             .map((g) => g.name)
@@ -748,7 +740,7 @@ class FinanceNotifier {
         for (final t in _thresholds) {
           if (groupPrevUtil < t.value && groupUtil >= t.value) {
             eventBus.emit(BudgetThresholdEvent(
-              budgetId: gb.id,
+              budgetId: int.tryParse(gb.id) ?? 0,
               categoryName: groupName,
               percentage: groupUtil,
               threshold: t.label,
@@ -760,11 +752,11 @@ class FinanceNotifier {
     }
 
     // Check global-level threshold
-    final config = await dao.getMonthlyConfig(now.month, now.year);
+    final config = await repository.getMonthlyConfig(now.month, now.year);
     if (config?.globalBudgetCents != null && config!.globalBudgetCents! > 0) {
       final from = DateTime(now.year, now.month);
       final to = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
-      final globalSpent = await dao.sumByType('expense', from, to);
+      final globalSpent = await repository.sumByType('expense', from, to);
       final globalPrev = globalSpent - expenseAmount;
       final globalUtil = globalSpent / config.globalBudgetCents!;
       final globalPrevUtil = globalPrev / config.globalBudgetCents!;
@@ -772,7 +764,7 @@ class FinanceNotifier {
       for (final t in _thresholds) {
         if (globalPrevUtil < t.value && globalUtil >= t.value) {
           eventBus.emit(BudgetThresholdEvent(
-            budgetId: config.id,
+            budgetId: int.tryParse(config.id) ?? 0,
             categoryName: 'Global',
             percentage: globalUtil,
             threshold: t.label,

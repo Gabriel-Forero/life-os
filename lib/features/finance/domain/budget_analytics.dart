@@ -12,7 +12,7 @@ class MonthComparisonItem {
     required this.changePercent,
   });
 
-  final int categoryId;
+  final String categoryId;
   final int currentCents;
   final int previousCents;
 
@@ -23,8 +23,8 @@ class MonthComparisonItem {
 }
 
 List<MonthComparisonItem> computeMonthComparison({
-  required Map<int, int> currentSpentByCategory,
-  required Map<int, int> previousSpentByCategory,
+  required Map<String, int> currentSpentByCategory,
+  required Map<String, int> previousSpentByCategory,
 }) {
   final allCatIds = {
     ...currentSpentByCategory.keys,
@@ -59,7 +59,7 @@ class TrendItem {
     required this.averageCents,
   });
 
-  final int categoryId;
+  final String categoryId;
   final List<MonthlyTotal> monthlyTotals;
   final double averageCents;
 }
@@ -77,12 +77,12 @@ class MonthlyTotal {
 }
 
 List<TrendItem> computeTrend(
-  Map<({int month, int year}), Map<int, int>> monthlyData,
+  Map<({int month, int year}), Map<String, int>> monthlyData,
 ) {
   if (monthlyData.isEmpty) return [];
 
   // Collect all category IDs
-  final allCatIds = <int>{};
+  final allCatIds = <String>{};
   for (final entry in monthlyData.values) {
     allCatIds.addAll(entry.keys);
   }

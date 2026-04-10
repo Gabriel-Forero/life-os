@@ -9,7 +9,7 @@ class TransactionInput {
 
   final String type;
   final int amountCents;
-  final int? categoryId;
+  final String? categoryId;
   final String? note;
   final DateTime? date;
 }

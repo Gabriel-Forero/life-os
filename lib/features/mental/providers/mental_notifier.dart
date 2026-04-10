@@ -1,20 +1,18 @@
-import 'package:drift/drift.dart';
-import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/domain/app_event.dart';
 import 'package:life_os/core/domain/app_failure.dart';
 import 'package:life_os/core/domain/result.dart';
 import 'package:life_os/core/services/event_bus.dart';
-import 'package:life_os/features/mental/database/mental_dao.dart';
+import 'package:life_os/features/mental/data/mental_repository.dart';
 import 'package:life_os/features/mental/domain/mental_input.dart';
 import 'package:life_os/features/mental/domain/mental_validators.dart';
 
 class MentalNotifier {
-  MentalNotifier({required this.dao, required this.eventBus});
+  MentalNotifier({required this.repository, required this.eventBus});
 
-  final MentalDao dao;
+  final MentalRepository repository;
   final EventBus eventBus;
 
-  Future<Result<int>> logMood(MoodInput input) async {
+  Future<Result<String>> logMood(MoodInput input) async {
     final valenceResult = validateValence(input.valence);
     if (valenceResult.isFailure) return Failure(valenceResult.failureOrNull!);
 
@@ -35,17 +33,17 @@ class MentalNotifier {
 
     try {
       final now = DateTime.now();
-      final id = await dao.insertMoodLog(MoodLogsCompanion.insert(
+      final id = await repository.insertMoodLog(
         date: input.date,
         valence: input.valence,
         energy: input.energy,
-        tags: Value(tagsString),
-        journalNote: Value(input.journalNote),
+        tags: tagsString,
+        journalNote: input.journalNote,
         createdAt: now,
-      ));
+      );
 
       eventBus.emit(MoodLoggedEvent(
-        moodLogId: id,
+        moodLogId: int.tryParse(id) ?? 0,
         level: moodScore,
         tags: input.tags,
       ));
@@ -60,7 +58,7 @@ class MentalNotifier {
     }
   }
 
-  Future<Result<int>> startBreathingSession(
+  Future<Result<String>> startBreathingSession(
     BreathingSessionInput input,
   ) async {
     final techniqueResult = validateBreathingTechnique(input.techniqueName);
@@ -73,13 +71,11 @@ class MentalNotifier {
 
     try {
       final now = DateTime.now();
-      final id = await dao.insertBreathingSession(
-        BreathingSessionsCompanion.insert(
-          techniqueName: input.techniqueName,
-          durationSeconds: input.durationSeconds,
-          isCompleted: Value(input.isCompleted),
-          createdAt: now,
-        ),
+      final id = await repository.insertBreathingSession(
+        techniqueName: input.techniqueName,
+        durationSeconds: input.durationSeconds,
+        isCompleted: input.isCompleted,
+        createdAt: now,
       );
       return Success(id);
     } on Exception catch (e) {

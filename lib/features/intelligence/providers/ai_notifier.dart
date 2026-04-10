@@ -1,13 +1,14 @@
 import 'dart:async';
 
-import 'package:drift/drift.dart';
-import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/domain/app_failure.dart';
 import 'package:life_os/core/domain/result.dart';
 import 'package:life_os/core/services/app_logger.dart';
-import 'package:life_os/features/intelligence/database/ai_dao.dart';
+import 'package:life_os/features/intelligence/data/ai_repository.dart';
 import 'package:life_os/features/intelligence/domain/ai_context_builder.dart';
 import 'package:life_os/features/intelligence/domain/ai_provider.dart';
+import 'package:life_os/features/intelligence/domain/models/ai_configuration_model.dart';
+import 'package:life_os/features/intelligence/domain/models/ai_conversation_model.dart';
+import 'package:life_os/features/intelligence/domain/models/ai_message_model.dart';
 
 // ---------------------------------------------------------------------------
 // State
@@ -25,20 +26,20 @@ class AIState {
     this.errorMessage,
   });
 
-  final List<AiConfiguration> configurations;
-  final List<AiConversation> conversations;
-  final int? activeConversationId;
-  final List<AiMessage> messages;
+  final List<AiConfigurationModel> configurations;
+  final List<AiConversationModel> conversations;
+  final String? activeConversationId;
+  final List<AiMessageModel> messages;
   final bool isStreaming;
   final String streamBuffer;
   final bool isLoading;
   final String? errorMessage;
 
   AIState copyWith({
-    List<AiConfiguration>? configurations,
-    List<AiConversation>? conversations,
-    int? activeConversationId,
-    List<AiMessage>? messages,
+    List<AiConfigurationModel>? configurations,
+    List<AiConversationModel>? conversations,
+    String? activeConversationId,
+    List<AiMessageModel>? messages,
     bool? isStreaming,
     String? streamBuffer,
     bool? isLoading,
@@ -64,16 +65,16 @@ class AIState {
 /// Manages AI conversations, messages, and provider configuration.
 class AINotifier {
   AINotifier({
-    required this.dao,
+    required this.repository,
     required this.providerFactory,
     AppLogger? logger,
   }) : _logger = logger ?? AppLogger(tag: 'AINotifier');
 
-  final AiDao dao;
+  final AiRepository repository;
 
   /// Factory that returns an [AIProvider] given a configuration.
   /// Injected so tests can provide a mock provider.
-  final AIProvider Function(AiConfiguration config) providerFactory;
+  final AIProvider Function(AiConfigurationModel config) providerFactory;
 
   final AppLogger _logger;
   final _subscriptions = <StreamSubscription<dynamic>>[];
@@ -95,8 +96,8 @@ class AINotifier {
   Future<void> initialize() async {
     _emit(_state.copyWith(isLoading: true));
     try {
-      final configs = await dao.getAllConfigurations();
-      final conversations = await dao.getAllConversations();
+      final configs = await repository.getAllConfigurations();
+      final conversations = await repository.getAllConversations();
       _emit(_state.copyWith(
         configurations: configs,
         conversations: conversations,
@@ -104,12 +105,12 @@ class AINotifier {
       ));
 
       _subscriptions.add(
-        dao.watchAllConfigurations().listen((configs) {
+        repository.watchAllConfigurations().listen((configs) {
           _emit(_state.copyWith(configurations: configs));
         }),
       );
       _subscriptions.add(
-        dao.watchAllConversations().listen((convs) {
+        repository.watchAllConversations().listen((convs) {
           _emit(_state.copyWith(conversations: convs));
         }),
       );
@@ -133,7 +134,7 @@ class AINotifier {
   // Provider Configuration
   // ---------------------------------------------------------------------------
 
-  Future<Result<int>> addConfiguration({
+  Future<Result<String>> addConfiguration({
     required String providerKey,
     required String modelName,
     bool isDefault = false,
@@ -162,15 +163,15 @@ class AINotifier {
 
     try {
       final now = DateTime.now();
-      final id = await dao.insertConfiguration(AiConfigurationsCompanion.insert(
+      final id = await repository.insertConfiguration(
         providerKey: providerKey,
         modelName: modelName.trim(),
-        isDefault: Value(isDefault),
+        isDefault: isDefault,
         createdAt: now,
         updatedAt: now,
-      ));
+      );
       if (isDefault) {
-        await dao.setDefaultConfiguration(id);
+        await repository.setDefaultConfiguration(id);
       }
       return Success(id);
     } on Exception catch (e) {
@@ -182,9 +183,9 @@ class AINotifier {
     }
   }
 
-  Future<Result<void>> setDefaultProvider(int configId) async {
+  Future<Result<void>> setDefaultProvider(String configId) async {
     try {
-      await dao.setDefaultConfiguration(configId);
+      await repository.setDefaultConfiguration(configId);
       return const Success(null);
     } on Exception catch (e) {
       return Failure(DatabaseFailure(
@@ -195,9 +196,9 @@ class AINotifier {
     }
   }
 
-  Future<Result<void>> deleteConfiguration(int configId) async {
+  Future<Result<void>> deleteConfiguration(String configId) async {
     try {
-      await dao.deleteConfiguration(configId);
+      await repository.deleteConfiguration(configId);
       return const Success(null);
     } on Exception catch (e) {
       return Failure(DatabaseFailure(
@@ -212,9 +213,9 @@ class AINotifier {
   // Conversations
   // ---------------------------------------------------------------------------
 
-  Future<Result<int>> createConversation({
+  Future<Result<String>> createConversation({
     required String title,
-    int? configId,
+    String? configId,
   }) async {
     final trimmed = title.trim();
     if (trimmed.isEmpty || trimmed.length > 100) {
@@ -227,13 +228,11 @@ class AINotifier {
 
     try {
       final now = DateTime.now();
-      final id = await dao.insertConversation(
-        AiConversationsCompanion.insert(
-          configId: Value(configId),
-          title: trimmed,
-          createdAt: now,
-          updatedAt: now,
-        ),
+      final id = await repository.insertConversation(
+        configId: configId,
+        title: trimmed,
+        createdAt: now,
+        updatedAt: now,
       );
       _emit(_state.copyWith(activeConversationId: id, messages: []));
       return Success(id);
@@ -246,9 +245,10 @@ class AINotifier {
     }
   }
 
-  Future<Result<void>> openConversation(int conversationId) async {
+  Future<Result<void>> openConversation(String conversationId) async {
     try {
-      final messages = await dao.getMessagesForConversation(conversationId);
+      final messages =
+          await repository.getMessagesForConversation(conversationId);
       _emit(_state.copyWith(
         activeConversationId: conversationId,
         messages: messages,
@@ -263,9 +263,9 @@ class AINotifier {
     }
   }
 
-  Future<Result<void>> deleteConversation(int conversationId) async {
+  Future<Result<void>> deleteConversation(String conversationId) async {
     try {
-      await dao.deleteConversation(conversationId);
+      await repository.deleteConversation(conversationId);
       if (_state.activeConversationId == conversationId) {
         // Emit directly to allow clearing nullable activeConversationId to null.
         _emit(AIState(
@@ -289,8 +289,8 @@ class AINotifier {
     }
   }
 
-  Future<List<AiConversation>> listConversations() =>
-      dao.getAllConversations();
+  Future<List<AiConversationModel>> listConversations() =>
+      repository.getAllConversations();
 
   // ---------------------------------------------------------------------------
   // Messaging
@@ -301,13 +301,13 @@ class AINotifier {
   /// The returned [Stream<String>] emits token chunks as they arrive from
   /// the AI provider. The full response is persisted when streaming completes.
   Stream<String> sendMessage(
-    int conversationId,
+    String conversationId,
     String userText, {
     ModuleSummary? context,
   }) async* {
     if (userText.trim().isEmpty) return;
 
-    final config = await dao.getDefaultConfiguration();
+    final config = await repository.getDefaultConfiguration();
     if (config == null) {
       yield '[Error: No hay proveedor de IA configurado]';
       return;
@@ -316,16 +316,16 @@ class AINotifier {
     final now = DateTime.now();
 
     // Persist user message
-    await dao.insertMessage(AiMessagesCompanion.insert(
+    await repository.insertMessage(
       conversationId: conversationId,
       role: 'user',
       content: userText.trim(),
-      tokenCount: const Value(null),
+      tokenCount: null,
       createdAt: now,
-    ));
+    );
 
     // Update conversation updatedAt
-    await dao.updateConversationTitle(
+    await repository.updateConversationTitle(
       conversationId,
       _state.conversations
               .where((c) => c.id == conversationId)
@@ -359,17 +359,18 @@ class AINotifier {
     // Persist assistant message
     final fullResponse = buffer.toString();
     if (fullResponse.isNotEmpty) {
-      await dao.insertMessage(AiMessagesCompanion.insert(
+      await repository.insertMessage(
         conversationId: conversationId,
         role: 'assistant',
         content: fullResponse,
-        tokenCount: const Value(null),
+        tokenCount: null,
         createdAt: DateTime.now(),
-      ));
+      );
     }
 
     // Refresh messages
-    final messages = await dao.getMessagesForConversation(conversationId);
+    final messages =
+        await repository.getMessagesForConversation(conversationId);
     _emit(_state.copyWith(
       messages: messages,
       isStreaming: false,

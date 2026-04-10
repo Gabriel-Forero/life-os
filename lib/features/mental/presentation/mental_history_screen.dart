@@ -3,14 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:life_os/core/constants/app_colors.dart';
-import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
 import 'package:life_os/core/router/app_router.dart';
 import 'package:life_os/core/widgets/chart_card.dart';
+import 'package:life_os/features/mental/domain/models/mood_log_model.dart';
 
 const _dayLabels = ['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa', 'Do'];
 
-int _moodScore(MoodLog log) {
+int _moodScore(MoodLogModel log) {
   final v = (log.valence - 1) / 4.0 * 50.0;
   final e = (log.energy - 1) / 4.0 * 50.0;
   return (v + e).round().clamp(0, 100);
@@ -48,7 +48,7 @@ class _MentalHistoryScreenState extends ConsumerState<MentalHistoryScreen>
 
   @override
   Widget build(BuildContext context) {
-    final dao = ref.watch(mentalDaoProvider);
+    final repo = ref.watch(mentalRepositoryProvider);
     final theme = Theme.of(context);
     const mentalColor = AppColors.mental;
 
@@ -86,8 +86,8 @@ class _MentalHistoryScreenState extends ConsumerState<MentalHistoryScreen>
           ],
         ),
       ),
-      body: StreamBuilder<List<MoodLog>>(
-        stream: dao.watchMoodLogs(monthStart, monthEnd),
+      body: StreamBuilder<List<MoodLogModel>>(
+        stream: repo.watchMoodLogs(monthStart, monthEnd),
         builder: (context, snapshot) {
           final data = snapshot.data ?? [];
           final avgScore = data.isEmpty
@@ -129,7 +129,7 @@ class _CalendarView extends StatelessWidget {
     required this.theme,
   });
 
-  final List<MoodLog> data;
+  final List<MoodLogModel> data;
   final DateTime monthStart;
   final Color mentalColor;
   final ThemeData theme;
@@ -141,7 +141,7 @@ class _CalendarView extends StatelessWidget {
     return AppColors.error;
   }
 
-  void _showDayDetail(BuildContext context, MoodLog entry) {
+  void _showDayDetail(BuildContext context, MoodLogModel entry) {
     final score = _moodScore(entry);
     final tags = _parseTags(entry.tags);
     final color = _scoreColor(score);
@@ -559,14 +559,14 @@ class _TrendsView extends StatelessWidget {
     required this.theme,
   });
 
-  final List<MoodLog> data;
+  final List<MoodLogModel> data;
   final double avgScore;
   final Color mentalColor;
   final ThemeData theme;
 
   Widget _buildLineChart({
-    required List<MoodLog> sorted,
-    required double Function(MoodLog) getValue,
+    required List<MoodLogModel> sorted,
+    required double Function(MoodLogModel) getValue,
     required Color color,
     double? minY,
     double? maxY,

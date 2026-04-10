@@ -70,7 +70,7 @@ class SubGoalInput {
     this.sortOrder = 0,
   });
 
-  final int goalId;
+  final String goalId;
   final String name;
   final String? description;
   final double weight; // 0.0–1.0
@@ -88,7 +88,7 @@ class MilestoneInput {
     this.sortOrder = 0,
   });
 
-  final int goalId;
+  final String goalId;
   final String name;
   final DateTime? targetDate;
   final int targetProgress; // 0–100

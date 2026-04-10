@@ -72,8 +72,8 @@ class _NutritionGoalsScreenState
   }
 
   Future<void> _loadCurrentGoal() async {
-    final dao = ref.read(nutritionDaoProvider);
-    final goal = await dao.getActiveGoal(DateTime.now());
+    final repo = ref.read(nutritionDataRepositoryProvider);
+    final goal = await repo.getActiveGoal(DateTime.now());
     if (goal == null || !mounted) return;
     setState(() {
       _calories = goal.caloriesKcal;

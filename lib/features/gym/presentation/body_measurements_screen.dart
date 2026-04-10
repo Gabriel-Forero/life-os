@@ -6,10 +6,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:life_os/core/constants/app_colors.dart';
-import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
 import 'package:life_os/core/widgets/chart_card.dart';
 import 'package:life_os/features/gym/domain/gym_input.dart';
+import 'package:life_os/features/gym/domain/models/body_measurement_model.dart';
 import 'package:path_provider/path_provider.dart';
 
 // ---------------------------------------------------------------------------
@@ -116,7 +116,7 @@ class _BodyMeasurementsScreenState
 
   void _openNewMeasurementSheet(
     BuildContext context,
-    List<BodyMeasurement> measurements,
+    List<BodyMeasurementModel> measurements,
   ) {
     final lastHeight =
         measurements.isNotEmpty ? measurements.first.heightCm : null;
@@ -152,7 +152,7 @@ class _BodyMeasurementsScreenState
 
   @override
   Widget build(BuildContext context) {
-    final dao = ref.watch(gymDaoProvider);
+    final repo = ref.watch(gymRepositoryProvider);
 
     return Scaffold(
       key: const ValueKey('body-measurements-screen'),
@@ -176,8 +176,8 @@ class _BodyMeasurementsScreenState
           ],
         ),
       ),
-      body: StreamBuilder<List<BodyMeasurement>>(
-        stream: dao.watchMeasurements(),
+      body: StreamBuilder<List<BodyMeasurementModel>>(
+        stream: repo.watchMeasurements(),
         builder: (context, snapshot) {
           final measurements = snapshot.data ?? [];
           final latest = measurements.isNotEmpty ? measurements.first : null;
@@ -206,8 +206,8 @@ class _BodyMeasurementsScreenState
           );
         },
       ),
-      floatingActionButton: StreamBuilder<List<BodyMeasurement>>(
-        stream: dao.watchMeasurements(limit: 1),
+      floatingActionButton: StreamBuilder<List<BodyMeasurementModel>>(
+        stream: repo.watchMeasurements(limit: 1),
         builder: (context, snapshot) {
           final measurements = snapshot.data ?? [];
           return Semantics(
@@ -239,8 +239,8 @@ class _OverviewTab extends StatelessWidget {
     required this.previous,
   });
 
-  final BodyMeasurement? latest;
-  final BodyMeasurement? previous;
+  final BodyMeasurementModel? latest;
+  final BodyMeasurementModel? previous;
 
   @override
   Widget build(BuildContext context) {
@@ -479,7 +479,7 @@ class _OverviewTab extends StatelessWidget {
     );
   }
 
-  bool _hasAnyCircumference(BodyMeasurement m) =>
+  bool _hasAnyCircumference(BodyMeasurementModel m) =>
       m.neckCm != null ||
       m.shouldersCm != null ||
       m.chestCm != null ||
@@ -490,7 +490,7 @@ class _OverviewTab extends StatelessWidget {
       m.thighCm != null ||
       m.calfCm != null;
 
-  bool _hasAnyPhoto(BodyMeasurement m) =>
+  bool _hasAnyPhoto(BodyMeasurementModel m) =>
       m.photoFrontPath != null ||
       m.photoSidePath != null ||
       m.photoBackPath != null;
@@ -506,7 +506,7 @@ class _HistoryTab extends StatelessWidget {
     required this.measurements,
   });
 
-  final List<BodyMeasurement> measurements;
+  final List<BodyMeasurementModel> measurements;
 
   @override
   Widget build(BuildContext context) {
@@ -534,7 +534,7 @@ class _HistoryTab extends StatelessWidget {
     );
   }
 
-  void _showDetail(BuildContext context, BodyMeasurement m) {
+  void _showDetail(BuildContext context, BodyMeasurementModel m) {
     Navigator.of(context).push<void>(
       MaterialPageRoute(
         builder: (ctx) => _MeasurementDetailScreen(measurement: m),
@@ -727,7 +727,7 @@ class _CircumferenceTile extends StatelessWidget {
 class _PhotosCard extends StatelessWidget {
   const _PhotosCard({super.key, required this.measurement});
 
-  final BodyMeasurement measurement;
+  final BodyMeasurementModel measurement;
 
   @override
   Widget build(BuildContext context) {
@@ -864,8 +864,8 @@ class _HistoryCard extends StatelessWidget {
     required this.onTap,
   });
 
-  final BodyMeasurement measurement;
-  final BodyMeasurement? previous;
+  final BodyMeasurementModel measurement;
+  final BodyMeasurementModel? previous;
   final bool isLatest;
   final VoidCallback onTap;
 
@@ -1015,7 +1015,7 @@ class _HistoryChip extends StatelessWidget {
 class _MeasurementDetailScreen extends StatelessWidget {
   const _MeasurementDetailScreen({required this.measurement});
 
-  final BodyMeasurement measurement;
+  final BodyMeasurementModel measurement;
 
   @override
   Widget build(BuildContext context) {
@@ -2046,7 +2046,7 @@ extension _CircumferenceFieldLabel on _CircumferenceField {
         _CircumferenceField.hip => 'Cadera',
       };
 
-  double? valueFrom(BodyMeasurement m) => switch (this) {
+  double? valueFrom(BodyMeasurementModel m) => switch (this) {
         _CircumferenceField.waist => m.waistCm,
         _CircumferenceField.chest => m.chestCm,
         _CircumferenceField.arm => m.armCm,
@@ -2065,7 +2065,7 @@ class _MeasurementTrendsTab extends StatefulWidget {
     required this.measurements,
   });
 
-  final List<BodyMeasurement> measurements;
+  final List<BodyMeasurementModel> measurements;
 
   @override
   State<_MeasurementTrendsTab> createState() => _MeasurementTrendsTabState();
@@ -2075,7 +2075,7 @@ class _MeasurementTrendsTabState extends State<_MeasurementTrendsTab> {
   _CircumferenceField _selectedCircumference = _CircumferenceField.waist;
 
   // measurements come in descending order — reverse for charts (oldest → newest)
-  List<BodyMeasurement> get _sorted =>
+  List<BodyMeasurementModel> get _sorted =>
       widget.measurements.reversed.take(30).toList();
 
   @override
@@ -2154,8 +2154,8 @@ class _MeasurementTrendsTabState extends State<_MeasurementTrendsTab> {
   Widget _buildLineChart({
     required String key,
     required String title,
-    required List<BodyMeasurement> data,
-    required double? Function(BodyMeasurement) getValue,
+    required List<BodyMeasurementModel> data,
+    required double? Function(BodyMeasurementModel) getValue,
     required Color color,
   }) {
     final filtered = data
@@ -2177,8 +2177,8 @@ class _MeasurementTrendsTabState extends State<_MeasurementTrendsTab> {
   }
 
   Widget _buildInlineChart({
-    required List<BodyMeasurement> data,
-    required double? Function(BodyMeasurement) getValue,
+    required List<BodyMeasurementModel> data,
+    required double? Function(BodyMeasurementModel) getValue,
     required Color color,
   }) {
     final filtered = data.where((m) => getValue(m) != null).toList();

@@ -89,16 +89,16 @@ class _MonitoringScreenState extends ConsumerState<MonitoringScreen> {
   // ---------------------------------------------------------------------------
 
   Future<_GymMetrics> _fetchGym(DateTime now) async {
-    final dao = ref.read(gymDaoProvider);
+    final gymRepo = ref.read(gymRepositoryProvider);
     final weekStart = DateTime(now.year, now.month, now.day)
         .subtract(const Duration(days: 7));
-    final workouts = await dao.watchWorkouts(limit: 50).first;
+    final workouts = await gymRepo.watchWorkouts(limit: 50).first;
     final weekWorkouts = workouts.where((w) =>
         w.finishedAt != null && w.finishedAt!.isAfter(weekStart)).toList();
 
     double totalVolume = 0;
     for (final w in weekWorkouts) {
-      final sets = await dao.watchWorkoutSets(w.id).first;
+      final sets = await gymRepo.watchWorkoutSets(w.id).first;
       for (final s in sets) {
         if (!s.isWarmup && s.weightKg != null) {
           totalVolume += s.weightKg! * s.reps;
@@ -120,7 +120,7 @@ class _MonitoringScreenState extends ConsumerState<MonitoringScreen> {
   }
 
   Future<_FinanceMetrics> _fetchFinance(DateTime now) async {
-    final dao = ref.read(financeDaoProvider);
+    final dao = ref.read(financeRepositoryProvider);
     final monthStart = DateTime(now.year, now.month, 1);
     final monthEnd = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
     final todayStart = DateTime(now.year, now.month, now.day);
@@ -151,17 +151,17 @@ class _MonitoringScreenState extends ConsumerState<MonitoringScreen> {
   }
 
   Future<_NutritionMetrics> _fetchNutrition(DateTime now) async {
-    final dao = ref.read(nutritionDaoProvider);
+    final repo = ref.read(nutritionDataRepositoryProvider);
     final today = DateTime(now.year, now.month, now.day);
-    final goal = await dao.getActiveGoal(today);
-    final meals = await dao.watchMealLogs(today).first;
+    final goal = await repo.getActiveGoal(today);
+    final meals = await repo.watchMealLogs(today).first;
 
     double totalCal = 0;
     double totalProtein = 0;
     for (final meal in meals) {
-      final items = await dao.watchMealLogItems(meal.id).first;
+      final items = await repo.watchMealLogItems(meal.id).first;
       for (final item in items) {
-        final food = await dao.getFoodItemById(item.foodItemId);
+        final food = await repo.getFoodItemById(item.foodItemId);
         if (food != null) {
           final factor = item.quantityG / 100;
           totalCal += food.caloriesPer100g * factor;
@@ -170,7 +170,7 @@ class _MonitoringScreenState extends ConsumerState<MonitoringScreen> {
       }
     }
 
-    final waterLogs = await dao.watchWaterLogs(today).first;
+    final waterLogs = await repo.watchWaterLogs(today).first;
     final totalWaterMl = waterLogs.fold<int>(
         0, (sum, w) => sum + w.amountMl);
 
@@ -185,7 +185,7 @@ class _MonitoringScreenState extends ConsumerState<MonitoringScreen> {
   }
 
   Future<_HabitsMetrics> _fetchHabits(DateTime now) async {
-    final dao = ref.read(habitsDaoProvider);
+    final dao = ref.read(habitsRepositoryProvider);
     final today = DateTime(now.year, now.month, now.day);
     final activeHabits = await dao.watchActiveHabits().first;
     int completed = 0;
@@ -224,7 +224,7 @@ class _MonitoringScreenState extends ConsumerState<MonitoringScreen> {
   }
 
   Future<_SleepMetrics> _fetchSleep(DateTime now) async {
-    final dao = ref.read(sleepDaoProvider);
+    final dao = ref.read(sleepRepositoryProvider);
     final weekStart = DateTime(now.year, now.month, now.day)
         .subtract(const Duration(days: 7));
     final yesterday = DateTime(now.year, now.month, now.day)
@@ -266,22 +266,22 @@ class _MonitoringScreenState extends ConsumerState<MonitoringScreen> {
   }
 
   Future<_MentalMetrics> _fetchMental(DateTime now) async {
-    final dao = ref.read(mentalDaoProvider);
+    final repo = ref.read(mentalRepositoryProvider);
     final todayStart = DateTime(now.year, now.month, now.day);
     final todayEnd = todayStart.add(const Duration(days: 1));
     final monthStart = DateTime(now.year, now.month, 1);
 
-    final todayMoods = await dao.getMoodLogs(todayStart, todayEnd);
+    final todayMoods = await repo.getMoodLogs(todayStart, todayEnd);
     int? todayMood;
     if (todayMoods.isNotEmpty) {
       todayMood = todayMoods.last.valence;
     }
 
-    final monthBreathing = await dao.getBreathingSessions(monthStart, now);
+    final monthBreathing = await repo.getBreathingSessions(monthStart, now);
     final completedBreathing =
         monthBreathing.where((b) => b.isCompleted).length;
 
-    final todayGratitude = await dao.getMoodLogs(todayStart, todayEnd);
+    final todayGratitude = await repo.getMoodLogs(todayStart, todayEnd);
     final hasGratitude = todayGratitude.isNotEmpty &&
         todayGratitude.any((m) => m.journalNote != null &&
             m.journalNote!.isNotEmpty);
@@ -294,7 +294,7 @@ class _MonitoringScreenState extends ConsumerState<MonitoringScreen> {
   }
 
   Future<_GoalsMetrics> _fetchGoals() async {
-    final dao = ref.read(goalsDaoProvider);
+    final dao = ref.read(goalsRepositoryProvider);
     final allGoals = await dao.getAllGoals();
     final active = allGoals.where((g) => g.status == 'active').toList();
     final avgProgress = active.isEmpty
@@ -318,8 +318,8 @@ class _MonitoringScreenState extends ConsumerState<MonitoringScreen> {
   }
 
   Future<_ValuationDays> _fetchValuationDays(DateTime now) async {
-    final dao = ref.read(dashboardDaoProvider);
-    final snapshots = await dao.getAllSnapshots();
+    final repo = ref.read(dashboardRepositoryProvider);
+    final snapshots = await repo.getAllSnapshots();
 
     int? lastDays(String moduleKey) {
       // Find snapshots that contain the specified moduleKey in their JSON

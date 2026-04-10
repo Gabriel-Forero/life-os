@@ -3,6 +3,8 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/domain/result.dart';
+import 'package:life_os/features/nutrition/data/drift_nutrition_data_repository.dart';
+import 'package:life_os/features/nutrition/data/nutrition_data_repository.dart';
 import 'package:life_os/features/nutrition/database/nutrition_dao.dart';
 import 'package:life_os/features/nutrition/domain/nutrition_input.dart';
 import 'package:life_os/features/nutrition/providers/nutrition_notifier.dart';
@@ -10,31 +12,33 @@ import 'package:life_os/features/nutrition/providers/nutrition_notifier.dart';
 void main() {
   late AppDatabase db;
   late NutritionDao dao;
+  late NutritionDataRepository repository;
   late NutritionNotifier notifier;
 
   setUp(() async {
     db = AppDatabase(NativeDatabase.memory());
     dao = db.nutritionDao;
-    notifier = NutritionNotifier(dao: dao);
+    repository = DriftNutritionDataRepository(dao: dao);
+    notifier = NutritionNotifier(repository: repository);
   });
 
   tearDown(() async {
     await db.close();
   });
 
-  Future<int> insertFood({String name = 'Arroz blanco'}) async {
-    return dao.insertFoodItem(FoodItemsCompanion.insert(
+  Future<String> insertFood({String name = 'Arroz blanco'}) async {
+    return repository.insertFoodItem(
       name: name,
       caloriesPer100g: 130,
-      proteinPer100g: const Value(2.7),
-      carbsPer100g: const Value(28.0),
-      fatPer100g: const Value(0.3),
-      servingSizeG: const Value(150.0),
-      isCustom: const Value(false),
-      isFromApi: const Value(false),
-      isFavorite: const Value(false),
+      proteinPer100g: 2.7,
+      carbsPer100g: 28.0,
+      fatPer100g: 0.3,
+      servingSizeG: 150.0,
+      isCustom: false,
+      isFromApi: false,
+      isFavorite: false,
       createdAt: DateTime.now(),
-    ));
+    );
   }
 
   group('NutritionNotifier — logMeal', () {
@@ -44,7 +48,7 @@ void main() {
         mealType: 'lunch',
         items: [MealItemInput(foodItemId: foodId, quantityG: 200)],
       ));
-      expect(result, isA<Success<int>>());
+      expect(result, isA<Success<String>>());
     });
 
     test('rejects meal with no items', () async {
@@ -52,7 +56,7 @@ void main() {
         mealType: 'lunch',
         items: [],
       ));
-      expect(result, isA<Failure<int>>());
+      expect(result, isA<Failure<String>>());
     });
 
     test('rejects invalid meal type', () async {
@@ -61,7 +65,7 @@ void main() {
         mealType: 'brunch',
         items: [MealItemInput(foodItemId: foodId, quantityG: 100)],
       ));
-      expect(result, isA<Failure<int>>());
+      expect(result, isA<Failure<String>>());
     });
 
     test('rejects zero quantity', () async {
@@ -70,7 +74,7 @@ void main() {
         mealType: 'lunch',
         items: [MealItemInput(foodItemId: foodId, quantityG: 0)],
       ));
-      expect(result, isA<Failure<int>>());
+      expect(result, isA<Failure<String>>());
     });
   });
 
@@ -84,7 +88,7 @@ void main() {
         fatPer100g: 3.0,
         servingSizeG: 80.0,
       ));
-      expect(result, isA<Success<int>>());
+      expect(result, isA<Success<String>>());
     });
 
     test('rejects empty name', () async {
@@ -92,7 +96,7 @@ void main() {
         name: '',
         caloriesPer100g: 100,
       ));
-      expect(result, isA<Failure<int>>());
+      expect(result, isA<Failure<String>>());
     });
 
     test('rejects negative calories', () async {
@@ -100,17 +104,17 @@ void main() {
         name: 'Invalid',
         caloriesPer100g: -10,
       ));
-      expect(result, isA<Failure<int>>());
+      expect(result, isA<Failure<String>>());
     });
   });
 
   group('NutritionNotifier — water', () {
     test('logs water', () async {
       final result = await notifier.logWater(250);
-      expect(result, isA<Success<int>>());
+      expect(result, isA<Success<String>>());
 
       final today = DateTime.now();
-      final total = await dao.totalWater(
+      final total = await repository.totalWater(
         DateTime(today.year, today.month, today.day),
       );
       expect(total, 250);
@@ -122,7 +126,7 @@ void main() {
       await notifier.logWater(500);
 
       final today = DateTime.now();
-      final total = await dao.totalWater(
+      final total = await repository.totalWater(
         DateTime(today.year, today.month, today.day),
       );
       expect(total, 1000);
@@ -130,7 +134,7 @@ void main() {
 
     test('rejects zero ml', () async {
       final result = await notifier.logWater(0);
-      expect(result, isA<Failure<int>>());
+      expect(result, isA<Failure<String>>());
     });
   });
 
@@ -142,9 +146,9 @@ void main() {
         carbsG: 280,
         fatG: 80,
       ));
-      expect(result, isA<Success<int>>());
+      expect(result, isA<Success<String>>());
 
-      final goal = await dao.getActiveGoal(DateTime.now());
+      final goal = await repository.getActiveGoal(DateTime.now());
       expect(goal!.caloriesKcal, 2500);
     });
 
@@ -152,7 +156,7 @@ void main() {
       final result = await notifier.setNutritionGoal(const NutritionGoalInput(
         caloriesKcal: 0,
       ));
-      expect(result, isA<Failure<int>>());
+      expect(result, isA<Failure<String>>());
     });
   });
 
@@ -161,7 +165,7 @@ void main() {
       final foodId = await insertFood();
       await notifier.toggleFavorite(foodId, true);
 
-      final favs = await dao.watchFavorites().first;
+      final favs = await repository.watchFavorites().first;
       expect(favs, hasLength(1));
     });
 
@@ -170,7 +174,7 @@ void main() {
       await notifier.toggleFavorite(foodId, true);
       await notifier.toggleFavorite(foodId, false);
 
-      final favs = await dao.watchFavorites().first;
+      final favs = await repository.watchFavorites().first;
       expect(favs, isEmpty);
     });
   });
@@ -182,7 +186,7 @@ void main() {
         mealType: 'lunch',
         itemsJson: '[{"foodItemId":1,"quantityG":200}]',
       );
-      expect(result, isA<Success<int>>());
+      expect(result, isA<Success<String>>());
     });
 
     test('rejects empty template name', () async {
@@ -191,7 +195,7 @@ void main() {
         mealType: 'lunch',
         itemsJson: '[]',
       );
-      expect(result, isA<Failure<int>>());
+      expect(result, isA<Failure<String>>());
     });
   });
 }

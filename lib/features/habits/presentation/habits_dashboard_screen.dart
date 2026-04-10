@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:life_os/core/constants/app_colors.dart';
-import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
 import 'package:life_os/core/router/app_router.dart';
-import 'package:life_os/features/habits/database/habits_dao.dart';
+import 'package:life_os/features/habits/data/habits_repository.dart';
+import 'package:life_os/features/habits/domain/models/habit_model.dart';
+import 'package:life_os/features/habits/domain/models/habit_log_model.dart';
 import 'package:life_os/core/widgets/animated_list_item.dart';
 import 'package:life_os/core/widgets/pressable_card.dart';
 
@@ -34,7 +35,7 @@ class _HabitsDashboardScreenState
     DateTime.now().day,
   );
 
-  Future<void> _toggleHabit(Habit habit, bool isCompleted) async {
+  Future<void> _toggleHabit(HabitModel habit, bool isCompleted) async {
     final notifier = ref.read(habitsNotifierProvider);
     if (isCompleted) {
       await notifier.uncheckIn(habit.id, _today);
@@ -43,7 +44,7 @@ class _HabitsDashboardScreenState
     }
   }
 
-  Future<void> _incrementQuantitative(Habit habit, double current) async {
+  Future<void> _incrementQuantitative(HabitModel habit, double current) async {
     final notifier = ref.read(habitsNotifierProvider);
     final next = current + 1;
     final target = habit.quantitativeTarget ?? 1.0;
@@ -53,12 +54,12 @@ class _HabitsDashboardScreenState
 
   @override
   Widget build(BuildContext context) {
-    final dao = ref.watch(habitsDaoProvider);
+    final repo = ref.watch(habitsRepositoryProvider);
 
     return Scaffold(
       key: const ValueKey('habits-dashboard-screen'),
-      body: StreamBuilder<List<Habit>>(
-        stream: dao.watchActiveHabits(),
+      body: StreamBuilder<List<HabitModel>>(
+        stream: repo.watchActiveHabits(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -187,23 +188,23 @@ class _HabitsDashboardBody extends ConsumerWidget {
     required this.onIncrement,
   });
 
-  final List<Habit> habits;
+  final List<HabitModel> habits;
   final DateTime today;
-  final Future<void> Function(Habit, bool) onToggle;
-  final Future<void> Function(Habit, double) onIncrement;
+  final Future<void> Function(HabitModel, bool) onToggle;
+  final Future<void> Function(HabitModel, double) onIncrement;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final dao = ref.watch(habitsDaoProvider);
+    final repo = ref.watch(habitsRepositoryProvider);
 
     final todayStart = DateTime(today.year, today.month, today.day);
     final todayEnd = todayStart.add(const Duration(days: 1));
 
-    return StreamBuilder<List<HabitLog>>(
-      stream: _watchAllLogsForToday(dao, todayStart, todayEnd),
+    return StreamBuilder<List<HabitLogModel>>(
+      stream: _watchAllLogsForToday(repo, todayStart, todayEnd),
       builder: (context, logsSnapshot) {
         final todayLogs = logsSnapshot.data ?? [];
-        final statusMap = <int, _HabitStatus>{};
+        final statusMap = <String, _HabitStatus>{};
         for (final habit in habits) {
           final log = todayLogs.where((l) => l.habitId == habit.id).firstOrNull;
           statusMap[habit.id] = _HabitStatus(
@@ -244,7 +245,7 @@ class _HabitsDashboardBody extends ConsumerWidget {
               // --- Barra de completitud semanal ---
               _WeeklyCompletionBars(
                 key: const ValueKey('habits-weekly-bars'),
-                dao: dao,
+                dao: repo,
                 habits: habits,
                 today: today,
               ),
@@ -253,7 +254,7 @@ class _HabitsDashboardBody extends ConsumerWidget {
               // --- Card de mejor racha ---
               _BestStreakCard(
                 key: const ValueKey('habits-best-streak'),
-                dao: dao,
+                dao: repo,
                 habits: habits,
                 today: today,
               ),
@@ -286,7 +287,7 @@ class _HabitsDashboardBody extends ConsumerWidget {
                         isCompleted: false,
                         currentValue: status?.currentValue ?? 0,
                         streakDays: status?.streak ?? 0,
-                        dao: dao,
+                        dao: repo,
                         today: today,
                         monthStart: monthStart,
                         monthEnd: monthEnd,
@@ -324,7 +325,7 @@ class _HabitsDashboardBody extends ConsumerWidget {
                         isCompleted: true,
                         currentValue: status?.currentValue ?? 0,
                         streakDays: status?.streak ?? 0,
-                        dao: dao,
+                        dao: repo,
                         today: today,
                         monthStart: monthStart,
                         monthEnd: monthEnd,
@@ -344,16 +345,16 @@ class _HabitsDashboardBody extends ConsumerWidget {
     );
   }
 
-  Stream<List<HabitLog>> _watchAllLogsForToday(
-    HabitsDao dao,
+  Stream<List<HabitLogModel>> _watchAllLogsForToday(
+    HabitsRepository repo,
     DateTime start,
     DateTime end,
   ) {
     if (habits.isEmpty) return Stream.value([]);
-    return dao.watchHabitLogs(habits.first.id, start, end).asyncMap((_) async {
-      final allLogs = <HabitLog>[];
+    return repo.watchHabitLogs(habits.first.id, start, end).asyncMap((_) async {
+      final allLogs = <HabitLogModel>[];
       for (final h in habits) {
-        final log = await dao.getLogForDate(h.id, start);
+        final log = await repo.getLogForDate(h.id, start);
         if (log != null) allLogs.add(log);
       }
       return allLogs;
@@ -686,11 +687,11 @@ class _HabitCard extends StatefulWidget {
     this.onTapName,
   });
 
-  final Habit habit;
+  final HabitModel habit;
   final bool isCompleted;
   final double currentValue;
   final int streakDays;
-  final HabitsDao dao;
+  final HabitsRepository dao;
   final DateTime today;
   final DateTime monthStart;
   final DateTime monthEnd;
@@ -978,8 +979,8 @@ class _WeeklyCompletionBars extends StatefulWidget {
     required this.today,
   });
 
-  final HabitsDao dao;
-  final List<Habit> habits;
+  final HabitsRepository dao;
+  final List<HabitModel> habits;
   final DateTime today;
 
   @override
@@ -1128,8 +1129,8 @@ class _BestStreakCard extends StatefulWidget {
     required this.today,
   });
 
-  final HabitsDao dao;
-  final List<Habit> habits;
+  final HabitsRepository dao;
+  final List<HabitModel> habits;
   final DateTime today;
 
   @override

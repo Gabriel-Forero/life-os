@@ -1,22 +1,20 @@
 import 'dart:convert';
 
-import 'package:drift/drift.dart';
-import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/domain/app_event.dart';
 import 'package:life_os/core/domain/app_failure.dart';
 import 'package:life_os/core/domain/result.dart';
 import 'package:life_os/core/services/event_bus.dart';
-import 'package:life_os/features/habits/database/habits_dao.dart';
+import 'package:life_os/features/habits/data/habits_repository.dart';
 import 'package:life_os/features/habits/domain/habits_input.dart';
 import 'package:life_os/features/habits/domain/habits_validators.dart';
 
 class HabitsNotifier {
-  HabitsNotifier({required this.dao, required this.eventBus});
+  HabitsNotifier({required this.repository, required this.eventBus});
 
-  final HabitsDao dao;
+  final HabitsRepository repository;
   final EventBus eventBus;
 
-  Future<Result<int>> addHabit(HabitInput input) async {
+  Future<Result<String>> addHabit(HabitInput input) async {
     final nameResult = validateHabitName(input.name);
     if (nameResult.isFailure) return Failure(nameResult.failureOrNull!);
 
@@ -25,24 +23,23 @@ class HabitsNotifier {
 
     try {
       final now = DateTime.now();
-      final id = await dao.insertHabit(HabitsCompanion.insert(
+      final id = await repository.insertHabit(
         name: nameResult.valueOrNull!,
-        icon: Value(input.icon),
-        color: Value(input.color),
+        icon: input.icon,
+        color: input.color,
         frequencyType: input.frequencyType,
-        weeklyTarget: Value(input.weeklyTarget),
-        customDays: Value(
-          input.customDays != null ? jsonEncode(input.customDays) : null,
-        ),
-        isQuantitative: Value(input.isQuantitative),
-        quantitativeTarget: Value(input.quantitativeTarget),
-        quantitativeUnit: Value(input.quantitativeUnit),
-        reminderTime: Value(input.reminderTime),
-        linkedEvent: Value(input.linkedEvent),
-        isArchived: const Value(false),
+        weeklyTarget: input.weeklyTarget,
+        customDays:
+            input.customDays != null ? jsonEncode(input.customDays) : null,
+        isQuantitative: input.isQuantitative,
+        quantitativeTarget: input.quantitativeTarget,
+        quantitativeUnit: input.quantitativeUnit,
+        reminderTime: input.reminderTime,
+        linkedEvent: input.linkedEvent,
+        isArchived: false,
         createdAt: now,
         updatedAt: now,
-      ));
+      );
       return Success(id);
     } on Exception catch (e) {
       return Failure(DatabaseFailure(
@@ -53,9 +50,9 @@ class HabitsNotifier {
     }
   }
 
-  Future<Result<void>> archiveHabit(int id) async {
+  Future<Result<void>> archiveHabit(String id) async {
     try {
-      await dao.archiveHabit(id);
+      await repository.archiveHabit(id);
       return const Success(null);
     } on Exception catch (e) {
       return Failure(DatabaseFailure(
@@ -66,9 +63,9 @@ class HabitsNotifier {
     }
   }
 
-  Future<Result<void>> restoreHabit(int id) async {
+  Future<Result<void>> restoreHabit(String id) async {
     try {
-      await dao.restoreHabit(id);
+      await repository.restoreHabit(id);
       return const Success(null);
     } on Exception catch (e) {
       return Failure(DatabaseFailure(
@@ -79,7 +76,7 @@ class HabitsNotifier {
     }
   }
 
-  Future<Result<void>> checkIn(int habitId, {double? value}) async {
+  Future<Result<void>> checkIn(String habitId, {double? value}) async {
     if (value != null) {
       final valResult = validateQuantitativeValue(value);
       if (valResult.isFailure) return Failure(valResult.failureOrNull!);
@@ -89,7 +86,7 @@ class HabitsNotifier {
     final date = DateTime(now.year, now.month, now.day);
 
     // Check if already checked in today
-    final existing = await dao.getLogForDate(habitId, date);
+    final existing = await repository.getLogForDate(habitId, date);
     if (existing != null) {
       return const Failure(ValidationFailure(
         userMessage: 'Ya completaste este habito hoy',
@@ -99,16 +96,16 @@ class HabitsNotifier {
     }
 
     try {
-      await dao.insertHabitLog(HabitLogsCompanion.insert(
+      await repository.insertHabitLog(
         habitId: habitId,
         date: date,
         completedAt: now,
-        value: Value(value),
+        value: value,
         createdAt: now,
-      ));
+      );
 
       // Determine completion for event
-      final habits = await dao.watchActiveHabits().first;
+      final habits = await repository.watchActiveHabits().first;
       final habit = habits.where((h) => h.id == habitId).firstOrNull;
       final isCompleted = habit == null ||
           !habit.isQuantitative ||
@@ -117,7 +114,7 @@ class HabitsNotifier {
               value >= habit.quantitativeTarget!);
 
       eventBus.emit(HabitCheckedInEvent(
-        habitId: habitId,
+        habitId: int.tryParse(habitId) ?? 0,
         habitName: habit?.name ?? '',
         isCompleted: isCompleted,
       ));
@@ -132,9 +129,9 @@ class HabitsNotifier {
     }
   }
 
-  Future<Result<void>> uncheckIn(int habitId, DateTime date) async {
+  Future<Result<void>> uncheckIn(String habitId, DateTime date) async {
     try {
-      await dao.deleteHabitLog(habitId, date);
+      await repository.deleteHabitLog(habitId, date);
       return const Success(null);
     } on Exception catch (e) {
       return Failure(DatabaseFailure(
@@ -147,7 +144,7 @@ class HabitsNotifier {
 
   /// Auto-check habits linked to WorkoutCompletedEvent
   Future<void> onWorkoutCompleted(WorkoutCompletedEvent event) async {
-    final habits = await dao.watchActiveHabits().first;
+    final habits = await repository.watchActiveHabits().first;
     final linked = habits.where(
       (h) => h.linkedEvent == 'WorkoutCompletedEvent',
     );

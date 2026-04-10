@@ -3,11 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:life_os/core/constants/app_breakpoints.dart';
 import 'package:life_os/core/constants/app_colors.dart';
-import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
 import 'package:life_os/core/router/app_router.dart';
-import 'package:life_os/features/mental/database/mental_dao.dart';
-import 'package:life_os/features/sleep/database/sleep_dao.dart';
+import 'package:life_os/features/mental/data/mental_repository.dart';
+import 'package:life_os/features/mental/domain/models/breathing_session_model.dart';
+import 'package:life_os/features/mental/domain/models/mood_log_model.dart';
+import 'package:life_os/features/sleep/data/sleep_repository.dart';
+import 'package:life_os/features/sleep/domain/models/energy_log_model.dart';
+import 'package:life_os/features/sleep/domain/models/sleep_log_model.dart';
 
 /// Wellness hub — desktop shows a dashboard with mood/sleep/energy history.
 /// Action buttons in the header handle navigation to input forms.
@@ -18,8 +21,8 @@ class WellnessHubScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final sleepDao = ref.watch(sleepDaoProvider);
-    final mentalDao = ref.watch(mentalDaoProvider);
+    final sleepRepo = ref.watch(sleepRepositoryProvider);
+    final mentalRepo = ref.watch(mentalRepositoryProvider);
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final weekAgo = today.subtract(const Duration(days: 7));
@@ -28,9 +31,9 @@ class WellnessHubScreen extends ConsumerWidget {
       body: LayoutBuilder(
         builder: (context, constraints) {
           if (constraints.maxWidth >= AppBreakpoints.compact) {
-            return _DesktopDashboard(theme: theme, sleepDao: sleepDao, mentalDao: mentalDao, today: today, weekAgo: weekAgo);
+            return _DesktopDashboard(theme: theme, sleepRepo: sleepRepo, mentalRepo: mentalRepo, today: today, weekAgo: weekAgo);
           }
-          return _PhoneLayout(theme: theme, sleepDao: sleepDao, mentalDao: mentalDao, today: today);
+          return _PhoneLayout(theme: theme, sleepRepo: sleepRepo, mentalRepo: mentalRepo, today: today);
         },
       ),
     );
@@ -42,10 +45,10 @@ class WellnessHubScreen extends ConsumerWidget {
 // =============================================================================
 
 class _DesktopDashboard extends StatelessWidget {
-  const _DesktopDashboard({required this.theme, required this.sleepDao, required this.mentalDao, required this.today, required this.weekAgo});
+  const _DesktopDashboard({required this.theme, required this.sleepRepo, required this.mentalRepo, required this.today, required this.weekAgo});
   final ThemeData theme;
-  final SleepDao sleepDao;
-  final MentalDao mentalDao;
+  final SleepRepository sleepRepo;
+  final MentalRepository mentalRepo;
   final DateTime today;
   final DateTime weekAgo;
 
@@ -86,8 +89,8 @@ class _DesktopDashboard extends StatelessWidget {
 
   // --- Stat card: Sleep today ---
   Widget _sleepTodayCard(BuildContext context) {
-    return StreamBuilder<List<SleepLog>>(
-      stream: sleepDao.watchSleepLogs(today.subtract(const Duration(days: 1)), today),
+    return StreamBuilder<List<SleepLogModel>>(
+      stream: sleepRepo.watchSleepLogs(today.subtract(const Duration(days: 1)), today),
       builder: (ctx, snap) {
         final logs = snap.data ?? [];
         final hasData = logs.isNotEmpty;
@@ -107,8 +110,8 @@ class _DesktopDashboard extends StatelessWidget {
 
   // --- Stat card: Mood today ---
   Widget _moodTodayCard(BuildContext context) {
-    return StreamBuilder<List<MoodLog>>(
-      stream: mentalDao.watchMoodLogs(today, today.add(const Duration(days: 1))),
+    return StreamBuilder<List<MoodLogModel>>(
+      stream: mentalRepo.watchMoodLogs(today, today.add(const Duration(days: 1))),
       builder: (ctx, snap) {
         final logs = snap.data ?? [];
         final hasData = logs.isNotEmpty;
@@ -127,8 +130,8 @@ class _DesktopDashboard extends StatelessWidget {
 
   // --- Stat card: Breathing today ---
   Widget _breathingTodayCard(BuildContext context) {
-    return StreamBuilder<List<BreathingSession>>(
-      stream: mentalDao.watchBreathingSessions(today, today.add(const Duration(days: 1))),
+    return StreamBuilder<List<BreathingSessionModel>>(
+      stream: mentalRepo.watchBreathingSessions(today, today.add(const Duration(days: 1))),
       builder: (ctx, snap) {
         final sessions = snap.data ?? [];
         final totalMin = sessions.fold<int>(0, (sum, s) => sum + s.durationSeconds) ~/ 60;
@@ -146,8 +149,8 @@ class _DesktopDashboard extends StatelessWidget {
 
   // --- Mood week chart card ---
   Widget _moodWeekCard(BuildContext context) {
-    return StreamBuilder<List<MoodLog>>(
-      stream: mentalDao.watchMoodLogs(weekAgo, today.add(const Duration(days: 1))),
+    return StreamBuilder<List<MoodLogModel>>(
+      stream: mentalRepo.watchMoodLogs(weekAgo, today.add(const Duration(days: 1))),
       builder: (ctx, snap) {
         final logs = snap.data ?? [];
         return _DashCard(
@@ -165,8 +168,8 @@ class _DesktopDashboard extends StatelessWidget {
 
   // --- Sleep week chart card ---
   Widget _sleepWeekCard(BuildContext context) {
-    return StreamBuilder<List<SleepLog>>(
-      stream: sleepDao.watchSleepLogs(weekAgo, today),
+    return StreamBuilder<List<SleepLogModel>>(
+      stream: sleepRepo.watchSleepLogs(weekAgo, today),
       builder: (ctx, snap) {
         final logs = snap.data ?? [];
         return _DashCard(
@@ -184,8 +187,8 @@ class _DesktopDashboard extends StatelessWidget {
 
   // --- Energy week card ---
   Widget _energyWeekCard(BuildContext context) {
-    return StreamBuilder<List<EnergyLog>>(
-      stream: sleepDao.watchEnergyLogs(weekAgo, today.add(const Duration(days: 1))),
+    return StreamBuilder<List<EnergyLogModel>>(
+      stream: sleepRepo.watchEnergyLogs(weekAgo, today.add(const Duration(days: 1))),
       builder: (ctx, snap) {
         final logs = snap.data ?? [];
         return _DashCard(
@@ -206,10 +209,10 @@ class _DesktopDashboard extends StatelessWidget {
 // =============================================================================
 
 class _PhoneLayout extends StatelessWidget {
-  const _PhoneLayout({required this.theme, required this.sleepDao, required this.mentalDao, required this.today});
+  const _PhoneLayout({required this.theme, required this.sleepRepo, required this.mentalRepo, required this.today});
   final ThemeData theme;
-  final SleepDao sleepDao;
-  final MentalDao mentalDao;
+  final SleepRepository sleepRepo;
+  final MentalRepository mentalRepo;
   final DateTime today;
 
   @override
@@ -236,8 +239,8 @@ class _PhoneLayout extends StatelessWidget {
       _DashCard(
         title: 'Mood — 7 dias', icon: Icons.mood, color: AppColors.mental,
         onTitleTap: () => GoRouter.of(context).push(AppRoutes.mentalHistory),
-        child: StreamBuilder<List<MoodLog>>(
-          stream: mentalDao.watchMoodLogs(weekAgo, today.add(const Duration(days: 1))),
+        child: StreamBuilder<List<MoodLogModel>>(
+          stream: mentalRepo.watchMoodLogs(weekAgo, today.add(const Duration(days: 1))),
           builder: (_, snap) {
             final logs = snap.data ?? [];
             return logs.isEmpty ? const _EmptyHint(text: 'Registra tu mood') : _MoodWeekBars(logs: logs, today: today);
@@ -249,8 +252,8 @@ class _PhoneLayout extends StatelessWidget {
       _DashCard(
         title: 'Sueno — 7 dias', icon: Icons.bedtime, color: AppColors.sleep,
         onTitleTap: () => GoRouter.of(context).push(AppRoutes.sleepHistory),
-        child: StreamBuilder<List<SleepLog>>(
-          stream: sleepDao.watchSleepLogs(weekAgo, today),
+        child: StreamBuilder<List<SleepLogModel>>(
+          stream: sleepRepo.watchSleepLogs(weekAgo, today),
           builder: (_, snap) {
             final logs = snap.data ?? [];
             return logs.isEmpty ? const _EmptyHint(text: 'Registra tu sueno') : _SleepWeekBars(logs: logs, today: today);
@@ -265,8 +268,8 @@ class _PhoneLayout extends StatelessWidget {
   }
 
   Widget _phoneSleepCard(BuildContext context) {
-    return StreamBuilder<List<SleepLog>>(
-      stream: sleepDao.watchSleepLogs(today.subtract(const Duration(days: 1)), today),
+    return StreamBuilder<List<SleepLogModel>>(
+      stream: sleepRepo.watchSleepLogs(today.subtract(const Duration(days: 1)), today),
       builder: (_, snap) {
         final logs = snap.data ?? [];
         final has = logs.isNotEmpty;
@@ -277,8 +280,8 @@ class _PhoneLayout extends StatelessWidget {
   }
 
   Widget _phoneMoodCard(BuildContext context) {
-    return StreamBuilder<List<MoodLog>>(
-      stream: mentalDao.watchMoodLogs(today, today.add(const Duration(days: 1))),
+    return StreamBuilder<List<MoodLogModel>>(
+      stream: mentalRepo.watchMoodLogs(today, today.add(const Duration(days: 1))),
       builder: (_, snap) {
         final logs = snap.data ?? [];
         final has = logs.isNotEmpty;
@@ -289,9 +292,9 @@ class _PhoneLayout extends StatelessWidget {
   }
 
   // Keep this for backward compat but redirect to new card-based approach
-  Widget _buildSleepSummary(BuildContext ctx, SleepDao dao, DateTime todayStart) {
-    return StreamBuilder<List<SleepLog>>(
-      stream: dao.watchSleepLogs(todayStart.subtract(const Duration(days: 1)), todayStart),
+  Widget _buildSleepSummary(BuildContext ctx, SleepRepository repo, DateTime todayStart) {
+    return StreamBuilder<List<SleepLogModel>>(
+      stream: repo.watchSleepLogs(todayStart.subtract(const Duration(days: 1)), todayStart),
       builder: (_, snap) {
         final logs = snap.data ?? [];
         if (logs.isEmpty) return _SummaryTile(icon: Icons.bedtime, color: AppColors.sleep, title: 'Sueno', value: 'Sin registro', onTap: () => GoRouter.of(ctx).push(AppRoutes.sleep));
@@ -302,9 +305,9 @@ class _PhoneLayout extends StatelessWidget {
     );
   }
 
-  Widget _buildMoodSummary(BuildContext ctx, MentalDao dao, DateTime todayStart) {
-    return StreamBuilder<List<MoodLog>>(
-      stream: dao.watchMoodLogs(todayStart, todayStart.add(const Duration(days: 1))),
+  Widget _buildMoodSummary(BuildContext ctx, MentalRepository repo, DateTime todayStart) {
+    return StreamBuilder<List<MoodLogModel>>(
+      stream: repo.watchMoodLogs(todayStart, todayStart.add(const Duration(days: 1))),
       builder: (_, snap) {
         final logs = snap.data ?? [];
         if (logs.isEmpty) return _SummaryTile(icon: Icons.mood, color: AppColors.mental, title: 'Mood', value: 'Sin registro hoy', onTap: () => GoRouter.of(ctx).push(AppRoutes.mood));
@@ -394,7 +397,7 @@ class _EmptyHint extends StatelessWidget {
 
 class _MoodWeekBars extends StatelessWidget {
   const _MoodWeekBars({required this.logs, required this.today});
-  final List<MoodLog> logs; final DateTime today;
+  final List<MoodLogModel> logs; final DateTime today;
 
   @override
   Widget build(BuildContext context) {
@@ -437,7 +440,7 @@ class _MoodWeekBars extends StatelessWidget {
 
 class _SleepWeekBars extends StatelessWidget {
   const _SleepWeekBars({required this.logs, required this.today});
-  final List<SleepLog> logs; final DateTime today;
+  final List<SleepLogModel> logs; final DateTime today;
 
   @override
   Widget build(BuildContext context) {
@@ -484,7 +487,7 @@ class _SleepWeekBars extends StatelessWidget {
 
 class _EnergyWeekBars extends StatelessWidget {
   const _EnergyWeekBars({required this.logs, required this.today});
-  final List<EnergyLog> logs; final DateTime today;
+  final List<EnergyLogModel> logs; final DateTime today;
 
   @override
   Widget build(BuildContext context) {

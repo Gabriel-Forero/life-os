@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_os/core/constants/app_colors.dart';
-import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
 import 'package:life_os/features/finance/domain/finance_input.dart';
+import 'package:life_os/features/finance/domain/models/category_model.dart';
 import 'package:life_os/l10n/app_localizations.dart';
 
 /// Pantalla de alta/edicion de transaccion.
@@ -18,7 +18,7 @@ class AddEditTransactionScreen extends ConsumerStatefulWidget {
   });
 
   /// Si se proporciona, la pantalla opera en modo edicion.
-  final int? transactionId;
+  final String? transactionId;
 
   @override
   ConsumerState<AddEditTransactionScreen> createState() =>
@@ -32,7 +32,7 @@ class _AddEditTransactionScreenState
   final _noteController = TextEditingController();
 
   String _type = 'expense';
-  Category? _selectedCategory;
+  CategoryModel? _selectedCategory;
   DateTime _selectedDate = DateTime.now();
   bool _isSaving = false;
 
@@ -109,7 +109,7 @@ class _AddEditTransactionScreenState
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
-    final dao = ref.watch(financeDaoProvider);
+    final repo = ref.watch(financeRepositoryProvider);
 
     return Scaffold(
       key: const ValueKey('add-edit-transaction-screen'),
@@ -135,8 +135,8 @@ class _AddEditTransactionScreenState
           ),
         ),
       ),
-      body: StreamBuilder<List<Category>>(
-        stream: dao.watchCategories(),
+      body: StreamBuilder<List<CategoryModel>>(
+        stream: repo.watchCategories(),
         builder: (context, snapshot) {
           final allCategories = snapshot.data ?? [];
           final categoriesForType = allCategories
@@ -214,7 +214,7 @@ class _AddEditTransactionScreenState
                 // --- Categoria ---
                 Semantics(
                   label: 'Categoria de la transaccion',
-                  child: DropdownButtonFormField<Category>(
+                  child: DropdownButtonFormField<CategoryModel>(
                     key: const ValueKey('add-edit-tx-category-dropdown'),
                     value: _selectedCategory,
                     isExpanded: true,
@@ -230,7 +230,7 @@ class _AddEditTransactionScreenState
                     hint: const Text('Seleccionar categoria'),
                     items: categoriesForType
                         .map(
-                          (cat) => DropdownMenuItem<Category>(
+                          (cat) => DropdownMenuItem<CategoryModel>(
                             key: ValueKey('category-option-${cat.id}'),
                             value: cat,
                             child: Row(

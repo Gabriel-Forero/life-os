@@ -3,8 +3,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_os/core/constants/app_colors.dart';
-import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
+import 'package:life_os/features/dashboard/domain/models/life_snapshot_model.dart';
 import 'package:intl/intl.dart';
 
 // ---------------------------------------------------------------------------
@@ -102,13 +102,13 @@ class _NutritionValuationScreenState
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final nutritionDao = ref.read(nutritionDaoProvider);
-      final dashDao = ref.read(dashboardDaoProvider);
+      final nutritionRepo = ref.read(nutritionDataRepositoryProvider);
+      final dashRepo = ref.read(dashboardRepositoryProvider);
       final now = DateTime.now();
 
       // --- Meta activa ---
       final today = DateTime(now.year, now.month, now.day);
-      final goal = await nutritionDao.getActiveGoal(today);
+      final goal = await nutritionRepo.getActiveGoal(today);
       final goalCalories = goal?.caloriesKcal ?? 0;
       final goalProtein = goal?.proteinG ?? 0.0;
       final goalCarbs = goal?.carbsG ?? 0.0;
@@ -119,13 +119,13 @@ class _NutritionValuationScreenState
       final days = <_DayNutrition>[];
       for (var i = 0; i < _periodDays; i++) {
         final date = today.subtract(Duration(days: i));
-        final mealLogs = await nutritionDao.watchMealLogs(date).first;
+        final mealLogs = await nutritionRepo.watchMealLogs(date).first;
 
         double cal = 0, prot = 0, carbs = 0, fat = 0;
         for (final meal in mealLogs) {
-          final items = await nutritionDao.watchMealLogItems(meal.id).first;
+          final items = await nutritionRepo.watchMealLogItems(meal.id).first;
           for (final item in items) {
-            final food = await nutritionDao.getFoodItemById(item.foodItemId);
+            final food = await nutritionRepo.getFoodItemById(item.foodItemId);
             if (food != null) {
               final factor = item.quantityG / 100.0;
               cal += food.caloriesPer100g * factor;
@@ -135,7 +135,7 @@ class _NutritionValuationScreenState
             }
           }
         }
-        final water = await nutritionDao.totalWater(date);
+        final water = await nutritionRepo.totalWater(date);
         days.add(_DayNutrition(
           date: date,
           calories: cal,
@@ -225,7 +225,7 @@ class _NutritionValuationScreenState
       );
 
       // --- Ultima valoracion previa ---
-      final snapshots = await dashDao.getAllSnapshots();
+      final snapshots = await dashRepo.getAllSnapshots();
       Map<String, dynamic>? prevData;
       for (final snap in snapshots) {
         try {
@@ -282,9 +282,9 @@ class _NutritionValuationScreenState
     if (_current == null || _saving) return;
     setState(() => _saving = true);
     try {
-      final dashDao = ref.read(dashboardDaoProvider);
+      final dashRepo = ref.read(dashboardRepositoryProvider);
       final data = _serializeMetrics();
-      await dashDao.insertValuationSnapshot(
+      await dashRepo.insertValuationSnapshot(
         moduleKey: 'nutrition',
         data: data,
       );
@@ -912,7 +912,7 @@ class _ValuationHistoryScreen extends ConsumerStatefulWidget {
 
 class _ValuationHistoryScreenState
     extends ConsumerState<_ValuationHistoryScreen> {
-  List<LifeSnapshot> _snapshots = [];
+  List<LifeSnapshotModel> _snapshots = [];
   bool _loading = true;
 
   @override
@@ -922,8 +922,8 @@ class _ValuationHistoryScreenState
   }
 
   Future<void> _load() async {
-    final dashDao = ref.read(dashboardDaoProvider);
-    final all = await dashDao.getAllSnapshots();
+    final dashRepo = ref.read(dashboardRepositoryProvider);
+    final all = await dashRepo.getAllSnapshots();
     final filtered = all.where((s) {
       try {
         final decoded =

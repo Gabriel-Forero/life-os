@@ -28,14 +28,14 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
     final now = DateTime.now();
     final from30 = now.subtract(const Duration(days: 30));
 
-    final mentalDao = ref.read(mentalDaoProvider);
-    final sleepDao = ref.read(sleepDaoProvider);
-    final habitsDao = ref.read(habitsDaoProvider);
-    final financeDao = ref.read(financeDaoProvider);
-    final gymDao = ref.read(gymDaoProvider);
+    final mentalRepo = ref.read(mentalRepositoryProvider);
+    final sleepDao = ref.read(sleepRepositoryProvider);
+    final habitsDao = ref.read(habitsRepositoryProvider);
+    final financeRepo = ref.read(financeRepositoryProvider);
+    final gymRepo = ref.read(gymRepositoryProvider);
 
     // --- Mood ---
-    final moodLogs = await mentalDao.getMoodLogs(from30, now);
+    final moodLogs = await mentalRepo.getMoodLogs(from30, now);
     double avgMood = 0;
     if (moodLogs.isNotEmpty) {
       double total = 0;
@@ -89,7 +89,7 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
     // --- Finance ---
     double dailySpend = 0;
     try {
-      final transactions = await financeDao.watchTransactions(from30, now).first;
+      final transactions = await financeRepo.watchTransactions(from30, now).first;
       double total = 0;
       for (final t in transactions) {
         if (t.type == 'expense') {
@@ -104,7 +104,7 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
     // --- Workouts ---
     int recentWorkouts = 0;
     try {
-      final allWorkouts = await gymDao.watchWorkouts().first;
+      final allWorkouts = await gymRepo.watchWorkouts().first;
       recentWorkouts = allWorkouts.where((w) => w.startedAt.isAfter(from30)).length;
     } on Object {
       // gym data unavailable
@@ -147,7 +147,7 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
           .where((c) => c.title == 'Patrones LifeOS')
           .firstOrNull;
 
-      int conversationId;
+      String conversationId;
       if (existing != null) {
         conversationId = existing.id;
         await aiNotifier.openConversation(conversationId);

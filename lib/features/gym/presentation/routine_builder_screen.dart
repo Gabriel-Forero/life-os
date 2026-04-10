@@ -18,7 +18,7 @@ class _ExerciseRef {
     required this.restSeconds,
   });
 
-  final int id;
+  final String id;
   final String name;
   final String primaryMuscle;
   int sets;
@@ -58,7 +58,7 @@ class RoutineBuilderScreen extends ConsumerStatefulWidget {
   });
 
   /// Si se proporciona, la pantalla opera en modo edicion.
-  final int? routineId;
+  final String? routineId;
 
   @override
   ConsumerState<RoutineBuilderScreen> createState() =>
@@ -199,7 +199,7 @@ class _RoutineBuilderScreenState extends ConsumerState<RoutineBuilderScreen>
 
   Future<void> _openExercisePickerForDay(_DayState day) async {
     final result =
-        await showModalBottomSheet<({int id, String name, String muscle})>(
+        await showModalBottomSheet<({String id, String name, String muscle})>(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
@@ -944,7 +944,7 @@ class _ExercisePickerSheetState extends ConsumerState<_ExercisePickerSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final dao = ref.watch(gymDaoProvider);
+    final repo = ref.watch(gymRepositoryProvider);
 
     return DraggableScrollableSheet(
       initialChildSize: 0.75,
@@ -992,7 +992,7 @@ class _ExercisePickerSheetState extends ConsumerState<_ExercisePickerSheet> {
             Expanded(
               child: StreamBuilder(
                 stream:
-                    dao.watchExercises(query: _query.isEmpty ? null : _query),
+                    repo.watchExercises(query: _query.isEmpty ? null : _query),
                 builder: (context, snapshot) {
                   final exercises = snapshot.data ?? [];
                   return ListView.separated(

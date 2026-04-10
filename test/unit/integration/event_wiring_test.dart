@@ -5,6 +5,8 @@ import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/domain/app_event.dart';
 import 'package:life_os/core/services/app_logger.dart';
 import 'package:life_os/core/services/event_bus.dart';
+import 'package:life_os/features/nutrition/data/drift_nutrition_data_repository.dart';
+import 'package:life_os/features/nutrition/data/nutrition_data_repository.dart';
 import 'package:life_os/features/nutrition/database/nutrition_dao.dart';
 
 AppDatabase _createInMemoryDb() => AppDatabase(NativeDatabase.memory());
@@ -77,10 +79,12 @@ Future<int> _insertNutritionGoal(NutritionDao dao, {
 void main() {
   late AppDatabase db;
   late NutritionDao nutritionDao;
+  late NutritionDataRepository nutritionRepo;
 
   setUp(() {
     db = _createInMemoryDb();
     nutritionDao = NutritionDao(db);
+    nutritionRepo = DriftNutritionDataRepository(dao: nutritionDao);
   });
 
   tearDown(() => db.close());
@@ -109,7 +113,7 @@ void main() {
       final subs = _wireWithFakes(
         eventBus: eventBus,
         habitsNotifier: habitsNotifier,
-        nutritionDao: nutritionDao,
+        nutritionRepo: nutritionRepo,
         dayScoreNotifier: dayScoreNotifier,
         dashboardNotifier: dashboardNotifier,
         notificationScheduler: notificationScheduler,
@@ -155,7 +159,7 @@ void main() {
       final subs = _wireWithFakes(
         eventBus: eventBus,
         habitsNotifier: habitsNotifier,
-        nutritionDao: nutritionDao,
+        nutritionRepo: nutritionRepo,
         dayScoreNotifier: dayScoreNotifier,
         dashboardNotifier: dashboardNotifier,
         notificationScheduler: notificationScheduler,
@@ -188,7 +192,7 @@ void main() {
       final subs = _wireWithFakes(
         eventBus: eventBus,
         habitsNotifier: habitsNotifier,
-        nutritionDao: nutritionDao,
+        nutritionRepo: nutritionRepo,
         dayScoreNotifier: dayScoreNotifier,
         dashboardNotifier: dashboardNotifier,
         notificationScheduler: notificationScheduler,
@@ -226,7 +230,7 @@ void main() {
       final subs = _wireWithFakes(
         eventBus: eventBus,
         habitsNotifier: habitsNotifier,
-        nutritionDao: nutritionDao,
+        nutritionRepo: nutritionRepo,
         dayScoreNotifier: dayScoreNotifier,
         dashboardNotifier: dashboardNotifier,
         notificationScheduler: notificationScheduler,
@@ -268,7 +272,7 @@ void main() {
       final subs = _wireWithFakes(
         eventBus: eventBus,
         habitsNotifier: habitsNotifier,
-        nutritionDao: nutritionDao,
+        nutritionRepo: nutritionRepo,
         dayScoreNotifier: dayScoreNotifier,
         dashboardNotifier: dashboardNotifier,
         notificationScheduler: notificationScheduler,
@@ -306,7 +310,7 @@ void main() {
       final subs = _wireWithFakes(
         eventBus: eventBus,
         habitsNotifier: habitsNotifier,
-        nutritionDao: nutritionDao,
+        nutritionRepo: nutritionRepo,
         dayScoreNotifier: dayScoreNotifier,
         dashboardNotifier: dashboardNotifier,
         notificationScheduler: notificationScheduler,
@@ -344,7 +348,7 @@ void main() {
       final subs = _wireWithFakes(
         eventBus: eventBus,
         habitsNotifier: habitsNotifier,
-        nutritionDao: nutritionDao,
+        nutritionRepo: nutritionRepo,
         dayScoreNotifier: dayScoreNotifier,
         dashboardNotifier: dashboardNotifier,
         notificationScheduler: notificationScheduler,
@@ -382,7 +386,7 @@ void main() {
       final subs = _wireWithFakes(
         eventBus: eventBus,
         habitsNotifier: habitsNotifier,
-        nutritionDao: nutritionDao,
+        nutritionRepo: nutritionRepo,
         dayScoreNotifier: dayScoreNotifier,
         dashboardNotifier: dashboardNotifier,
         notificationScheduler: notificationScheduler,
@@ -432,7 +436,7 @@ void main() {
 List<void Function()> _wireWithFakes({
   required EventBus eventBus,
   required _FakeHabitsNotifier habitsNotifier,
-  required NutritionDao nutritionDao,
+  required NutritionDataRepository nutritionRepo,
   required _FakeDayScoreNotifier dayScoreNotifier,
   required _FakeDashboardNotifier dashboardNotifier,
   required _FakeNotificationScheduler notificationScheduler,
@@ -443,7 +447,7 @@ List<void Function()> _wireWithFakes({
   subs.add(
     eventBus.on<WorkoutCompletedEvent>().listen((event) async {
       await habitsNotifier.onWorkoutCompleted(event);
-      await _adjustNutritionForTrainingTest(nutritionDao, log);
+      await _adjustNutritionForTrainingTest(nutritionRepo, log);
       await dayScoreNotifier.calculateDayScore(DateTime.now());
     }).cancel,
   );
@@ -495,24 +499,22 @@ List<void Function()> _wireWithFakes({
 }
 
 Future<void> _adjustNutritionForTrainingTest(
-  NutritionDao dao,
+  NutritionDataRepository repo,
   AppLogger log,
 ) async {
   final today = DateTime.now();
-  final goal = await dao.getActiveGoal(today);
+  final goal = await repo.getActiveGoal(today);
   if (goal == null) {
     log.warning('No active nutrition goal; adjustment skipped');
     return;
   }
-  await dao.insertNutritionGoal(
-    NutritionGoalsCompanion.insert(
-      caloriesKcal: (goal.caloriesKcal * 1.15).round(),
-      proteinG: Value(goal.proteinG * 1.20),
-      carbsG: Value(goal.carbsG * 1.10),
-      fatG: Value(goal.fatG),
-      waterMl: Value(goal.waterMl),
-      effectiveDate: DateTime(today.year, today.month, today.day),
-      createdAt: DateTime.now(),
-    ),
+  await repo.insertNutritionGoal(
+    caloriesKcal: (goal.caloriesKcal * 1.15).round(),
+    proteinG: goal.proteinG * 1.20,
+    carbsG: goal.carbsG * 1.10,
+    fatG: goal.fatG,
+    waterMl: goal.waterMl,
+    effectiveDate: DateTime(today.year, today.month, today.day),
+    createdAt: DateTime.now(),
   );
 }

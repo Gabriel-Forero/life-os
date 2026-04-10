@@ -4,6 +4,8 @@ import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/domain/app_event.dart';
 import 'package:life_os/core/domain/result.dart';
 import 'package:life_os/core/services/event_bus.dart';
+import 'package:life_os/features/dashboard/data/dashboard_repository.dart';
+import 'package:life_os/features/dashboard/data/drift_dashboard_repository.dart';
 import 'package:life_os/features/dashboard/database/dashboard_dao.dart';
 import 'package:life_os/features/dashboard/providers/day_score_notifier.dart';
 
@@ -15,7 +17,7 @@ AppDatabase _createInMemoryDb() => AppDatabase(NativeDatabase.memory());
 
 /// Creates a [DayScoreNotifier] with a fixed score per module.
 DayScoreNotifier _makeNotifier({
-  required DashboardDao dao,
+  required DashboardRepository repository,
   required EventBus eventBus,
   Map<String, double> moduleScores = const {
     'finance': 80.0,
@@ -25,7 +27,7 @@ DayScoreNotifier _makeNotifier({
   },
 }) {
   return DayScoreNotifier(
-    dao: dao,
+    repository: repository,
     eventBus: eventBus,
     moduleScoreProvider: (key) async => moduleScores[key] ?? 0.0,
   );
@@ -34,15 +36,17 @@ DayScoreNotifier _makeNotifier({
 void main() {
   late AppDatabase db;
   late DashboardDao dao;
+  late DashboardRepository repository;
   late EventBus eventBus;
   late DayScoreNotifier notifier;
 
   setUp(() async {
     db = _createInMemoryDb();
     dao = db.dashboardDao;
+    repository = DriftDashboardRepository(dao: dao);
     eventBus = EventBus();
-    notifier = _makeNotifier(dao: dao, eventBus: eventBus);
-    await dao.seedDefaultConfigsIfEmpty();
+    notifier = _makeNotifier(repository: repository, eventBus: eventBus);
+    await repository.seedDefaultConfigsIfEmpty();
   });
 
   tearDown(() async {
@@ -67,9 +71,10 @@ void main() {
       // New DB without seeding
       final freshDb = _createInMemoryDb();
       final freshDao = freshDb.dashboardDao;
+      final freshRepo = DriftDashboardRepository(dao: freshDao);
       final freshBus = EventBus();
       final freshNotifier =
-          _makeNotifier(dao: freshDao, eventBus: freshBus);
+          _makeNotifier(repository: freshRepo, eventBus: freshBus);
 
       await freshNotifier.initialize();
       expect(freshNotifier.state.configs, hasLength(4));
@@ -97,7 +102,7 @@ void main() {
     test('calculates weighted average with custom weights', () async {
       // Give finance weight=2, others weight=1
       // (80×2 + 70×1 + 60×1 + 90×1) / (2+1+1+1) = (160+70+60+90)/5 = 380/5 = 76
-      await dao.updateWeightByKey('finance', 2.0);
+      await repository.updateWeightByKey('finance', 2.0);
 
       final result =
           await notifier.calculateDayScore(DateTime.utc(2026, 4, 4));
@@ -106,7 +111,7 @@ void main() {
 
     test('score is clamped to 0–100', () async {
       final highNotifier = _makeNotifier(
-        dao: dao,
+        repository: repository,
         eventBus: eventBus,
         moduleScores: const {
           'finance': 200.0, // will be clamped to 100
@@ -123,9 +128,9 @@ void main() {
 
     test('score is 0 when no modules are enabled', () async {
       // Disable all modules
-      final configs = await dao.getScoreConfigs();
+      final configs = await repository.getScoreConfigs();
       for (final c in configs) {
-        await dao.updateScoreConfig(c.id,
+        await repository.updateScoreConfig(c.id,
             weight: c.weight, isEnabled: false);
       }
       final result =
@@ -135,10 +140,10 @@ void main() {
 
     test('calculates with only enabled modules', () async {
       // Disable gym and nutrition
-      final configs = await dao.getScoreConfigs();
+      final configs = await repository.getScoreConfigs();
       for (final c in configs) {
         if (c.moduleKey == 'gym' || c.moduleKey == 'nutrition') {
-          await dao.updateScoreConfig(c.id,
+          await repository.updateScoreConfig(c.id,
               weight: c.weight, isEnabled: false);
         }
       }
@@ -151,7 +156,7 @@ void main() {
     test('persists score to database', () async {
       final date = DateTime.utc(2026, 4, 4);
       await notifier.calculateDayScore(date);
-      final saved = await dao.getDayScoreForDate(date);
+      final saved = await repository.getDayScoreForDate(date);
       expect(saved, isNotNull);
       expect(saved!.totalScore, isNotNull);
     });
@@ -159,9 +164,9 @@ void main() {
     test('persists components to database', () async {
       final date = DateTime.utc(2026, 4, 4);
       await notifier.calculateDayScore(date);
-      final saved = await dao.getDayScoreForDate(date);
+      final saved = await repository.getDayScoreForDate(date);
       final components =
-          await dao.getComponentsForDayScore(saved!.id);
+          await repository.getComponentsForDayScore(saved!.id);
       expect(components, hasLength(4));
     });
 
@@ -171,7 +176,7 @@ void main() {
 
       // Change module scores via different notifier
       final updatedNotifier = _makeNotifier(
-        dao: dao,
+        repository: repository,
         eventBus: eventBus,
         moduleScores: const {
           'finance': 100.0,
@@ -181,7 +186,7 @@ void main() {
         },
       );
       await updatedNotifier.calculateDayScore(date);
-      final saved = await dao.getDayScoreForDate(date);
+      final saved = await repository.getDayScoreForDate(date);
       expect(saved!.totalScore, 100);
       updatedNotifier.dispose();
     });
@@ -201,7 +206,7 @@ void main() {
     test('updateWeight valid value succeeds', () async {
       final result = await notifier.updateWeight('finance', 2.0);
       expect(result, isA<Success<void>>());
-      final configs = await dao.getScoreConfigs();
+      final configs = await repository.getScoreConfigs();
       final finance = configs.firstWhere((c) => c.moduleKey == 'finance');
       expect(finance.weight, 2.0);
     });

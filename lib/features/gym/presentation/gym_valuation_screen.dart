@@ -3,9 +3,10 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_os/core/constants/app_colors.dart';
-import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
+import 'package:life_os/features/dashboard/domain/models/life_snapshot_model.dart';
 import 'package:life_os/features/gym/domain/gym_validators.dart';
+import 'package:life_os/features/gym/domain/models/body_measurement_model.dart';
 import 'package:intl/intl.dart';
 
 // ---------------------------------------------------------------------------
@@ -21,7 +22,7 @@ class _ExercisePR {
   });
 
   final String name;
-  final int exerciseId;
+  final String exerciseId;
   final double? weightKg;
   final double? oneRM;
 }
@@ -43,7 +44,7 @@ class _GymMetrics {
   final double weeklyVolumeKg;
   final double monthlyVolumeKg;
   final double avgVolumePerWorkout;
-  final BodyMeasurement? latestMeasurement;
+  final BodyMeasurementModel? latestMeasurement;
 }
 
 // ---------------------------------------------------------------------------
@@ -83,11 +84,11 @@ class _GymValuationScreenState extends ConsumerState<GymValuationScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final gymDao = ref.read(gymDaoProvider);
-      final dashDao = ref.read(dashboardDaoProvider);
+      final gymRepo = ref.read(gymRepositoryProvider);
+      final dashRepo = ref.read(dashboardRepositoryProvider);
 
       // --- PRs de ejercicios principales ---
-      final allExercises = await gymDao.watchExercises().first;
+      final allExercises = await gymRepo.watchExercises().first;
       final prs = <_ExercisePR>[];
 
       for (final name in _mainExercises) {
@@ -96,7 +97,7 @@ class _GymValuationScreenState extends ConsumerState<GymValuationScreen> {
             .toList();
         if (match.isNotEmpty) {
           final ex = match.first;
-          final weightPR = await gymDao.getWeightPR(ex.id);
+          final weightPR = await gymRepo.getWeightPR(ex.id);
           // Use Epley 1RM estimate from last PR set (reps=1 for simplest estimate)
           final oneRM = weightPR != null ? calculate1RM(weightPR, 5) : null;
           prs.add(_ExercisePR(
@@ -113,7 +114,7 @@ class _GymValuationScreenState extends ConsumerState<GymValuationScreen> {
       final weekStart = now.subtract(const Duration(days: 7));
       final monthStart = DateTime(now.year, now.month, 1);
 
-      final allWorkouts = await gymDao.watchWorkouts().first;
+      final allWorkouts = await gymRepo.watchWorkouts().first;
       final weekWorkouts = allWorkouts
           .where((w) =>
               w.finishedAt != null && w.startedAt.isAfter(weekStart))
@@ -127,7 +128,7 @@ class _GymValuationScreenState extends ConsumerState<GymValuationScreen> {
       double monthVol = 0;
 
       for (final w in weekWorkouts) {
-        final sets = await gymDao.watchWorkoutSets(w.id).first;
+        final sets = await gymRepo.watchWorkoutSets(w.id).first;
         for (final s in sets) {
           if (!s.isWarmup && s.weightKg != null) {
             weekVol += s.weightKg! * s.reps;
@@ -136,7 +137,7 @@ class _GymValuationScreenState extends ConsumerState<GymValuationScreen> {
       }
 
       for (final w in monthWorkouts) {
-        final sets = await gymDao.watchWorkoutSets(w.id).first;
+        final sets = await gymRepo.watchWorkoutSets(w.id).first;
         for (final s in sets) {
           if (!s.isWarmup && s.weightKg != null) {
             monthVol += s.weightKg! * s.reps;
@@ -147,7 +148,7 @@ class _GymValuationScreenState extends ConsumerState<GymValuationScreen> {
       final avgVol = weekWorkouts.isNotEmpty ? weekVol / weekWorkouts.length : 0.0;
 
       // --- Ultima medicion corporal ---
-      final latestMeasurement = await gymDao.getLatestMeasurement();
+      final latestMeasurement = await gymRepo.getLatestMeasurement();
 
       final metrics = _GymMetrics(
         prs: prs,
@@ -160,7 +161,7 @@ class _GymValuationScreenState extends ConsumerState<GymValuationScreen> {
       );
 
       // --- Ultima valoracion previa ---
-      final snapshots = await dashDao.getAllSnapshots();
+      final snapshots = await dashRepo.getAllSnapshots();
       Map<String, dynamic>? prevData;
       for (final snap in snapshots) {
         try {
@@ -220,9 +221,9 @@ class _GymValuationScreenState extends ConsumerState<GymValuationScreen> {
     if (_current == null || _saving) return;
     setState(() => _saving = true);
     try {
-      final dashDao = ref.read(dashboardDaoProvider);
+      final dashRepo = ref.read(dashboardRepositoryProvider);
       final data = _serializeMetrics();
-      await dashDao.insertValuationSnapshot(
+      await dashRepo.insertValuationSnapshot(
         moduleKey: 'gym',
         data: data,
       );
@@ -876,7 +877,7 @@ class _ValuationHistoryScreen extends ConsumerStatefulWidget {
 
 class _ValuationHistoryScreenState
     extends ConsumerState<_ValuationHistoryScreen> {
-  List<LifeSnapshot> _snapshots = [];
+  List<LifeSnapshotModel> _snapshots = [];
   bool _loading = true;
 
   @override
@@ -886,8 +887,8 @@ class _ValuationHistoryScreenState
   }
 
   Future<void> _load() async {
-    final dashDao = ref.read(dashboardDaoProvider);
-    final all = await dashDao.getAllSnapshots();
+    final dashRepo = ref.read(dashboardRepositoryProvider);
+    final all = await dashRepo.getAllSnapshots();
     final filtered = all.where((s) {
       try {
         final decoded = jsonDecode(s.metricsJson) as Map<String, dynamic>;

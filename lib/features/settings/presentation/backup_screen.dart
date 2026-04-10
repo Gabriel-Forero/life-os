@@ -74,13 +74,13 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
     setState(() => _exporting = true);
     try {
       // Gather data from all modules
-      final financeDao = ref.read(financeDaoProvider);
-      final nutritionDao = ref.read(nutritionDaoProvider);
-      final habitsDao = ref.read(habitsDaoProvider);
-      final sleepDao = ref.read(sleepDaoProvider);
-      final mentalDao = ref.read(mentalDaoProvider);
-      final goalsDao = ref.read(goalsDaoProvider);
-      final settingsDao = ref.read(appSettingsDaoProvider);
+      final financeRepo = ref.read(financeRepositoryProvider);
+      final nutritionRepo = ref.read(nutritionDataRepositoryProvider);
+      final habitsDao = ref.read(habitsRepositoryProvider);
+      final sleepDao = ref.read(sleepRepositoryProvider);
+      final mentalRepo = ref.read(mentalRepositoryProvider);
+      final goalsDao = ref.read(goalsRepositoryProvider);
+      final settingsRepo = ref.read(settingsRepositoryProvider);
 
       final now = DateTime.now();
       final thirtyDaysAgo = now.subtract(const Duration(days: 30));
@@ -89,27 +89,16 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
       final moduleEntries = <BackupModuleEntry>[];
 
       // Settings
-      final settings = await settingsDao.getSettings();
+      final settings = await settingsRepo.getSettings();
       final settingsList = settings != null
-          ? [
-              {
-                'id': settings.id,
-                'userName': settings.userName,
-                'language': settings.language,
-                'currency': settings.currency,
-                'themeMode': settings.themeMode,
-                'primaryGoal': settings.primaryGoal,
-                'enabledModules': settings.enabledModules,
-                'onboardingCompleted': settings.onboardingCompleted,
-              }
-            ]
-          : [];
+          ? [settings.toMap()]
+          : <Map<String, dynamic>>[];
       moduleJsons['settings'] = jsonEncode(settingsList);
       moduleEntries
           .add(BackupModuleEntry(name: 'settings', recordCount: settingsList.length));
 
       // Finance — transactions from last 30 days as a sample
-      final transactions = await financeDao
+      final transactions = await financeRepo
           .watchTransactions(thirtyDaysAgo, now)
           .first;
       final transactionsData = transactions
@@ -127,7 +116,7 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
           BackupModuleEntry(name: 'finance', recordCount: transactionsData.length));
 
       // Nutrition — food items
-      final foodItems = await nutritionDao.searchFoodItems('');
+      final foodItems = await nutritionRepo.searchFoodItems('');
       final foodData = foodItems
           .map((f) => {
                 'id': f.id,
@@ -198,7 +187,7 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
           .add(BackupModuleEntry(name: 'sleep', recordCount: sleepData.length));
 
       // Mental — mood logs (recent 30 days)
-      final moodLogs = await mentalDao.watchMoodLogs(thirtyDaysAgo, now).first;
+      final moodLogs = await mentalRepo.watchMoodLogs(thirtyDaysAgo, now).first;
       final moodData = moodLogs
           .map((m) => {
                 'id': m.id,

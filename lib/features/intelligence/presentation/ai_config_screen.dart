@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
 import 'package:life_os/features/intelligence/domain/ai_context_builder.dart';
+import 'package:life_os/features/intelligence/domain/models/ai_configuration_model.dart';
 import 'package:life_os/features/intelligence/domain/openai_provider.dart';
 
 // ---------------------------------------------------------------------------
@@ -155,11 +155,11 @@ class _AIConfigScreenState extends ConsumerState<AIConfigScreen> {
     setState(() => _isClearingHistory = true);
 
     try {
-      final dao = ref.read(aiDaoProvider);
+      final repository = ref.read(aiRepositoryProvider);
       // Get all conversations and delete each (cascade deletes messages)
-      final conversations = await dao.getAllConversations();
+      final conversations = await repository.getAllConversations();
       for (final conv in conversations) {
-        await dao.deleteConversation(conv.id);
+        await repository.deleteConversation(conv.id);
       }
       if (mounted) {
         setState(() {
@@ -416,8 +416,8 @@ class _AIConfigScreenState extends ConsumerState<AIConfigScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              StreamBuilder<List<AiConfiguration>>(
-                stream: notifier.dao.watchAllConfigurations(),
+              StreamBuilder<List<AiConfigurationModel>>(
+                stream: notifier.repository.watchAllConfigurations(),
                 initialData: notifier.state.configurations,
                 builder: (context, snapshot) {
                   final configs = snapshot.data ?? [];
@@ -629,7 +629,7 @@ class _ConfigTile extends StatelessWidget {
     required this.onDelete,
   });
 
-  final AiConfiguration config;
+  final AiConfigurationModel config;
   final Color primaryColor;
   final VoidCallback onSetDefault;
   final VoidCallback onDelete;

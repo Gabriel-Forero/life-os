@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:life_os/core/constants/app_colors.dart';
-import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
 import 'package:life_os/core/router/app_router.dart';
 import 'package:life_os/features/goals/domain/goals_input.dart';
+import 'package:life_os/features/goals/domain/models/goal_milestone_model.dart';
+import 'package:life_os/features/goals/domain/models/life_goal_model.dart';
+import 'package:life_os/features/goals/domain/models/sub_goal_model.dart';
 
 // ---------------------------------------------------------------------------
 // Add / Edit Goal Screen
@@ -20,9 +22,9 @@ class AddEditGoalScreen extends ConsumerStatefulWidget {
     this.onSaveGoal,
   });
 
-  final LifeGoal? existingGoal;
-  final List<SubGoal> existingSubGoals;
-  final List<GoalMilestone> existingMilestones;
+  final LifeGoalModel? existingGoal;
+  final List<SubGoalModel> existingSubGoals;
+  final List<GoalMilestoneModel> existingMilestones;
 
   /// Optional override callback; if null, saves via provider directly.
   final void Function(GoalInput input)? onSaveGoal;

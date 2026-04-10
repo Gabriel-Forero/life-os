@@ -22,7 +22,7 @@ class SleepInterruptionInput {
     this.reason,
   });
 
-  final int sleepLogId;
+  final String sleepLogId;
   final DateTime time;
   final int durationMinutes;
   final String? reason;

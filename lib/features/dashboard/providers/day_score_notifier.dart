@@ -1,12 +1,14 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/domain/app_event.dart';
 import 'package:life_os/core/domain/app_failure.dart';
 import 'package:life_os/core/domain/result.dart';
 import 'package:life_os/core/services/event_bus.dart';
+import 'package:life_os/features/dashboard/data/dashboard_repository.dart';
 import 'package:life_os/features/dashboard/database/dashboard_dao.dart';
+import 'package:life_os/features/dashboard/domain/models/day_score_config_model.dart';
+import 'package:life_os/features/dashboard/domain/models/day_score_model.dart';
 
 // ---------------------------------------------------------------------------
 // State
@@ -38,16 +40,16 @@ class DayScoreState {
 
   final int? todayScore;
   final List<ScoreComponentData> components;
-  final List<DayScoreConfig> configs;
-  final List<DayScore> history;
+  final List<DayScoreConfigModel> configs;
+  final List<DayScoreModel> history;
   final bool isLoading;
   final String? errorMessage;
 
   DayScoreState copyWith({
     int? todayScore,
     List<ScoreComponentData>? components,
-    List<DayScoreConfig>? configs,
-    List<DayScore>? history,
+    List<DayScoreConfigModel>? configs,
+    List<DayScoreModel>? history,
     bool? isLoading,
     String? errorMessage,
   }) {
@@ -74,14 +76,14 @@ class DayScoreState {
 /// - [GoalProgressUpdatedEvent]
 class DayScoreNotifier extends ChangeNotifier {
   DayScoreNotifier({
-    required this.dao,
+    required this.repository,
     required this.eventBus,
     required this.moduleScoreProvider,
   }) {
     _subscribeToEvents();
   }
 
-  final DashboardDao dao;
+  final DashboardRepository repository;
   final EventBus eventBus;
 
   /// Callback that returns the raw score [0.0–100.0] for a given module key.
@@ -102,9 +104,9 @@ class DayScoreNotifier extends ChangeNotifier {
     _state = _state.copyWith(isLoading: true);
     notifyListeners();
     try {
-      await dao.seedDefaultConfigsIfEmpty();
-      final configs = await dao.getScoreConfigs();
-      final history = await dao.getRecentDayScores();
+      await repository.seedDefaultConfigsIfEmpty();
+      final configs = await repository.getScoreConfigs();
+      final history = await repository.getRecentDayScores();
       _state = _state.copyWith(
         configs: configs,
         history: history,
@@ -131,7 +133,7 @@ class DayScoreNotifier extends ChangeNotifier {
   /// Only enabled modules (is_enabled = true, weight > 0) participate.
   Future<Result<int>> calculateDayScore(DateTime date) async {
     try {
-      final configs = await dao.getScoreConfigs();
+      final configs = await repository.getScoreConfigs();
       final enabledConfigs = configs.where((c) => c.isEnabled && c.weight > 0);
 
       if (enabledConfigs.isEmpty) {
@@ -162,7 +164,7 @@ class DayScoreNotifier extends ChangeNotifier {
           (weightedSum / totalWeight).round().clamp(0, 100);
 
       final now = DateTime.now();
-      await dao.upsertDayScore(
+      await repository.upsertDayScore(
         date: date,
         totalScore: totalScore,
         calculatedAt: now,
@@ -176,7 +178,7 @@ class DayScoreNotifier extends ChangeNotifier {
             .toList(),
       );
 
-      final history = await dao.getRecentDayScores();
+      final history = await repository.getRecentDayScores();
       _state = _state.copyWith(
         todayScore: totalScore,
         components: components,
@@ -204,7 +206,7 @@ class DayScoreNotifier extends ChangeNotifier {
   // ---------------------------------------------------------------------------
 
   /// Returns current score configurations.
-  Future<List<DayScoreConfig>> getScoreConfigs() => dao.getScoreConfigs();
+  Future<List<DayScoreConfigModel>> getScoreConfigs() => repository.getScoreConfigs();
 
   /// Updates the weight for a module. Weight must be in (0.0, 10.0].
   Future<Result<void>> updateWeight(String moduleKey, double weight) async {
@@ -217,8 +219,8 @@ class DayScoreNotifier extends ChangeNotifier {
     }
 
     try {
-      await dao.updateWeightByKey(moduleKey, weight);
-      final configs = await dao.getScoreConfigs();
+      await repository.updateWeightByKey(moduleKey, weight);
+      final configs = await repository.getScoreConfigs();
       _state = _state.copyWith(configs: configs);
     notifyListeners();
       await calculateDayScore(DateTime.now());
@@ -233,10 +235,10 @@ class DayScoreNotifier extends ChangeNotifier {
   }
 
   /// Enables or disables a module in the score config.
-  Future<Result<void>> setModuleEnabled(int configId, {required bool isEnabled, required double weight}) async {
+  Future<Result<void>> setModuleEnabled(String configId, {required bool isEnabled, required double weight}) async {
     try {
-      await dao.updateScoreConfig(configId, weight: weight, isEnabled: isEnabled);
-      final configs = await dao.getScoreConfigs();
+      await repository.updateScoreConfig(configId, weight: weight, isEnabled: isEnabled);
+      final configs = await repository.getScoreConfigs();
       _state = _state.copyWith(configs: configs);
     notifyListeners();
       await calculateDayScore(DateTime.now());

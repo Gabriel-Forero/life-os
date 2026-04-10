@@ -112,11 +112,11 @@ class _BreathingScreenState extends ConsumerState<BreathingScreen>
   }
 
   Future<void> _loadWeeklyCount() async {
-    final dao = ref.read(mentalDaoProvider);
+    final repo = ref.read(mentalRepositoryProvider);
     final now = DateTime.now();
     final weekStart = now.subtract(Duration(days: now.weekday - 1));
     final from = DateTime(weekStart.year, weekStart.month, weekStart.day);
-    final sessions = await dao.getBreathingSessions(from, now);
+    final sessions = await repo.getBreathingSessions(from, now);
     if (mounted) {
       setState(() => _weeklySessionCount = sessions.length);
     }

@@ -3,10 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:life_os/core/constants/app_colors.dart';
-import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
 import 'package:life_os/core/widgets/chart_card.dart';
-import 'package:life_os/features/habits/database/habits_dao.dart';
+import 'package:life_os/features/habits/data/habits_repository.dart';
+import 'package:life_os/features/habits/domain/models/habit_model.dart';
+import 'package:life_os/features/habits/domain/models/habit_log_model.dart';
 
 // ---------------------------------------------------------------------------
 // Estado de un dia en el calendario del habito.
@@ -35,7 +36,7 @@ class HabitDetailScreen extends ConsumerStatefulWidget {
     this.habitId,
   });
 
-  final int? habitId;
+  final String? habitId;
 
   @override
   ConsumerState<HabitDetailScreen> createState() => _HabitDetailScreenState();
@@ -71,7 +72,7 @@ class _HabitDetailScreenState extends ConsumerState<HabitDetailScreen> {
     return _displayedMonth.isBefore(currentMonth);
   }
 
-  void _handleArchive(Habit habit) {
+  void _handleArchive(HabitModel habit) {
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -106,14 +107,14 @@ class _HabitDetailScreenState extends ConsumerState<HabitDetailScreen> {
     );
   }
 
-  void _handleEdit(Habit habit) {
+  void _handleEdit(HabitModel habit) {
     GoRouter.of(context).push('/habits/${habit.id}/edit');
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final dao = ref.watch(habitsDaoProvider);
+    final repo = ref.watch(habitsRepositoryProvider);
     final habitId = widget.habitId;
 
     if (habitId == null) {
@@ -130,8 +131,8 @@ class _HabitDetailScreenState extends ConsumerState<HabitDetailScreen> {
     final monthLabel =
         '${months[_displayedMonth.month - 1]} ${_displayedMonth.year}';
 
-    return StreamBuilder<List<Habit>>(
-      stream: dao.watchActiveHabits(),
+    return StreamBuilder<List<HabitModel>>(
+      stream: repo.watchActiveHabits(),
       builder: (context, snapshot) {
         final habits = snapshot.data ?? [];
         final habit =
@@ -223,7 +224,7 @@ class _HabitDetailBody extends ConsumerWidget {
     required this.onNextMonth,
   });
 
-  final Habit habit;
+  final HabitModel habit;
   final DateTime displayedMonth;
   final String monthLabel;
   final bool canGoNext;
@@ -232,7 +233,7 @@ class _HabitDetailBody extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final dao = ref.watch(habitsDaoProvider);
+    final repo = ref.watch(habitsRepositoryProvider);
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
@@ -242,13 +243,13 @@ class _HabitDetailBody extends ConsumerWidget {
         DateTime(displayedMonth.year, displayedMonth.month + 1, 0).day;
     final to = DateTime(displayedMonth.year, displayedMonth.month, daysInMonth);
 
-    return StreamBuilder<List<HabitLog>>(
-      stream: dao.watchHabitLogs(habit.id, from, to),
+    return StreamBuilder<List<HabitLogModel>>(
+      stream: repo.watchHabitLogs(habit.id, from, to),
       builder: (context, logsSnapshot) {
         final monthLogs = logsSnapshot.data ?? [];
 
         return FutureBuilder<(int, int, int, double)>(
-          future: _loadStats(dao, today),
+          future: _loadStats(repo, today),
           builder: (context, statsSnapshot) {
             final stats = statsSnapshot.data;
             final currentStreak = stats?.$1 ?? 0;
@@ -382,28 +383,27 @@ class _HabitDetailBody extends ConsumerWidget {
   }
 
   Future<(int, int, int, double)> _loadStats(
-    dynamic dao,
+    HabitsRepository repo,
     DateTime today,
   ) async {
-    final currentStreak =
-        await dao.streakCount(habit.id, today) as int;
-    final bestStreak = await dao.longestStreak(habit.id) as int;
+    final currentStreak = await repo.streakCount(habit.id, today);
+    final bestStreak = await repo.longestStreak(habit.id);
     final now = DateTime.now();
     final from30 = now.subtract(const Duration(days: 30));
-    final rate = await dao.completionRate(
+    final rate = await repo.completionRate(
       habit.id,
       from30,
       now,
-    ) as double;
+    );
 
     // Total check-ins: count all logs
-    final allLogs = await (dao as dynamic)
+    final allLogs = await repo
         .watchHabitLogs(
           habit.id,
           DateTime(2000),
           DateTime(2100),
         )
-        .first as List<HabitLog>;
+        .first;
     return (currentStreak, bestStreak, allLogs.length, rate);
   }
 }
@@ -420,7 +420,7 @@ class _HabitHeader extends StatelessWidget {
     required this.bestStreak,
   });
 
-  final Habit habit;
+  final HabitModel habit;
   final int currentStreak;
   final int bestStreak;
 
@@ -592,9 +592,9 @@ class _CalendarGrid extends StatelessWidget {
     required this.monthLogs,
   });
 
-  final Habit habit;
+  final HabitModel habit;
   final DateTime displayedMonth;
-  final List<HabitLog> monthLogs;
+  final List<HabitLogModel> monthLogs;
 
   Color _dayColor(_DayStatus status) => switch (status) {
         _DayStatus.completed => AppColors.success,
@@ -777,7 +777,7 @@ class _StatsGrid extends StatelessWidget {
     required this.completionRate,
   });
 
-  final Habit habit;
+  final HabitModel habit;
   final int currentStreak;
   final int bestStreak;
   final int totalCheckIns;
@@ -909,16 +909,16 @@ class _HabitCompletionTrendChart extends ConsumerWidget {
     required this.habitColor,
   });
 
-  final int habitId;
+  final String habitId;
   final Color habitColor;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final dao = ref.watch(habitsDaoProvider);
+    final repo = ref.watch(habitsRepositoryProvider);
     final now = DateTime.now();
 
     return FutureBuilder<List<({String label, double rate})>>(
-      future: _buildWeeklyRates(dao, now),
+      future: _buildWeeklyRates(repo, now),
       builder: (context, snapshot) {
         final weekData = snapshot.data ?? [];
         final hasData = weekData.any((w) => w.rate > 0);
@@ -939,7 +939,7 @@ class _HabitCompletionTrendChart extends ConsumerWidget {
   }
 
   Future<List<({String label, double rate})>> _buildWeeklyRates(
-    HabitsDao dao,
+    HabitsRepository repo,
     DateTime now,
   ) async {
     final result = <({String label, double rate})>[];
@@ -948,7 +948,7 @@ class _HabitCompletionTrendChart extends ConsumerWidget {
       final weekEnd = now.subtract(Duration(days: w * 7));
       final weekStart = weekEnd.subtract(const Duration(days: 6));
       final label = '${weekStart.day}/${weekStart.month}';
-      final rate = await dao.completionRate(habitId, weekStart, weekEnd);
+      final rate = await repo.completionRate(habitId, weekStart, weekEnd);
       result.add((label: label, rate: rate));
     }
 

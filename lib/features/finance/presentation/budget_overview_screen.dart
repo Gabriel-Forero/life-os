@@ -4,11 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:life_os/core/constants/app_breakpoints.dart';
 import 'package:life_os/core/constants/app_colors.dart';
-import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
-import 'package:life_os/features/finance/database/finance_dao.dart';
+import 'package:life_os/features/finance/data/finance_repository.dart';
 import 'package:life_os/core/widgets/empty_state_view.dart';
 import 'package:life_os/features/finance/domain/amount_formatting.dart';
+import 'package:life_os/features/finance/domain/models/budget_model.dart';
+import 'package:life_os/features/finance/domain/models/budget_template_model.dart';
+import 'package:life_os/features/finance/domain/models/category_group_model.dart';
+import 'package:life_os/features/finance/domain/models/category_model.dart';
 import 'package:go_router/go_router.dart';
 import 'package:life_os/core/router/app_router.dart';
 import 'package:life_os/l10n/app_localizations.dart';
@@ -26,7 +29,7 @@ class _BudgetWithCategory {
     required this.spentCents,
   });
 
-  final Budget budget;
+  final BudgetModel budget;
   final String categoryName;
   final String categoryIcon;
   final int categoryColor;
@@ -54,7 +57,7 @@ class _GroupData {
     required this.items,
   });
 
-  final CategoryGroup group;
+  final CategoryGroupModel group;
   final int budgetCents;
   final int spentCents;
   final List<_BudgetWithCategory> items;
@@ -87,7 +90,7 @@ class BudgetOverviewScreen extends ConsumerStatefulWidget {
 class _BudgetOverviewScreenState extends ConsumerState<BudgetOverviewScreen> {
   late int _month;
   late int _year;
-  int? _selectedBudgetId;
+  String? _selectedBudgetId;
 
   @override
   void initState() {
@@ -118,7 +121,7 @@ class _BudgetOverviewScreenState extends ConsumerState<BudgetOverviewScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final dao = ref.watch(financeDaoProvider);
+    final repo = ref.watch(financeRepositoryProvider);
 
     return Scaffold(
       key: const ValueKey('budget-overview-screen'),
@@ -132,8 +135,8 @@ class _BudgetOverviewScreenState extends ConsumerState<BudgetOverviewScreen> {
           child: const Text('Presupuestos'),
         ),
       ),
-      body: StreamBuilder<List<Budget>>(
-        stream: dao.watchBudgets(_month, _year),
+      body: StreamBuilder<List<BudgetModel>>(
+        stream: repo.watchBudgets(_month, _year),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -154,7 +157,7 @@ class _BudgetOverviewScreenState extends ConsumerState<BudgetOverviewScreen> {
           }
 
           return _BudgetDataLoader(
-            dao: dao,
+            repo: repo,
             budgets: budgets,
             month: _month,
             year: _year,
@@ -177,7 +180,7 @@ class _BudgetOverviewScreenState extends ConsumerState<BudgetOverviewScreen> {
   }
 
   void _showSetBudgetDialog(
-      BuildContext context, WidgetRef ref, Budget? existing) {
+      BuildContext context, WidgetRef ref, BudgetModel? existing) {
     showDialog<void>(
       context: context,
       builder: (ctx) => _SetBudgetDialog(existing: existing, ref: ref),
@@ -232,11 +235,11 @@ class _BudgetOverviewScreenState extends ConsumerState<BudgetOverviewScreen> {
   }
 
   void _showApplyTemplateDialog(BuildContext context, WidgetRef ref) {
-    final dao = ref.read(financeDaoProvider);
+    final repo = ref.read(financeRepositoryProvider);
     showDialog<void>(
       context: context,
-      builder: (ctx) => StreamBuilder<List<BudgetTemplate>>(
-        stream: dao.watchTemplates(),
+      builder: (ctx) => StreamBuilder<List<BudgetTemplateModel>>(
+        stream: repo.watchTemplates(),
         builder: (context, snapshot) {
           final templates = snapshot.data ?? [];
           return AlertDialog(
@@ -304,7 +307,7 @@ class _BudgetOverviewScreenState extends ConsumerState<BudgetOverviewScreen> {
 
 class _BudgetDataLoader extends StatelessWidget {
   const _BudgetDataLoader({
-    required this.dao,
+    required this.repo,
     required this.budgets,
     required this.month,
     required this.year,
@@ -315,14 +318,14 @@ class _BudgetDataLoader extends StatelessWidget {
     required this.onAddBudget,
   });
 
-  final FinanceDao dao;
-  final List<Budget> budgets;
+  final FinanceRepository repo;
+  final List<BudgetModel> budgets;
   final int month;
   final int year;
-  final int? selectedBudgetId;
+  final String? selectedBudgetId;
   final ValueChanged<int> onMonthChange;
-  final ValueChanged<int> onSelectBudget;
-  final ValueChanged<Budget> onEditBudget;
+  final ValueChanged<String> onSelectBudget;
+  final ValueChanged<BudgetModel> onEditBudget;
   final VoidCallback onAddBudget;
 
   @override
@@ -330,28 +333,28 @@ class _BudgetDataLoader extends StatelessWidget {
     // Load spent amounts
     return FutureBuilder<List<int>>(
       future: Future.wait(
-        budgets.map((b) => dao.spentInBudget(b.categoryId, month, year)),
+        budgets.map((b) => repo.spentInBudget(b.categoryId, month, year)),
       ),
       builder: (context, spentSnap) {
         final spentList =
             spentSnap.data ?? List.filled(budgets.length, 0);
 
         // Load category details
-        return StreamBuilder<List<Category>>(
-          stream: dao.watchCategories(),
+        return StreamBuilder<List<CategoryModel>>(
+          stream: repo.watchCategories(),
           builder: (context, catSnap) {
             final categories = catSnap.data ?? [];
-            final catMap = {for (final c in categories) c.id: c};
+            final catMap = <String, CategoryModel>{for (final c in categories) c.id: c};
 
             // Load groups + group members + global config
-            return StreamBuilder<List<CategoryGroup>>(
-              stream: dao.watchGroups(),
+            return StreamBuilder<List<CategoryGroupModel>>(
+              stream: repo.watchGroups(),
               builder: (context, groupSnap) {
                 final groups = groupSnap.data ?? [];
 
                 return FutureBuilder<_ResolvedBudgetData>(
                   future: _resolveBudgetData(
-                    dao: dao,
+                    repo: repo,
                     budgets: budgets,
                     spentList: spentList,
                     catMap: catMap,
@@ -424,11 +427,11 @@ class _ResolvedBudgetData {
 }
 
 Future<_ResolvedBudgetData> _resolveBudgetData({
-  required FinanceDao dao,
-  required List<Budget> budgets,
+  required FinanceRepository repo,
+  required List<BudgetModel> budgets,
   required List<int> spentList,
-  required Map<int, Category> catMap,
-  required List<CategoryGroup> groups,
+  required Map<String, CategoryModel> catMap,
+  required List<CategoryGroupModel> groups,
   required int month,
   required int year,
 }) async {
@@ -446,9 +449,9 @@ Future<_ResolvedBudgetData> _resolveBudgetData({
   });
 
   // Get group membership for each category
-  final catToGroup = <int, int>{};
+  final catToGroup = <String, String>{};
   for (final group in groups) {
-    final members = await dao.getGroupMembers(group.id);
+    final members = await repo.getGroupMembers(group.id);
     for (final m in members) {
       catToGroup[m.categoryId] = group.id;
     }
@@ -462,7 +465,7 @@ Future<_ResolvedBudgetData> _resolveBudgetData({
         .toList();
     if (groupItems.isEmpty) continue;
 
-    final gb = await dao.getGroupBudget(group.id, month, year);
+    final gb = await repo.getGroupBudget(group.id, month, year);
     final groupSpent =
         groupItems.fold<int>(0, (s, item) => s + item.spentCents);
 
@@ -483,7 +486,7 @@ Future<_ResolvedBudgetData> _resolveBudgetData({
   final totalBudget = budgets.fold<int>(0, (s, b) => s + b.amountCents);
   final totalSpent = spentList.fold<int>(0, (s, v) => s + v);
 
-  final config = await dao.getMonthlyConfig(month, year);
+  final config = await repo.getMonthlyConfig(month, year);
 
   return _ResolvedBudgetData(
     groups: groupDataList,
@@ -518,10 +521,10 @@ class _DesktopLayout extends StatelessWidget {
   final int totalSpentCents;
   final int month;
   final int year;
-  final int? selectedBudgetId;
+  final String? selectedBudgetId;
   final ValueChanged<int> onMonthChange;
-  final ValueChanged<int> onSelectBudget;
-  final ValueChanged<Budget> onEditBudget;
+  final ValueChanged<String> onSelectBudget;
+  final ValueChanged<BudgetModel> onEditBudget;
   final double sidebarWidth;
 
   List<_BudgetWithCategory> get _allItems => [
@@ -594,7 +597,7 @@ class _PhoneLayout extends StatelessWidget {
   final int month;
   final int year;
   final ValueChanged<int> onMonthChange;
-  final ValueChanged<Budget> onEditBudget;
+  final ValueChanged<BudgetModel> onEditBudget;
 
   @override
   Widget build(BuildContext context) {
@@ -696,9 +699,9 @@ class _SidebarContent extends StatelessWidget {
   final int totalSpentCents;
   final int month;
   final int year;
-  final int? selectedBudgetId;
+  final String? selectedBudgetId;
   final ValueChanged<int> onMonthChange;
-  final ValueChanged<int> onSelectBudget;
+  final ValueChanged<String> onSelectBudget;
 
   @override
   Widget build(BuildContext context) {
@@ -763,9 +766,9 @@ class _GroupSection extends StatefulWidget {
   });
 
   final _GroupData groupData;
-  final int? selectedBudgetId;
-  final ValueChanged<int>? onSelectBudget;
-  final ValueChanged<Budget>? onEditBudget;
+  final String? selectedBudgetId;
+  final ValueChanged<String>? onSelectBudget;
+  final ValueChanged<BudgetModel>? onEditBudget;
 
   @override
   State<_GroupSection> createState() => _GroupSectionState();
@@ -1631,7 +1634,7 @@ class _BudgetFab extends StatelessWidget {
 class _SetBudgetDialog extends StatefulWidget {
   const _SetBudgetDialog({this.existing, required this.ref});
 
-  final Budget? existing;
+  final BudgetModel? existing;
   final WidgetRef ref;
 
   @override
@@ -1664,7 +1667,7 @@ class _SetBudgetDialogState extends State<_SetBudgetDialog> {
     final now = DateTime.now();
     final notifier = widget.ref.read(financeNotifierProvider);
     final categoryId =
-        widget.existing?.categoryId ?? 1; // fallback to first category
+        widget.existing?.categoryId ?? '1'; // fallback to first category
 
     await notifier.setBudget(
       categoryId: categoryId,

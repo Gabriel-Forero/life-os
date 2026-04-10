@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
+import 'package:life_os/features/intelligence/domain/models/ai_conversation_model.dart';
 import 'package:life_os/features/intelligence/presentation/chat_screen.dart';
 
 // ---------------------------------------------------------------------------
@@ -16,7 +16,7 @@ class ConversationListScreen extends ConsumerWidget {
     final notifier = ref.watch(aiNotifierProvider);
     final theme = Theme.of(context);
 
-    void openConversation(AiConversation conversation) {
+    void openConversation(AiConversationModel conversation) {
       Navigator.push(
         context,
         MaterialPageRoute<void>(
@@ -51,8 +51,8 @@ class ConversationListScreen extends ConsumerWidget {
         tooltip: 'Nueva conversacion',
         child: const Icon(Icons.add_comment_outlined),
       ),
-      body: StreamBuilder<List<AiConversation>>(
-        stream: notifier.dao.watchAllConversations(),
+      body: StreamBuilder<List<AiConversationModel>>(
+        stream: notifier.repository.watchAllConversations(),
         initialData: notifier.state.conversations,
         builder: (context, snapshot) {
           final conversations = snapshot.data ?? [];
@@ -126,7 +126,7 @@ class _ConversationTile extends StatelessWidget {
     required this.onDelete,
   });
 
-  final AiConversation conversation;
+  final AiConversationModel conversation;
   final ThemeData theme;
   final VoidCallback onTap;
   final VoidCallback onDelete;

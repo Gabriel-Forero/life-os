@@ -39,7 +39,7 @@ class _WorkoutExercise {
     this.restSeconds = 90,
   }) : sets = sets;
 
-  final int id;
+  final String id;
   final String name;
   final String primaryMuscle;
   final List<_PendingSet> sets;
@@ -66,7 +66,7 @@ class ActiveWorkoutScreen extends ConsumerStatefulWidget {
 
   /// Nombre de la rutina en curso. Nulo si es un entrenamiento libre.
   final String? routineName;
-  final int? routineId;
+  final String? routineId;
 
   /// If set, only exercises belonging to this day of the multi-day program are
   /// loaded. When null, all exercises of the routine are loaded (single-day).
@@ -82,7 +82,7 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
   late final Stopwatch _stopwatch;
   late final Timer _elapsedTimer;
 
-  int? _workoutId;
+  String? _workoutId;
 
   Duration _elapsed = Duration.zero;
 
@@ -109,24 +109,24 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
     }
   }
 
-  Future<void> _loadRoutineExercises(int routineId) async {
-    final dao = ref.read(gymDaoProvider);
+  Future<void> _loadRoutineExercises(String routineId) async {
+    final repo = ref.read(gymRepositoryProvider);
     // If a specific day is requested, load only that day's exercises.
     final routineExercises = widget.dayNumber != null
-        ? await dao
+        ? await repo
             .watchRoutineExercisesForDay(routineId, widget.dayNumber!)
             .first
-        : await dao.watchRoutineExercises(routineId).first;
+        : await repo.watchRoutineExercises(routineId).first;
     if (!mounted) return;
     final List<_WorkoutExercise> loaded = [];
     for (final re in routineExercises) {
       // Fetch the exercise record by id
-      final allExercises = await dao.watchExercises().first;
+      final allExercises = await repo.watchExercises().first;
       final ex = allExercises.where((e) => e.id == re.exerciseId).firstOrNull;
       if (ex == null) continue;
 
       // Look up last-session weight for reference
-      final lastWeightPR = await dao.getWeightPR(re.exerciseId);
+      final lastWeightPR = await repo.getWeightPR(re.exerciseId);
 
       final sets = List.generate(
         re.defaultSets,
@@ -154,7 +154,7 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
 
   Future<void> _openExercisePicker() async {
     final result =
-        await showModalBottomSheet<({int id, String name, String muscle})>(
+        await showModalBottomSheet<({String id, String name, String muscle})>(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
@@ -163,8 +163,8 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
       builder: (ctx) => _ExercisePickerSheet(),
     );
     if (result != null && mounted) {
-      final dao = ref.read(gymDaoProvider);
-      final lastWeight = await dao.getWeightPR(result.id);
+      final repo = ref.read(gymRepositoryProvider);
+      final lastWeight = await repo.getWeightPR(result.id);
       setState(() {
         _exercises.add(_WorkoutExercise(
           id: result.id,
@@ -270,8 +270,8 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
     if (!mounted) return;
 
     // Gather summary data
-    final dao = ref.read(gymDaoProvider);
-    final sets = await dao.watchWorkoutSets(wId).first;
+    final repo = ref.read(gymRepositoryProvider);
+    final sets = await repo.watchWorkoutSets(wId).first;
     final workSets = sets.where((s) => !s.isWarmup).toList();
     final totalSets = sets.length;
     final totalVolume = workSets
@@ -675,7 +675,7 @@ class _SetRow extends StatefulWidget {
     required this.onRepsChanged,
   });
 
-  final int exerciseId;
+  final String exerciseId;
   final _PendingSet set;
   final VoidCallback onConfirm;
   final ValueChanged<bool> onWarmupToggled;
@@ -935,7 +935,7 @@ class _ExercisePickerSheetState extends ConsumerState<_ExercisePickerSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final dao = ref.watch(gymDaoProvider);
+    final repo = ref.watch(gymRepositoryProvider);
 
     return DraggableScrollableSheet(
       initialChildSize: 0.75,
@@ -982,7 +982,7 @@ class _ExercisePickerSheetState extends ConsumerState<_ExercisePickerSheet> {
             const SizedBox(height: 8),
             Expanded(
               child: StreamBuilder(
-                stream: dao.watchExercises(
+                stream: repo.watchExercises(
                     query: _query.isEmpty ? null : _query),
                 builder: (context, snapshot) {
                   final exercises = snapshot.data ?? [];

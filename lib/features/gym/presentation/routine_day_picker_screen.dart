@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_os/core/constants/app_colors.dart';
-import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
+import 'package:life_os/features/gym/domain/models/routine_exercise_model.dart';
+import 'package:life_os/features/gym/domain/models/routine_model.dart';
 import 'package:life_os/features/gym/presentation/active_workout_screen.dart';
 
 // ---------------------------------------------------------------------------
@@ -20,11 +21,11 @@ class RoutineDayPickerScreen extends ConsumerWidget {
     required this.routine,
   });
 
-  final Routine routine;
+  final RoutineModel routine;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final dao = ref.watch(gymDaoProvider);
+    final repo = ref.watch(gymRepositoryProvider);
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -49,8 +50,8 @@ class RoutineDayPickerScreen extends ConsumerWidget {
           ),
         ),
       ),
-      body: StreamBuilder(
-        stream: dao.watchRoutineExercises(routine.id),
+      body: StreamBuilder<List<RoutineExerciseModel>>(
+        stream: repo.watchRoutineExercises(routine.id),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());

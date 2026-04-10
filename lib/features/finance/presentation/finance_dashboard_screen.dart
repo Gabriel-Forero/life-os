@@ -2,11 +2,12 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_os/core/constants/app_colors.dart';
-import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
 import 'package:life_os/core/widgets/chart_card.dart';
 import 'package:life_os/core/widgets/stat_card.dart';
 import 'package:life_os/features/finance/domain/amount_formatting.dart';
+import 'package:life_os/features/finance/domain/models/category_model.dart';
+import 'package:life_os/features/finance/domain/models/transaction_model.dart';
 import 'package:intl/intl.dart';
 
 // ---------------------------------------------------------------------------
@@ -82,7 +83,7 @@ class _FinanceDashboardScreenState
   @override
   Widget build(BuildContext context) {
     final formatter = NumberFormat('#,##0', 'es_CO');
-    final dao = ref.watch(financeDaoProvider);
+    final repo = ref.watch(financeRepositoryProvider);
     final from = DateTime(_year, _month, 1);
     final to = DateTime(_year, _month + 1, 0, 23, 59, 59);
 
@@ -90,8 +91,8 @@ class _FinanceDashboardScreenState
       key: const ValueKey('finance-dashboard-screen'),
       body: FutureBuilder<List<int>>(
         future: Future.wait([
-          dao.sumByType('income', from, to),
-          dao.sumByType('expense', from, to),
+          repo.sumByType('income', from, to),
+          repo.sumByType('expense', from, to),
         ]),
         builder: (context, snapshot) {
           final incomeCents = snapshot.data?[0] ?? 0;
@@ -158,19 +159,19 @@ class _FinanceDashboardScreenState
                 const SizedBox(height: 16),
 
                 // --- Grafico de pastel: gastos reales por categoria ---
-                StreamBuilder<List<Transaction>>(
-                  stream: dao.watchTransactions(from, to),
+                StreamBuilder<List<TransactionModel>>(
+                  stream: repo.watchTransactions(from, to),
                   builder: (context, txSnapshot) {
                     final txList = txSnapshot.data ?? [];
                     final expenses = txList.where((t) => t.type == 'expense').toList();
 
-                    return StreamBuilder<List<Category>>(
-                      stream: dao.watchCategories(),
+                    return StreamBuilder<List<CategoryModel>>(
+                      stream: repo.watchCategories(),
                       builder: (context, catSnapshot) {
                         final categories = catSnapshot.data ?? [];
 
                         // Group expenses by category
-                        final Map<int, int> byCategory = {};
+                        final Map<String, int> byCategory = {};
                         for (final tx in expenses) {
                           byCategory[tx.categoryId] =
                               (byCategory[tx.categoryId] ?? 0) + tx.amountCents;
@@ -248,8 +249,8 @@ class _FinanceDashboardScreenState
                 const SizedBox(height: 16),
 
                 // --- Grafico de barras: ingresos vs gastos por dia ---
-                StreamBuilder<List<Transaction>>(
-                  stream: dao.watchTransactions(from, to),
+                StreamBuilder<List<TransactionModel>>(
+                  stream: repo.watchTransactions(from, to),
                   builder: (context, txSnapshot) {
                     final txList = txSnapshot.data ?? [];
 
@@ -295,8 +296,8 @@ class _FinanceDashboardScreenState
                 const SizedBox(height: 16),
 
                 // --- Grafico de linea: saldo acumulado real ---
-                StreamBuilder<List<Transaction>>(
-                  stream: dao.watchTransactions(from, to),
+                StreamBuilder<List<TransactionModel>>(
+                  stream: repo.watchTransactions(from, to),
                   builder: (context, txSnapshot) {
                     final txList = txSnapshot.data ?? [];
 

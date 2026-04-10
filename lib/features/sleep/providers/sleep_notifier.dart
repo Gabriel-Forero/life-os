@@ -1,20 +1,18 @@
-import 'package:drift/drift.dart';
-import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/domain/app_event.dart';
 import 'package:life_os/core/domain/app_failure.dart';
 import 'package:life_os/core/domain/result.dart';
 import 'package:life_os/core/services/event_bus.dart';
-import 'package:life_os/features/sleep/database/sleep_dao.dart';
+import 'package:life_os/features/sleep/data/sleep_repository.dart';
 import 'package:life_os/features/sleep/domain/sleep_input.dart';
 import 'package:life_os/features/sleep/domain/sleep_validators.dart';
 
 class SleepNotifier {
-  SleepNotifier({required this.dao, required this.eventBus});
+  SleepNotifier({required this.repository, required this.eventBus});
 
-  final SleepDao dao;
+  final SleepRepository repository;
   final EventBus eventBus;
 
-  Future<Result<int>> logSleep(SleepInput input) async {
+  Future<Result<String>> logSleep(SleepInput input) async {
     // Validate times
     final timesResult = validateSleepTimes(
       bedTime: input.bedTime,
@@ -41,18 +39,18 @@ class SleepNotifier {
 
     try {
       final now = DateTime.now();
-      final id = await dao.insertSleepLog(SleepLogsCompanion.insert(
+      final id = await repository.insertSleepLog(
         date: input.date,
         bedTime: input.bedTime,
         wakeTime: input.wakeTime,
         qualityRating: input.qualityRating,
         sleepScore: score,
-        note: Value(input.note),
+        note: input.note,
         createdAt: now,
-      ));
+      );
 
       eventBus.emit(SleepLogSavedEvent(
-        sleepLogId: id,
+        sleepLogId: int.tryParse(id) ?? 0,
         sleepScore: score,
         hoursSlept: hoursSlept,
       ));
@@ -67,19 +65,19 @@ class SleepNotifier {
     }
   }
 
-  Future<Result<int>> addInterruption(SleepInterruptionInput input) async {
+  Future<Result<String>> addInterruption(SleepInterruptionInput input) async {
     final durationResult = validateInterruptionDuration(input.durationMinutes);
     if (durationResult.isFailure) return Failure(durationResult.failureOrNull!);
 
     try {
       final now = DateTime.now();
-      final id = await dao.insertInterruption(SleepInterruptionsCompanion.insert(
+      final id = await repository.insertInterruption(
         sleepLogId: input.sleepLogId,
         time: input.time,
         durationMinutes: input.durationMinutes,
-        reason: Value(input.reason),
+        reason: input.reason,
         createdAt: now,
-      ));
+      );
       return Success(id);
     } on Exception catch (e) {
       return Failure(DatabaseFailure(
@@ -90,7 +88,7 @@ class SleepNotifier {
     }
   }
 
-  Future<Result<int>> logEnergy(EnergyInput input) async {
+  Future<Result<String>> logEnergy(EnergyInput input) async {
     final timeResult = validateTimeOfDay(input.timeOfDay);
     if (timeResult.isFailure) return Failure(timeResult.failureOrNull!);
 
@@ -99,13 +97,13 @@ class SleepNotifier {
 
     try {
       final now = DateTime.now();
-      final id = await dao.insertEnergyLog(EnergyLogsCompanion.insert(
+      final id = await repository.insertEnergyLog(
         date: input.date,
         timeOfDay: input.timeOfDay,
         level: input.level,
-        note: Value(input.note),
+        note: input.note,
         createdAt: now,
-      ));
+      );
       return Success(id);
     } on Exception catch (e) {
       return Failure(DatabaseFailure(

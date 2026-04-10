@@ -1,18 +1,18 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:drift/drift.dart' hide isNull, isNotNull;
-import 'package:life_os/core/database/app_database.dart';
-import 'package:life_os/features/nutrition/database/nutrition_dao.dart';
+import 'package:life_os/features/nutrition/data/nutrition_data_repository.dart';
 import 'package:life_os/features/nutrition/data/open_food_facts_client.dart';
 import 'package:life_os/features/nutrition/data/nutrition_repository.dart';
+import 'package:life_os/features/nutrition/domain/models/food_item_model.dart';
 
-class MockNutritionDao extends Mock implements NutritionDao {}
+class MockNutritionDataRepository extends Mock
+    implements NutritionDataRepository {}
 
 class MockOpenFoodFactsClient extends Mock implements OpenFoodFactsClient {}
 
-// Helper to build FoodItem instances for tests
-FoodItem _makeFoodItem({
-  int id = 1,
+// Helper to build FoodItemModel instances for tests
+FoodItemModel _makeFoodItemModel({
+  String id = '1',
   String name = 'Test Food',
   String? barcode,
   String? brand,
@@ -23,7 +23,7 @@ FoodItem _makeFoodItem({
   double servingSizeG = 100.0,
   bool isFromApi = false,
 }) {
-  return FoodItem(
+  return FoodItemModel(
     id: id,
     name: name,
     barcode: barcode,
@@ -63,36 +63,39 @@ FoodItemDto _makeDto({
 }
 
 void main() {
-  late MockNutritionDao mockDao;
+  late MockNutritionDataRepository mockRepo;
   late MockOpenFoodFactsClient mockClient;
   late NutritionRepository sut;
 
   setUp(() {
-    mockDao = MockNutritionDao();
+    mockRepo = MockNutritionDataRepository();
     mockClient = MockOpenFoodFactsClient();
-    sut = NutritionRepository(dao: mockDao, apiClient: mockClient);
-
-    registerFallbackValue(
-      FoodItemsCompanion(
-        name: const Value('fallback'),
-        caloriesPer100g: const Value(0),
-        createdAt: Value(DateTime.now()),
-      ),
-    );
+    sut = NutritionRepository(dataRepository: mockRepo, apiClient: mockClient);
   });
 
   group('NutritionRepository.searchFood', () {
     test('returns merged local and API results', () async {
-      final localItem = _makeFoodItem(id: 1, name: 'Local Food');
+      final localItem = _makeFoodItemModel(id: '1', name: 'Local Food');
       final apiDto = _makeDto(name: 'API Food');
 
-      when(() => mockDao.searchFoodItems(any()))
+      when(() => mockRepo.searchFoodItems(any()))
           .thenAnswer((_) async => [localItem]);
       when(() => mockClient.searchByName(any()))
           .thenAnswer((_) async => [apiDto]);
-      when(() => mockDao.insertFoodItem(any())).thenAnswer((_) async => 2);
-      when(() => mockDao.searchFoodItems(any()))
-          .thenAnswer((_) async => [localItem, _makeFoodItem(id: 2, name: 'API Food', isFromApi: true)]);
+      when(() => mockRepo.insertFoodItem(
+            name: any(named: 'name'),
+            barcode: any(named: 'barcode'),
+            brand: any(named: 'brand'),
+            caloriesPer100g: any(named: 'caloriesPer100g'),
+            proteinPer100g: any(named: 'proteinPer100g'),
+            carbsPer100g: any(named: 'carbsPer100g'),
+            fatPer100g: any(named: 'fatPer100g'),
+            servingSizeG: any(named: 'servingSizeG'),
+            isFromApi: any(named: 'isFromApi'),
+            createdAt: any(named: 'createdAt'),
+          )).thenAnswer((_) async => '2');
+      when(() => mockRepo.searchFoodItems(any())).thenAnswer((_) async =>
+          [localItem, _makeFoodItemModel(id: '2', name: 'API Food', isFromApi: true)]);
 
       final results = await sut.searchFood('food');
 
@@ -102,21 +105,43 @@ void main() {
     test('caches API results to local DB', () async {
       final apiDto = _makeDto(name: 'API Food');
 
-      when(() => mockDao.searchFoodItems(any()))
+      when(() => mockRepo.searchFoodItems(any()))
           .thenAnswer((_) async => []);
       when(() => mockClient.searchByName(any()))
           .thenAnswer((_) async => [apiDto]);
-      when(() => mockDao.insertFoodItem(any())).thenAnswer((_) async => 1);
+      when(() => mockRepo.insertFoodItem(
+            name: any(named: 'name'),
+            barcode: any(named: 'barcode'),
+            brand: any(named: 'brand'),
+            caloriesPer100g: any(named: 'caloriesPer100g'),
+            proteinPer100g: any(named: 'proteinPer100g'),
+            carbsPer100g: any(named: 'carbsPer100g'),
+            fatPer100g: any(named: 'fatPer100g'),
+            servingSizeG: any(named: 'servingSizeG'),
+            isFromApi: any(named: 'isFromApi'),
+            createdAt: any(named: 'createdAt'),
+          )).thenAnswer((_) async => '1');
 
       await sut.searchFood('food');
 
-      verify(() => mockDao.insertFoodItem(any())).called(1);
+      verify(() => mockRepo.insertFoodItem(
+            name: any(named: 'name'),
+            barcode: any(named: 'barcode'),
+            brand: any(named: 'brand'),
+            caloriesPer100g: any(named: 'caloriesPer100g'),
+            proteinPer100g: any(named: 'proteinPer100g'),
+            carbsPer100g: any(named: 'carbsPer100g'),
+            fatPer100g: any(named: 'fatPer100g'),
+            servingSizeG: any(named: 'servingSizeG'),
+            isFromApi: any(named: 'isFromApi'),
+            createdAt: any(named: 'createdAt'),
+          )).called(1);
     });
 
     test('returns local results only when API throws', () async {
-      final localItem = _makeFoodItem(id: 1, name: 'Local Food');
+      final localItem = _makeFoodItemModel(id: '1', name: 'Local Food');
 
-      when(() => mockDao.searchFoodItems(any()))
+      when(() => mockRepo.searchFoodItems(any()))
           .thenAnswer((_) async => [localItem]);
       when(() => mockClient.searchByName(any()))
           .thenThrow(Exception('network error'));
@@ -128,21 +153,44 @@ void main() {
     });
 
     test('does not cache duplicate items when barcode matches', () async {
-      final localItem = _makeFoodItem(id: 1, name: 'Existing', barcode: '12345');
+      final localItem =
+          _makeFoodItemModel(id: '1', name: 'Existing', barcode: '12345');
       final apiDto = _makeDto(name: 'Existing', barcode: '12345');
 
-      when(() => mockDao.searchFoodItems(any()))
+      when(() => mockRepo.searchFoodItems(any()))
           .thenAnswer((_) async => [localItem]);
       when(() => mockClient.searchByName(any()))
           .thenAnswer((_) async => [apiDto]);
-      // InsertOrIgnore in DAO handles duplicates, but repository should
-      // still call insert (DAO deduplicate by barcode unique constraint)
-      when(() => mockDao.insertFoodItem(any())).thenAnswer((_) async => 0);
+      // InsertOrIgnore in repo handles duplicates, but repository should
+      // still call insert (repo deduplicate by barcode unique constraint)
+      when(() => mockRepo.insertFoodItem(
+            name: any(named: 'name'),
+            barcode: any(named: 'barcode'),
+            brand: any(named: 'brand'),
+            caloriesPer100g: any(named: 'caloriesPer100g'),
+            proteinPer100g: any(named: 'proteinPer100g'),
+            carbsPer100g: any(named: 'carbsPer100g'),
+            fatPer100g: any(named: 'fatPer100g'),
+            servingSizeG: any(named: 'servingSizeG'),
+            isFromApi: any(named: 'isFromApi'),
+            createdAt: any(named: 'createdAt'),
+          )).thenAnswer((_) async => '0');
 
       await sut.searchFood('food');
 
-      // Insert is attempted but DAO handles the deduplication
-      verify(() => mockDao.insertFoodItem(any())).called(1);
+      // Insert is attempted but repo handles the deduplication
+      verify(() => mockRepo.insertFoodItem(
+            name: any(named: 'name'),
+            barcode: any(named: 'barcode'),
+            brand: any(named: 'brand'),
+            caloriesPer100g: any(named: 'caloriesPer100g'),
+            proteinPer100g: any(named: 'proteinPer100g'),
+            carbsPer100g: any(named: 'carbsPer100g'),
+            fatPer100g: any(named: 'fatPer100g'),
+            servingSizeG: any(named: 'servingSizeG'),
+            isFromApi: any(named: 'isFromApi'),
+            createdAt: any(named: 'createdAt'),
+          )).called(1);
     });
   });
 }

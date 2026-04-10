@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_os/core/constants/app_colors.dart';
-import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
+import 'package:life_os/features/goals/domain/models/life_goal_model.dart';
+import 'package:life_os/features/goals/domain/models/sub_goal_model.dart';
 import 'package:life_os/core/widgets/animated_list_item.dart';
 import 'package:life_os/core/widgets/pressable_card.dart';
 import 'package:life_os/features/goals/domain/goals_input.dart';
@@ -50,7 +51,7 @@ class _GoalsOverviewScreenState extends ConsumerState<GoalsOverviewScreen> {
 
   static const _goalsColor = AppColors.goals;
 
-  List<LifeGoal> _activeGoals(List<LifeGoal> goals) {
+  List<LifeGoalModel> _activeGoals(List<LifeGoalModel> goals) {
     var active = goals.where((g) => g.status != 'completed').toList();
     if (_selectedCategory != null) {
       active = active.where((g) => g.category == _selectedCategory).toList();
@@ -59,7 +60,7 @@ class _GoalsOverviewScreenState extends ConsumerState<GoalsOverviewScreen> {
     return active;
   }
 
-  List<LifeGoal> _completedGoals(List<LifeGoal> goals) {
+  List<LifeGoalModel> _completedGoals(List<LifeGoalModel> goals) {
     final now = DateTime.now();
     final thisYear = now.year;
     return goals
@@ -69,7 +70,7 @@ class _GoalsOverviewScreenState extends ConsumerState<GoalsOverviewScreen> {
         .toList();
   }
 
-  void _applySort(List<LifeGoal> goals) {
+  void _applySort(List<LifeGoalModel> goals) {
     switch (_sortOption) {
       case _GoalSortOption.deadline:
         goals.sort((a, b) {
@@ -108,7 +109,7 @@ class _GoalsOverviewScreenState extends ConsumerState<GoalsOverviewScreen> {
     );
   }
 
-  void _navigateToGoal(LifeGoal goal) {
+  void _navigateToGoal(LifeGoalModel goal) {
     Navigator.push(
       context,
       MaterialPageRoute<void>(
@@ -120,13 +121,13 @@ class _GoalsOverviewScreenState extends ConsumerState<GoalsOverviewScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final goalsDao = ref.watch(goalsDaoProvider);
+    final goalsRepo = ref.watch(goalsRepositoryProvider);
 
     return Scaffold(
       key: const ValueKey('goals_overview_screen'),
       backgroundColor: theme.scaffoldBackgroundColor,
-      body: StreamBuilder<List<LifeGoal>>(
-        stream: goalsDao.watchAllGoals(),
+      body: StreamBuilder<List<LifeGoalModel>>(
+        stream: goalsRepo.watchAllGoals(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -414,7 +415,7 @@ class _EnhancedGoalCard extends ConsumerWidget {
     required this.onTap,
   });
 
-  final LifeGoal goal;
+  final LifeGoalModel goal;
   final VoidCallback onTap;
 
   Color get _statusColor => switch (goal.status) {
@@ -460,7 +461,7 @@ class _EnhancedGoalCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final goalsDao = ref.watch(goalsDaoProvider);
+    final goalsRepo = ref.watch(goalsRepositoryProvider);
     final category = GoalCategory.fromString(goal.category);
     final categoryLabel = category?.displayName ?? goal.category;
     final now = DateTime.now();
@@ -644,8 +645,8 @@ class _EnhancedGoalCard extends ConsumerWidget {
                       ),
                       const Spacer(),
                       // Sub-goals count (streamed)
-                      StreamBuilder<List<SubGoal>>(
-                        stream: goalsDao.watchSubGoals(goal.id),
+                      StreamBuilder<List<SubGoalModel>>(
+                        stream: goalsRepo.watchSubGoals(goal.id),
                         builder: (context, subSnap) {
                           final subs = subSnap.data ?? [];
                           if (subs.isEmpty) {
@@ -695,10 +696,10 @@ class _CompletedSection extends StatelessWidget {
     required this.onGoalTap,
   });
 
-  final List<LifeGoal> goals;
+  final List<LifeGoalModel> goals;
   final bool expanded;
   final VoidCallback onToggle;
-  final ValueChanged<LifeGoal> onGoalTap;
+  final ValueChanged<LifeGoalModel> onGoalTap;
 
   @override
   Widget build(BuildContext context) {
@@ -769,7 +770,7 @@ class _CompletedGoalRow extends StatelessWidget {
     required this.onTap,
   });
 
-  final LifeGoal goal;
+  final LifeGoalModel goal;
   final VoidCallback onTap;
 
   @override

@@ -2,10 +2,12 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_os/core/constants/app_colors.dart';
-import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
 import 'package:life_os/core/widgets/chart_card.dart';
 import 'package:life_os/features/goals/domain/goals_input.dart';
+import 'package:life_os/features/goals/domain/models/goal_milestone_model.dart';
+import 'package:life_os/features/goals/domain/models/life_goal_model.dart';
+import 'package:life_os/features/goals/domain/models/sub_goal_model.dart';
 
 // ---------------------------------------------------------------------------
 // Goal Detail Screen
@@ -17,17 +19,17 @@ class GoalDetailScreen extends ConsumerWidget {
     required this.goalId,
   });
 
-  final int goalId;
+  final String goalId;
 
   static const _goalsColor = AppColors.goals;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final goalsDao = ref.watch(goalsDaoProvider);
+    final goalsRepo = ref.watch(goalsRepositoryProvider);
 
-    return StreamBuilder<LifeGoal?>(
-      stream: goalsDao.watchGoal(goalId),
+    return StreamBuilder<LifeGoalModel?>(
+      stream: goalsRepo.watchGoal(goalId),
       builder: (context, goalSnapshot) {
         final goal = goalSnapshot.data;
 
@@ -163,8 +165,8 @@ class GoalDetailScreen extends ConsumerWidget {
               ),
 
               // Sub-goals list from DB
-              StreamBuilder<List<SubGoal>>(
-                stream: goalsDao.watchSubGoals(goalId),
+              StreamBuilder<List<SubGoalModel>>(
+                stream: goalsRepo.watchSubGoals(goalId),
                 builder: (context, subSnapshot) {
                   final subGoals = subSnapshot.data ?? [];
                   if (subGoals.isEmpty) {
@@ -193,7 +195,7 @@ class GoalDetailScreen extends ConsumerWidget {
                             key: ValueKey('sub_goal_${sub.id}'),
                             subGoal: sub,
                             onProgressChanged: (p) {
-                              goalsDao.updateSubGoalProgress(sub.id, p);
+                              goalsRepo.updateSubGoalProgress(sub.id, p);
                             },
                           ),
                         );
@@ -233,7 +235,7 @@ class GoalDetailScreen extends ConsumerWidget {
 class _GoalProgressSection extends StatelessWidget {
   const _GoalProgressSection({required this.goal});
 
-  final LifeGoal goal;
+  final LifeGoalModel goal;
 
   @override
   Widget build(BuildContext context) {
@@ -316,7 +318,7 @@ class _GoalProgressSection extends StatelessWidget {
 class _DeadlinePredictionCard extends StatelessWidget {
   const _DeadlinePredictionCard({required this.goal});
 
-  final LifeGoal goal;
+  final LifeGoalModel goal;
 
   @override
   Widget build(BuildContext context) {
@@ -468,16 +470,16 @@ class _MilestonesTimeline extends ConsumerWidget {
     required this.goalColor,
   });
 
-  final int goalId;
+  final String goalId;
   final int goalProgress;
   final Color goalColor;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final goalsDao = ref.watch(goalsDaoProvider);
+    final goalsRepo = ref.watch(goalsRepositoryProvider);
 
-    return StreamBuilder<List<GoalMilestone>>(
-      stream: goalsDao.watchMilestones(goalId),
+    return StreamBuilder<List<GoalMilestoneModel>>(
+      stream: goalsRepo.watchMilestones(goalId),
       builder: (context, snapshot) {
         final milestones = snapshot.data ?? [];
         return _MilestonesTimelineContent(
@@ -499,8 +501,8 @@ class _MilestonesTimelineContent extends ConsumerWidget {
     required this.goalColor,
   });
 
-  final List<GoalMilestone> milestones;
-  final int goalId;
+  final List<GoalMilestoneModel> milestones;
+  final String goalId;
   final int goalProgress;
   final Color goalColor;
 
@@ -651,7 +653,7 @@ class _MilestonesTimelineContent extends ConsumerWidget {
   void _showMilestoneDialog(
     BuildContext context,
     WidgetRef ref,
-    GoalMilestone milestone,
+    GoalMilestoneModel milestone,
   ) {
     showDialog<void>(
       context: context,
@@ -699,7 +701,7 @@ class _MilestoneNode extends StatelessWidget {
     required this.onTap,
   });
 
-  final GoalMilestone milestone;
+  final GoalMilestoneModel milestone;
   final int goalProgress;
   final double nodeSize;
   final VoidCallback onTap;
@@ -814,7 +816,7 @@ class _AddMilestoneButton extends ConsumerWidget {
     required this.nodeSize,
   });
 
-  final int goalId;
+  final String goalId;
   final int milestoneCount;
   final double nodeSize;
 
@@ -868,7 +870,7 @@ class _MilestoneActionDialog extends StatelessWidget {
     required this.onClose,
   });
 
-  final GoalMilestone milestone;
+  final GoalMilestoneModel milestone;
   final WidgetRef ref;
   final VoidCallback onClose;
 
@@ -922,7 +924,7 @@ class _AddMilestoneDialog extends StatefulWidget {
     required this.onClose,
   });
 
-  final int goalId;
+  final String goalId;
   final int sortOrder;
   final WidgetRef ref;
   final VoidCallback onClose;
@@ -1078,7 +1080,7 @@ class _SubGoalItem extends StatefulWidget {
     this.onProgressChanged,
   });
 
-  final SubGoal subGoal;
+  final SubGoalModel subGoal;
   final void Function(int progress)? onProgressChanged;
 
   @override
@@ -1219,15 +1221,15 @@ class _SubGoalProgressChart extends ConsumerWidget {
     required this.goalColor,
   });
 
-  final int goalId;
+  final String goalId;
   final Color goalColor;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final dao = ref.watch(goalsDaoProvider);
+    final goalsRepo = ref.watch(goalsRepositoryProvider);
 
-    return StreamBuilder<List<SubGoal>>(
-      stream: dao.watchSubGoals(goalId),
+    return StreamBuilder<List<SubGoalModel>>(
+      stream: goalsRepo.watchSubGoals(goalId),
       builder: (context, snapshot) {
         final subGoals = snapshot.data ?? [];
 
@@ -1258,7 +1260,7 @@ class _SubGoalProgressChart extends ConsumerWidget {
     );
   }
 
-  Widget _buildSingleSubGoalBar(SubGoal sub, Color color) {
+  Widget _buildSingleSubGoalBar(SubGoalModel sub, Color color) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Column(
@@ -1281,7 +1283,7 @@ class _SubGoalProgressChart extends ConsumerWidget {
     );
   }
 
-  Widget _buildBarChart(List<SubGoal> subGoals, Color color) {
+  Widget _buildBarChart(List<SubGoalModel> subGoals, Color color) {
     return SizedBox(
       height: 160,
       child: BarChart(

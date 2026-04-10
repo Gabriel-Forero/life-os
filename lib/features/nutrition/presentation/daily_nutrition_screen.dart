@@ -5,11 +5,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:life_os/core/constants/app_colors.dart';
-import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
 import 'package:life_os/core/router/app_router.dart';
 import 'package:life_os/core/widgets/chart_card.dart';
-import 'package:life_os/features/nutrition/database/nutrition_dao.dart';
+import 'package:life_os/features/nutrition/data/nutrition_data_repository.dart';
+import 'package:life_os/features/nutrition/domain/models/meal_log_model.dart';
+import 'package:life_os/features/nutrition/domain/models/meal_template_model.dart';
+import 'package:life_os/features/nutrition/domain/models/nutrition_goal_model.dart';
+import 'package:life_os/features/nutrition/domain/models/water_log_model.dart';
 import 'package:life_os/features/nutrition/domain/nutrition_input.dart';
 
 // ---------------------------------------------------------------------------
@@ -127,7 +130,7 @@ class _DailyNutritionScreenState
     }
   }
 
-  Future<void> _removeWater(List<WaterLog> todayLogs) async {
+  Future<void> _removeWater(List<WaterLogModel> todayLogs) async {
     if (todayLogs.isEmpty) return;
     await ref
         .read(nutritionNotifierProvider)
@@ -138,7 +141,7 @@ class _DailyNutritionScreenState
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final dao = ref.watch(nutritionDaoProvider);
+    final repo = ref.watch(nutritionDataRepositoryProvider);
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
@@ -199,18 +202,18 @@ class _DailyNutritionScreenState
           ),
         ),
       ),
-      body: StreamBuilder<NutritionGoal?>(
-        stream: dao.watchActiveGoal(),
+      body: StreamBuilder<NutritionGoalModel?>(
+        stream: repo.watchActiveGoal(),
         builder: (context, goalSnapshot) {
           final goal = goalSnapshot.data;
 
-          return StreamBuilder<List<MealLog>>(
-            stream: dao.watchMealLogs(today),
+          return StreamBuilder<List<MealLogModel>>(
+            stream: repo.watchMealLogs(today),
             builder: (context, mealsSnapshot) {
               final mealLogs = mealsSnapshot.data ?? [];
 
-              return StreamBuilder<List<WaterLog>>(
-                stream: dao.watchWaterLogs(today),
+              return StreamBuilder<List<WaterLogModel>>(
+                stream: repo.watchWaterLogs(today),
                 builder: (context, waterSnapshot) {
                   final waterLogs = waterSnapshot.data ?? [];
                   final totalWaterMl = waterLogs.fold<int>(
@@ -237,7 +240,7 @@ class _DailyNutritionScreenState
                   // -------------------------------------------------------
                   return _MacroStreamBody(
                     key: ValueKey('macro-body-${mealLogs.length}'),
-                    dao: dao,
+                    repo: repo,
                     today: today,
                     goal: goal,
                     mealLogs: mealLogs,
@@ -299,7 +302,7 @@ class _DailyNutritionScreenState
 class _MacroStreamBody extends ConsumerStatefulWidget {
   const _MacroStreamBody({
     super.key,
-    required this.dao,
+    required this.repo,
     required this.today,
     required this.goal,
     required this.mealLogs,
@@ -317,11 +320,11 @@ class _MacroStreamBody extends ConsumerStatefulWidget {
     required this.onAddFoodToMeal,
   });
 
-  final dynamic dao;
+  final NutritionDataRepository repo;
   final DateTime today;
-  final NutritionGoal? goal;
-  final List<MealLog> mealLogs;
-  final List<WaterLog> waterLogs;
+  final NutritionGoalModel? goal;
+  final List<MealLogModel> mealLogs;
+  final List<WaterLogModel> waterLogs;
   final int waterGlasses;
   final int waterGoalGlasses;
   final Set<String> expandedMeals;
@@ -372,13 +375,13 @@ class _MacroStreamBodyState extends ConsumerState<_MacroStreamBody> {
     }
 
     double cal = 0, prot = 0, carbs = 0, fat = 0;
-    final dao = ref.read(nutritionDaoProvider);
+    final repo = ref.read(nutritionDataRepositoryProvider);
 
     for (final meal in widget.mealLogs) {
-      final items = await dao.watchMealLogItems(meal.id).first;
+      final items = await repo.watchMealLogItems(meal.id).first;
       for (final item in items) {
         // Look up the food item by ID (efficient point lookup)
-        final food = await dao.getFoodItemById(item.foodItemId);
+        final food = await repo.getFoodItemById(item.foodItemId);
         if (food != null) {
           final factor = item.quantityG / 100;
           cal += food.caloriesPer100g * factor;
@@ -515,7 +518,7 @@ class _MacroStreamBodyState extends ConsumerState<_MacroStreamBody> {
           ),
           _NutritionTrendsSection(
             key: const ValueKey('nutrition-trends-section'),
-            dao: ref.watch(nutritionDaoProvider),
+            repo: ref.watch(nutritionDataRepositoryProvider),
           ),
         ],
       ),
@@ -813,7 +816,7 @@ class _MealSection extends ConsumerWidget {
   });
 
   final String mealType;
-  final List<MealLog> logs;
+  final List<MealLogModel> logs;
   final bool isExpanded;
   final VoidCallback onToggle;
   final VoidCallback onAddFood;
@@ -926,7 +929,7 @@ class _MealSection extends ConsumerWidget {
 class _MealLogTile extends ConsumerWidget {
   const _MealLogTile({super.key, required this.log});
 
-  final MealLog log;
+  final MealLogModel log;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -994,7 +997,7 @@ class _TemplatesBottomSheet extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final dao = ref.watch(nutritionDaoProvider);
+    final repo = ref.watch(nutritionDataRepositoryProvider);
 
     return DraggableScrollableSheet(
       initialChildSize: 0.5,
@@ -1039,8 +1042,8 @@ class _TemplatesBottomSheet extends ConsumerWidget {
             ),
             const Divider(),
             Expanded(
-              child: StreamBuilder<List<MealTemplate>>(
-                stream: dao.watchMealTemplates(),
+              child: StreamBuilder<List<MealTemplateModel>>(
+                stream: repo.watchMealTemplates(),
                 builder: (context, snapshot) {
                   final templates = snapshot.data ?? [];
                   if (templates.isEmpty) {
@@ -1123,7 +1126,7 @@ class _TemplatesBottomSheet extends ConsumerWidget {
                               tooltip: 'Eliminar plantilla',
                               onPressed: () async {
                                 await ref
-                                    .read(nutritionDaoProvider)
+                                    .read(nutritionDataRepositoryProvider)
                                     .deleteMealTemplate(template.id);
                               },
                             ),
@@ -1144,7 +1147,7 @@ class _TemplatesBottomSheet extends ConsumerWidget {
   Future<void> _applyTemplate(
     BuildContext context,
     WidgetRef ref,
-    MealTemplate template,
+    MealTemplateModel template,
   ) async {
     try {
       final rawItems = jsonDecode(template.itemsJson) as List<dynamic>;
@@ -1152,7 +1155,7 @@ class _TemplatesBottomSheet extends ConsumerWidget {
           .map((e) {
             final map = e as Map<String, dynamic>;
             return MealItemInput(
-              foodItemId: (map['foodItemId'] as num).toInt(),
+              foodItemId: (map['foodItemId'] as num).toInt().toString(),
               quantityG: (map['quantityG'] as num).toDouble(),
             );
           })
@@ -1362,12 +1365,12 @@ class _DailyNutritionPoint {
 }
 
 class _NutritionTrendsSection extends ConsumerWidget {
-  const _NutritionTrendsSection({super.key, required this.dao});
+  const _NutritionTrendsSection({super.key, required this.repo});
 
-  final NutritionDao dao;
+  final NutritionDataRepository repo;
 
   Future<List<_DailyNutritionPoint>> _buildDailyPoints(
-    NutritionDao nutritionDao,
+    NutritionDataRepository nutritionRepo,
     DateTime from,
     DateTime now,
   ) async {
@@ -1380,17 +1383,17 @@ class _NutritionTrendsSection extends ConsumerWidget {
 
       int waterMl = 0;
       try {
-        waterMl = await nutritionDao.totalWater(dayStart);
+        waterMl = await nutritionRepo.totalWater(dayStart);
       } catch (_) {}
 
       double calories = 0;
       double protein = 0;
       try {
-        final mealLogs = await nutritionDao.watchMealLogs(dayStart).first;
+        final mealLogs = await nutritionRepo.watchMealLogs(dayStart).first;
         for (final meal in mealLogs) {
-          final items = await nutritionDao.watchMealLogItems(meal.id).first;
+          final items = await nutritionRepo.watchMealLogItems(meal.id).first;
           for (final item in items) {
-            final food = await nutritionDao.getFoodItemById(item.foodItemId);
+            final food = await nutritionRepo.getFoodItemById(item.foodItemId);
             if (food != null) {
               final factor = item.quantityG / 100;
               calories += food.caloriesPer100g * factor;
@@ -1496,12 +1499,12 @@ class _NutritionTrendsSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final nutritionDao = ref.watch(nutritionDaoProvider);
+    final nutritionRepo = ref.watch(nutritionDataRepositoryProvider);
     final now = DateTime.now();
     final from = now.subtract(const Duration(days: 30));
 
     return FutureBuilder<List<_DailyNutritionPoint>>(
-      future: _buildDailyPoints(nutritionDao, from, now),
+      future: _buildDailyPoints(nutritionRepo, from, now),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());

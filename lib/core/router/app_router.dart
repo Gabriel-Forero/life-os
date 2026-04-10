@@ -147,12 +147,12 @@ abstract final class AppRoutes {
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
 
 final appRouterProvider = Provider<GoRouter>((ref) {
-  final settingsDao = ref.watch(appSettingsDaoProvider);
+  final settingsRepo = ref.watch(settingsRepositoryProvider);
 
   return GoRouter(
     initialLocation: AppRoutes.home,
     redirect: (context, state) async {
-      final settings = await settingsDao.getSettings();
+      final settings = await settingsRepo.getSettings();
       final onboardingDone = settings?.onboardingCompleted ?? false;
       final isOnboarding = state.uri.path == AppRoutes.onboarding;
 
@@ -239,7 +239,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: AppRoutes.habitsDetail,
             builder: (context, state) {
-              final habitId = int.tryParse(state.uri.queryParameters['id'] ?? '');
+              final habitId = state.uri.queryParameters['id'];
               return HabitDetailScreen(habitId: habitId);
             },
           ),
@@ -262,8 +262,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: AppRoutes.goalsDetail,
             builder: (context, state) {
-              final goalId = int.tryParse(state.uri.queryParameters['id'] ?? '');
-              if (goalId == null) return const _PlaceholderScreen(title: 'Detalle Meta');
+              final goalId = state.uri.queryParameters['id'];
+              if (goalId == null || goalId.isEmpty) return const _PlaceholderScreen(title: 'Detalle Meta');
               return GoalDetailScreen(goalId: goalId);
             },
           ),
@@ -272,9 +272,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: AppRoutes.aiChat,
             builder: (context, state) {
-              final conversationId = int.tryParse(state.uri.queryParameters['id'] ?? '');
+              final conversationId = state.uri.queryParameters['id'] ?? '';
               final title = state.uri.queryParameters['title'] ?? 'Chat AI';
-              if (conversationId == null) return const _PlaceholderScreen(title: 'Chat AI');
+              if (conversationId.isEmpty) return const _PlaceholderScreen(title: 'Chat AI');
               return ChatScreen(conversationId: conversationId, title: title);
             },
           ),

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:life_os/core/constants/app_colors.dart';
-import 'package:life_os/core/database/app_database.dart';
-import 'package:life_os/features/dashboard/database/dashboard_dao.dart';
+import 'package:life_os/features/dashboard/data/dashboard_repository.dart';
+import 'package:life_os/features/dashboard/domain/models/life_snapshot_model.dart';
 import 'package:life_os/features/dashboard/providers/day_score_notifier.dart';
 
 // ---------------------------------------------------------------------------
@@ -88,17 +88,17 @@ const _moduleIcons = <String, IconData>{
 
 /// Aggregates cross-module data for the main dashboard screen.
 ///
-/// Reads from [DayScoreNotifier] for today's score and from [DashboardDao]
+/// Reads from [DayScoreNotifier] for today's score and from [DashboardRepository]
 /// for module configs. Module metric subtitles are mocked until each module
 /// exposes a score API.
 class DashboardNotifier extends ChangeNotifier {
   DashboardNotifier({
-    required this.dao,
+    required this.repository,
     required this.dayScoreNotifier,
     required this.moduleSubtitleProvider,
   });
 
-  final DashboardDao dao;
+  final DashboardRepository repository;
   final DayScoreNotifier dayScoreNotifier;
 
   /// Returns a human-readable subtitle for a module key (injected for testing).
@@ -115,7 +115,7 @@ class DashboardNotifier extends ChangeNotifier {
     _state = _state.copyWith(isLoading: true);
     notifyListeners();
     try {
-      await dao.seedDefaultConfigsIfEmpty();
+      await repository.seedDefaultConfigsIfEmpty();
       await maybeGenerateYesterdaySnapshot();
       await refresh();
     } catch (e) {
@@ -134,7 +134,7 @@ class DashboardNotifier extends ChangeNotifier {
   /// Reloads dashboard state: dayScore + enabled module cards.
   Future<void> refresh() async {
     try {
-      final configs = await dao.getScoreConfigs();
+      final configs = await repository.getScoreConfigs();
       final dayScore = dayScoreNotifier.state.todayScore;
 
       final enabledCards = configs
@@ -188,7 +188,7 @@ class DashboardNotifier extends ChangeNotifier {
     final yesterday = DateTime.utc(now.year, now.month, now.day)
         .subtract(const Duration(days: 1));
 
-    final existing = await dao.getSnapshotForDate(yesterday);
+    final existing = await repository.getSnapshotForDate(yesterday);
     if (existing != null) return;
 
     // Collect mocked metrics (real integration wired by DI)
@@ -200,10 +200,10 @@ class DashboardNotifier extends ChangeNotifier {
     };
 
     final yesterdayScore =
-        await dao.getDayScoreForDate(yesterday);
+        await repository.getDayScoreForDate(yesterday);
     final score = yesterdayScore?.totalScore ?? 0;
 
-    await dao.insertLifeSnapshot(
+    await repository.insertLifeSnapshot(
       date: yesterday,
       totalScore: score,
       metrics: metrics,
@@ -211,7 +211,7 @@ class DashboardNotifier extends ChangeNotifier {
   }
 
   /// Returns all life snapshots (for analytics / history screens).
-  Future<List<LifeSnapshot>> getSnapshots() => dao.getAllSnapshots();
+  Future<List<LifeSnapshotModel>> getSnapshots() => repository.getAllSnapshots();
 }
 
 // ---------------------------------------------------------------------------

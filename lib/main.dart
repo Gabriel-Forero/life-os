@@ -1,14 +1,16 @@
 import 'dart:ui';
 
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_os/app.dart';
 import 'package:life_os/core/providers/providers.dart';
 import 'package:life_os/core/services/app_logger.dart';
-import 'package:life_os/features/finance/database/predefined_categories.dart';
+import 'package:life_os/features/finance/data/seed_categories.dart';
 import 'package:life_os/features/gym/database/bundled_exercises.dart';
 import 'package:life_os/features/integration/event_wiring.dart';
 import 'package:life_os/features/nutrition/database/bundled_foods.dart';
+import 'package:life_os/firebase_options.dart';
 
 // ---------------------------------------------------------------------------
 // App initialization
@@ -21,7 +23,9 @@ Future<void> _initializeApp(ProviderContainer container) async {
   try {
     // 1. Seed predefined finance categories
     logger.info('Seeding finance categories...');
-    await seedPredefinedCategories(db.financeDao);
+    await seedPredefinedCategoriesFromRepo(
+      container.read(financeRepositoryProvider),
+    );
 
     // 2. Load bundled exercise library
     logger.info('Loading bundled exercises...');
@@ -41,7 +45,7 @@ Future<void> _initializeApp(ProviderContainer container) async {
     wireEventBus(
       eventBus: eventBus,
       habitsNotifier: container.read(habitsNotifierProvider),
-      nutritionDao: db.nutritionDao,
+      nutritionRepo: container.read(nutritionDataRepositoryProvider),
       dayScoreNotifier: container.read(dayScoreNotifierProvider),
       dashboardNotifier: container.read(dashboardNotifierProvider),
       notificationScheduler: container.read(notificationSchedulerProvider),
@@ -80,6 +84,10 @@ Future<void> _initializeApp(ProviderContainer container) async {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 
   final logger = AppLogger(tag: 'Main');
 

@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:life_os/core/constants/app_colors.dart';
-import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
 import 'package:life_os/core/widgets/empty_state_view.dart';
 import 'package:life_os/features/finance/domain/amount_formatting.dart';
 import 'package:life_os/features/finance/domain/finance_input.dart';
+import 'package:life_os/features/finance/domain/models/savings_goal_model.dart';
 import 'package:life_os/l10n/app_localizations.dart';
 
 // ---------------------------------------------------------------------------
@@ -23,7 +23,7 @@ class SavingsGoalsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final dao = ref.watch(financeDaoProvider);
+    final repo = ref.watch(financeRepositoryProvider);
 
     return Scaffold(
       key: const ValueKey('savings-goals-screen'),
@@ -56,8 +56,8 @@ class SavingsGoalsScreen extends ConsumerWidget {
           ),
         ),
       ),
-      body: StreamBuilder<List<SavingsGoal>>(
-        stream: dao.watchSavingsGoals(),
+      body: StreamBuilder<List<SavingsGoalModel>>(
+        stream: repo.watchSavingsGoals(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -165,7 +165,7 @@ class SavingsGoalsScreen extends ConsumerWidget {
   }
 
   void _showContributeDialog(
-      BuildContext context, WidgetRef ref, SavingsGoal goal) {
+      BuildContext context, WidgetRef ref, SavingsGoalModel goal) {
     showDialog<void>(
       context: context,
       builder: (ctx) => _ContributeDialog(goal: goal, ref: ref),
@@ -184,7 +184,7 @@ class _GoalCard extends StatelessWidget {
     required this.onContribute,
   });
 
-  final SavingsGoal goal;
+  final SavingsGoalModel goal;
   final VoidCallback onContribute;
 
   @override
@@ -499,7 +499,7 @@ class _AddGoalDialogState extends State<_AddGoalDialog> {
 class _ContributeDialog extends StatefulWidget {
   const _ContributeDialog({required this.goal, required this.ref});
 
-  final SavingsGoal goal;
+  final SavingsGoalModel goal;
   final WidgetRef ref;
 
   @override

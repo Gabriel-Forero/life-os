@@ -2,21 +2,21 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
 import 'package:life_os/features/intelligence/domain/ai_context_builder.dart';
+import 'package:life_os/features/intelligence/domain/models/ai_message_model.dart';
 import 'package:life_os/features/intelligence/providers/ai_notifier.dart';
 
 // Provider to build real module summary once per session
 final _realModuleSummaryProvider =
     FutureProvider.autoDispose<ModuleSummary>((ref) async {
   return buildModuleSummaryFromDaos(
-    financeDao: ref.read(financeDaoProvider),
-    habitsDao: ref.read(habitsDaoProvider),
-    sleepDao: ref.read(sleepDaoProvider),
-    gymDao: ref.read(gymDaoProvider),
-    nutritionDao: ref.read(nutritionDaoProvider),
-    goalsDao: ref.read(goalsDaoProvider),
+    financeDao: ref.read(financeRepositoryProvider),
+    habitsDao: ref.read(habitsRepositoryProvider),
+    sleepDao: ref.read(sleepRepositoryProvider),
+    gymDao: ref.read(gymRepositoryProvider),
+    nutritionRepo: ref.read(nutritionDataRepositoryProvider),
+    goalsDao: ref.read(goalsRepositoryProvider),
   );
 });
 
@@ -32,7 +32,7 @@ class ChatScreen extends ConsumerStatefulWidget {
     this.moduleSummary,
   });
 
-  final int conversationId;
+  final String conversationId;
   final String title;
 
   /// Optional live context from LifeOS modules, used to build the
@@ -48,7 +48,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final _scrollController = ScrollController();
   StreamSubscription<String>? _streamSub;
 
-  List<AiMessage> _messages = [];
+  List<AiMessageModel> _messages = [];
   bool _isStreaming = false;
   String _streamBuffer = '';
   String? _errorMessage;
@@ -81,7 +81,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   Future<void> _loadMessages() async {
     final notifier = ref.read(aiNotifierProvider);
-    final messages = await notifier.dao
+    final messages = await notifier.repository
         .getMessagesForConversation(widget.conversationId);
     setState(() => _messages = messages);
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());

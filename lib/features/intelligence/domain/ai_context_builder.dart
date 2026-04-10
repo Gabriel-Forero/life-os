@@ -1,9 +1,9 @@
-import 'package:life_os/features/finance/database/finance_dao.dart';
-import 'package:life_os/features/goals/database/goals_dao.dart';
-import 'package:life_os/features/gym/database/gym_dao.dart';
-import 'package:life_os/features/habits/database/habits_dao.dart';
-import 'package:life_os/features/nutrition/database/nutrition_dao.dart';
-import 'package:life_os/features/sleep/database/sleep_dao.dart';
+import 'package:life_os/features/finance/data/finance_repository.dart';
+import 'package:life_os/features/goals/data/goals_repository.dart';
+import 'package:life_os/features/gym/data/gym_repository.dart';
+import 'package:life_os/features/habits/data/habits_repository.dart';
+import 'package:life_os/features/nutrition/data/nutrition_data_repository.dart';
+import 'package:life_os/features/sleep/data/sleep_repository.dart';
 
 /// Builds a Spanish-language system prompt for the AI provider
 /// from the current state of all LifeOS modules.
@@ -147,12 +147,12 @@ String buildAIContext(ModuleSummary summary) {
 /// Each section is wrapped in a try/catch so a single failing module
 /// never prevents the rest of the summary from being built.
 Future<ModuleSummary> buildModuleSummaryFromDaos({
-  required FinanceDao financeDao,
-  required HabitsDao habitsDao,
-  required SleepDao sleepDao,
-  required GymDao gymDao,
-  required NutritionDao nutritionDao,
-  required GoalsDao goalsDao,
+  required FinanceRepository financeDao,
+  required HabitsRepository habitsDao,
+  required SleepRepository sleepDao,
+  required GymRepository gymDao,
+  required NutritionDataRepository nutritionRepo,
+  required GoalsRepository goalsDao,
 }) async {
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
@@ -203,16 +203,16 @@ Future<ModuleSummary> buildModuleSummaryFromDaos({
   int? caloriesToday;
   int? caloriesGoal;
   try {
-    final goal = await nutritionDao.getActiveGoal(today);
+    final goal = await nutritionRepo.getActiveGoal(today);
     if (goal != null) {
       caloriesGoal = goal.caloriesKcal;
     }
-    final mealLogs = await nutritionDao.watchMealLogs(today).first;
+    final mealLogs = await nutritionRepo.watchMealLogs(today).first;
     double totalCal = 0;
     for (final meal in mealLogs) {
-      final items = await nutritionDao.watchMealLogItems(meal.id).first;
+      final items = await nutritionRepo.watchMealLogItems(meal.id).first;
       for (final item in items) {
-        final food = await nutritionDao.getFoodItemById(item.foodItemId);
+        final food = await nutritionRepo.getFoodItemById(item.foodItemId);
         if (food != null) {
           totalCal += food.caloriesPer100g * item.quantityG / 100;
         }

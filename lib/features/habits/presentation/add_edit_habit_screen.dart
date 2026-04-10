@@ -95,7 +95,7 @@ class AddEditHabitScreen extends ConsumerStatefulWidget {
   });
 
   /// Si se proporciona, la pantalla opera en modo edicion.
-  final int? habitId;
+  final String? habitId;
 
   @override
   ConsumerState<AddEditHabitScreen> createState() =>

@@ -151,7 +151,7 @@ class _PhotoAnalysisScreenState extends ConsumerState<PhotoAnalysisScreen> {
       final aiNotifier = ref.read(aiNotifierProvider);
       await aiNotifier.initialize();
 
-      final config = await aiNotifier.dao.getDefaultConfiguration();
+      final config = await aiNotifier.repository.getDefaultConfiguration();
       if (config == null) {
         // No AI configured — use keyword-based fallback
         _applyFallbackEstimate(description);

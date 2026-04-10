@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:life_os/core/constants/app_colors.dart';
-import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
+import 'package:life_os/features/sleep/domain/models/sleep_log_model.dart';
 import 'package:life_os/core/router/app_router.dart';
 import 'package:life_os/core/widgets/chart_card.dart';
 
@@ -39,7 +39,7 @@ class _SleepHistoryScreenState extends ConsumerState<SleepHistoryScreen>
 
   @override
   Widget build(BuildContext context) {
-    final dao = ref.watch(sleepDaoProvider);
+    final dao = ref.watch(sleepRepositoryProvider);
     final theme = Theme.of(context);
     const sleepColor = AppColors.sleep;
 
@@ -100,7 +100,7 @@ class _SleepHistoryScreenState extends ConsumerState<SleepHistoryScreen>
       body: TabBarView(
         controller: _tabController,
         children: [
-          StreamBuilder<List<SleepLog>>(
+          StreamBuilder<List<SleepLogModel>>(
             stream: dao.watchSleepLogs(weekStart, now),
             builder: (context, snapshot) {
               final data = snapshot.data ?? [];
@@ -125,7 +125,7 @@ class _SleepHistoryScreenState extends ConsumerState<SleepHistoryScreen>
               );
             },
           ),
-          StreamBuilder<List<SleepLog>>(
+          StreamBuilder<List<SleepLogModel>>(
             stream: dao.watchSleepLogs(monthStart, monthEnd),
             builder: (context, snapshot) {
               final data = snapshot.data ?? [];
@@ -156,15 +156,15 @@ class _WeeklyView extends StatelessWidget {
     required this.theme,
   });
 
-  final List<SleepLog> data;
+  final List<SleepLogModel> data;
   final double avgScore;
   final double avgHours;
   final Color sleepColor;
   final ThemeData theme;
 
   Widget _buildLineChart({
-    required List<SleepLog> sorted,
-    required double Function(SleepLog) getValue,
+    required List<SleepLogModel> sorted,
+    required double Function(SleepLogModel) getValue,
     required Color color,
     double? minY,
     double? maxY,
@@ -402,7 +402,7 @@ class _MonthlyView extends StatelessWidget {
     required this.theme,
   });
 
-  final List<SleepLog> data;
+  final List<SleepLogModel> data;
   final DateTime monthStart;
   final Color sleepColor;
   final ThemeData theme;

@@ -4,16 +4,17 @@ import 'package:intl/intl.dart';
 import 'package:life_os/core/constants/app_breakpoints.dart';
 import 'package:life_os/core/constants/app_colors.dart';
 import 'package:life_os/core/providers/providers.dart';
-import 'package:life_os/features/finance/database/finance_dao.dart';
+import 'package:life_os/features/finance/data/finance_repository.dart';
 import 'package:life_os/features/finance/domain/amount_formatting.dart';
 import 'package:life_os/features/finance/domain/budget_analytics.dart';
+import 'package:life_os/features/finance/domain/models/category_model.dart';
 
 class BudgetAnalyticsScreen extends ConsumerWidget {
   const BudgetAnalyticsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final dao = ref.watch(financeDaoProvider);
+    final repo = ref.watch(financeRepositoryProvider);
 
     return DefaultTabController(
       length: 3,
@@ -35,9 +36,9 @@ class BudgetAnalyticsScreen extends ConsumerWidget {
         ),
         body: TabBarView(
           children: [
-            _ComparisonTab(dao: dao),
-            _TrendTab(dao: dao),
-            _ProjectionTab(dao: dao),
+            _ComparisonTab(repo: repo),
+            _TrendTab(repo: repo),
+            _ProjectionTab(repo: repo),
           ],
         ),
       ),
@@ -50,8 +51,8 @@ class BudgetAnalyticsScreen extends ConsumerWidget {
 // ---------------------------------------------------------------------------
 
 class _ComparisonTab extends StatelessWidget {
-  const _ComparisonTab({required this.dao});
-  final FinanceDao dao;
+  const _ComparisonTab({required this.repo});
+  final FinanceRepository repo;
 
   @override
   Widget build(BuildContext context) {
@@ -61,18 +62,18 @@ class _ComparisonTab extends StatelessWidget {
 
     return FutureBuilder<List<dynamic>>(
       future: Future.wait([
-        dao.getMonthlySpentByCategory(now.month, now.year),
-        dao.getMonthlySpentByCategory(prevMonth, prevYear),
-        dao.watchCategories().first,
+        repo.getMonthlySpentByCategory(now.month, now.year),
+        repo.getMonthlySpentByCategory(prevMonth, prevYear),
+        repo.watchCategories().first,
       ]),
       builder: (context, snap) {
         if (!snap.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
-        final currentSpent = snap.data![0] as Map<int, int>;
-        final previousSpent = snap.data![1] as Map<int, int>;
-        final categories = snap.data![2] as List;
-        final catMap = {for (final c in categories) (c as dynamic).id as int: c};
+        final currentSpent = snap.data![0] as Map<String, int>;
+        final previousSpent = snap.data![1] as Map<String, int>;
+        final categories = snap.data![2] as List<CategoryModel>;
+        final catMap = {for (final c in categories) c.id: c};
 
         final items = computeMonthComparison(
           currentSpentByCategory: currentSpent,
@@ -176,7 +177,7 @@ class _ComparisonTab extends StatelessWidget {
                       )
                     else
                       ...items.map((item) {
-                        final cat = catMap[item.categoryId];
+                        final cat = catMap[item.categoryId] as dynamic;
                         final name = cat?.name as String? ??
                             'Cat #${item.categoryId}';
                         final pct = item.changePercent;
@@ -256,8 +257,8 @@ class _ComparisonTab extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _TrendTab extends StatefulWidget {
-  const _TrendTab({required this.dao});
-  final FinanceDao dao;
+  const _TrendTab({required this.repo});
+  final FinanceRepository repo;
 
   @override
   State<_TrendTab> createState() => _TrendTabState();
@@ -278,9 +279,9 @@ class _TrendTabState extends State<_TrendTab> {
           return const Center(child: CircularProgressIndicator());
         }
         final trendData =
-            snap.data![0] as Map<({int month, int year}), Map<int, int>>;
-        final categories = snap.data![1] as List;
-        final catMap = {for (final c in categories) (c as dynamic).id as int: c};
+            snap.data![0] as Map<({int month, int year}), Map<String, int>>;
+        final categories = snap.data![1] as List<CategoryModel>;
+        final catMap = {for (final c in categories) c.id: c};
 
         final trends = computeTrend(trendData);
 
@@ -376,7 +377,7 @@ class _TrendTabState extends State<_TrendTab> {
   }
 
   Future<List<dynamic>> _loadTrendData(DateTime now) async {
-    final data = <({int month, int year}), Map<int, int>>{};
+    final data = <({int month, int year}), Map<String, int>>{};
     for (var i = _months - 1; i >= 0; i--) {
       var m = now.month - i;
       var y = now.year;
@@ -385,9 +386,9 @@ class _TrendTabState extends State<_TrendTab> {
         y--;
       }
       data[(month: m, year: y)] =
-          await widget.dao.getMonthlySpentByCategory(m, y);
+          await widget.repo.getMonthlySpentByCategory(m, y);
     }
-    final cats = await widget.dao.watchCategories().first;
+    final cats = await widget.repo.watchCategories().first;
     return [data, cats];
   }
 }
@@ -444,8 +445,8 @@ class _MiniTrendBars extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _ProjectionTab extends StatelessWidget {
-  const _ProjectionTab({required this.dao});
-  final FinanceDao dao;
+  const _ProjectionTab({required this.repo});
+  final FinanceRepository repo;
 
   @override
   Widget build(BuildContext context) {
@@ -455,8 +456,8 @@ class _ProjectionTab extends StatelessWidget {
 
     return FutureBuilder<List<dynamic>>(
       future: Future.wait([
-        dao.watchBudgets(now.month, now.year).first,
-        dao.watchCategories().first,
+        repo.watchBudgets(now.month, now.year).first,
+        repo.watchCategories().first,
         ...[], // spacer
       ]),
       builder: (context, snap) {
@@ -465,12 +466,12 @@ class _ProjectionTab extends StatelessWidget {
         }
         final budgets = snap.data![0] as List;
         final categories = snap.data![1] as List;
-        final catMap = {for (final c in categories) (c as dynamic).id as int: c};
+        final catMap = {for (final c in categories) (c as dynamic).id as String: c};
 
         return FutureBuilder<List<int>>(
           future: Future.wait(
             budgets.map((b) =>
-                dao.spentInBudget((b as dynamic).categoryId as int, now.month, now.year)),
+                repo.spentInBudget((b as dynamic).categoryId as String, now.month, now.year)),
           ),
           builder: (context, spentSnap) {
             final spentList =

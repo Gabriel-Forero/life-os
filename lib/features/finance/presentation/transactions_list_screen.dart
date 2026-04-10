@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:life_os/core/constants/app_colors.dart';
-import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
 import 'package:life_os/core/widgets/animated_list_item.dart';
 import 'package:life_os/core/widgets/empty_state_view.dart';
+import 'package:life_os/features/finance/domain/models/transaction_model.dart';
 import 'package:life_os/features/finance/presentation/sms_import_screen.dart';
 import 'package:intl/intl.dart';
 
@@ -33,8 +33,8 @@ class _TransactionsListScreenState
     return DateTime(now.year, now.month + 1, 0, 23, 59, 59);
   }
 
-  Map<String, List<Transaction>> _groupByDate(List<Transaction> transactions) {
-    final grouped = <String, List<Transaction>>{};
+  Map<String, List<TransactionModel>> _groupByDate(List<TransactionModel> transactions) {
+    final grouped = <String, List<TransactionModel>>{};
     for (final tx in transactions) {
       final key = DateFormat('yyyy-MM-dd').format(tx.date);
       grouped.putIfAbsent(key, () => []).add(tx);
@@ -54,13 +54,13 @@ class _TransactionsListScreenState
     return DateFormat('EEEE, d MMM', 'es').format(date);
   }
 
-  String _formatAmount(Transaction tx) {
+  String _formatAmount(TransactionModel tx) {
     final symbol = '\$';
     final formatter = NumberFormat('#,##0', 'es_CO');
     return '${tx.type == 'expense' ? '-' : '+'}$symbol${formatter.format(tx.amountCents)}';
   }
 
-  Future<void> _deleteTransaction(BuildContext context, Transaction tx) async {
+  Future<void> _deleteTransaction(BuildContext context, TransactionModel tx) async {
     // Use deferred (undo) delete — no confirmation dialog needed.
     final notifier = ref.read(financeNotifierProvider);
     await notifier.removeTransactionWithUndo(tx.id);
@@ -84,7 +84,7 @@ class _TransactionsListScreenState
 
   @override
   Widget build(BuildContext context) {
-    final dao = ref.watch(financeDaoProvider);
+    final repo = ref.watch(financeRepositoryProvider);
 
     return Scaffold(
       key: const ValueKey('transactions-list-screen'),
@@ -95,8 +95,8 @@ class _TransactionsListScreenState
             key: ValueKey('clipboard-transaction-banner'),
           ),
           Expanded(
-            child: StreamBuilder<List<Transaction>>(
-              stream: dao.watchTransactions(_from, _to),
+            child: StreamBuilder<List<TransactionModel>>(
+              stream: repo.watchTransactions(_from, _to),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
@@ -183,10 +183,10 @@ class _DateGroup extends StatelessWidget {
   });
 
   final String dateHeader;
-  final List<Transaction> transactions;
-  final String Function(Transaction) formatAmount;
-  final void Function(Transaction) onDelete;
-  final void Function(Transaction) onEdit;
+  final List<TransactionModel> transactions;
+  final String Function(TransactionModel) formatAmount;
+  final void Function(TransactionModel) onDelete;
+  final void Function(TransactionModel) onEdit;
   final int indexOffset;
 
   @override
@@ -234,7 +234,7 @@ class _TransactionTile extends StatelessWidget {
     required this.onEdit,
   });
 
-  final Transaction transaction;
+  final TransactionModel transaction;
   final String formattedAmount;
   final VoidCallback onDelete;
   final VoidCallback onEdit;

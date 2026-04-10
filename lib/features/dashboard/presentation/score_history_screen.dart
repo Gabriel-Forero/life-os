@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:life_os/core/constants/app_colors.dart';
-import 'package:life_os/core/database/app_database.dart';
 import 'package:life_os/core/providers/providers.dart';
-import 'package:life_os/features/dashboard/database/dashboard_dao.dart';
+import 'package:life_os/features/dashboard/data/dashboard_repository.dart';
+import 'package:life_os/features/dashboard/domain/models/day_score_model.dart';
 
 // ---------------------------------------------------------------------------
 // Score History Screen
@@ -110,7 +110,7 @@ class _ScoreHistoryScreenState extends ConsumerState<ScoreHistoryScreen> {
     );
   }
 
-  String _buildHeatmapSemantics(List<DayScore> scores) {
+  String _buildHeatmapSemantics(List<DayScoreModel> scores) {
     final formatter = DateFormat('d MMM', 'es');
     return scores.take(7).map((s) {
       final date = formatter.format(s.date);
@@ -126,7 +126,7 @@ class _ScoreHistoryScreenState extends ConsumerState<ScoreHistoryScreen> {
 class _HistoryStats extends StatelessWidget {
   const _HistoryStats({super.key, required this.scores});
 
-  final List<DayScore> scores;
+  final List<DayScoreModel> scores;
 
   @override
   Widget build(BuildContext context) {
@@ -231,7 +231,7 @@ class _StatChip extends StatelessWidget {
 class _TrendCard extends StatelessWidget {
   const _TrendCard({super.key, required this.scores});
 
-  final List<DayScore> scores;
+  final List<DayScoreModel> scores;
 
   @override
   Widget build(BuildContext context) {
@@ -363,7 +363,7 @@ class _TrendCard extends StatelessWidget {
 class _HeatmapCard extends StatelessWidget {
   const _HeatmapCard({super.key, required this.scores});
 
-  final List<DayScore> scores;
+  final List<DayScoreModel> scores;
 
   @override
   Widget build(BuildContext context) {
@@ -521,7 +521,7 @@ class _HeatmapLegend extends StatelessWidget {
 class _ModuleScoreBreakdownCard extends ConsumerWidget {
   const _ModuleScoreBreakdownCard({super.key, required this.scores});
 
-  final List<DayScore> scores;
+  final List<DayScoreModel> scores;
 
   static const _modules = ['finance', 'gym', 'nutrition', 'habits'];
   static const _moduleLabels = {
@@ -537,13 +537,13 @@ class _ModuleScoreBreakdownCard extends ConsumerWidget {
     'habits': AppColors.habits,
   };
 
-  Future<Map<String, List<FlSpot>>> _buildSpots(DashboardDao dao) async {
+  Future<Map<String, List<FlSpot>>> _buildSpots(DashboardRepository repo) async {
     final sorted = [...scores]..sort((a, b) => a.date.compareTo(b.date));
     final spotsMap = <String, List<FlSpot>>{
       for (final m in _modules) m: [],
     };
     for (var i = 0; i < sorted.length; i++) {
-      final comps = await dao.getComponentsForDayScore(sorted[i].id);
+      final comps = await repo.getComponentsForDayScore(sorted[i].id);
       for (final comp in comps) {
         if (spotsMap.containsKey(comp.moduleKey)) {
           spotsMap[comp.moduleKey]!
@@ -556,7 +556,7 @@ class _ModuleScoreBreakdownCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final dao = ref.watch(dashboardDaoProvider);
+    final repo = ref.watch(dashboardRepositoryProvider);
     final sorted = [...scores]..sort((a, b) => a.date.compareTo(b.date));
 
     if (scores.length < 2) {
@@ -564,7 +564,7 @@ class _ModuleScoreBreakdownCard extends ConsumerWidget {
     }
 
     return FutureBuilder<Map<String, List<FlSpot>>>(
-      future: _buildSpots(dao),
+      future: _buildSpots(repo),
       builder: (context, snap) {
         if (!snap.hasData) {
           return const SizedBox(
